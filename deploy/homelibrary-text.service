@@ -1,0 +1,59 @@
+# Installed at /etc/systemd/system/homelibrary-text.service by every deploy
+# (scripts/deploy.ps1); see docs/ops.md. The text service reads the words in documents' files
+# with pdftotext and Tesseract (apt install poppler-utils tesseract-ocr). It is apart from the
+# web server so a long scan never slows a page.
+
+[Unit]
+Description=Home Library text service
+After=homelibrary.service
+# Never given up on, thirty seconds between tries.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=homelibrary
+Group=homelibrary
+WorkingDirectory=/opt/homelibrary
+EnvironmentFile=-/etc/homelibrary/homelibrary.env
+ExecStart=/opt/homelibrary/homelibrary read-text
+Restart=on-failure
+RestartSec=30
+TimeoutStopSec=15
+
+# A ceiling on CPU and memory. The tools it runs, pdftotext and Tesseract, take idle CPU and
+# disk (chrt, ionice); the service itself keeps a normal priority, since it holds the
+# database's write lock while it saves what they read, and at idle priority it could hold it
+# for seconds under load.
+CPUQuota=80%
+MemoryMax=1G
+
+# Hardening, as the web server's, and more: it needs no network at all.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/homelibrary/data
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+PrivateNetwork=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallFilter=@system-service
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+UMask=0077
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=homelibrary-text
+
+[Install]
+WantedBy=multi-user.target

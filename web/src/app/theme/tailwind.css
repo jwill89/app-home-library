@@ -1,0 +1,208 @@
+/* The theme entry: the Tailwind mapping onto PrimeVue's variables, and base styles.
+   Color values live in preset.ts; this file only names them for utilities and scoped styles. */
+
+/* Declared first so PrimeVue's runtime layer sits under Tailwind's utilities. */
+@layer theme, base, primevue, components, utilities;
+
+@import 'tailwindcss';
+
+@theme static {
+  --color-*: initial;
+  --color-surface-page: var(--p-page-background);
+  --color-surface-panel: var(--p-content-background);
+  --color-hairline: var(--p-content-border-color);
+  --color-outline: var(--p-form-field-border-color);
+  --color-accent: var(--p-primary-color);
+  --color-accent-contrast: var(--p-primary-contrast-color);
+  --color-highlight: var(--p-highlight-background);
+  --color-highlight-ink: var(--p-highlight-color);
+  --color-ink: var(--p-text-color);
+  --color-ink-muted: var(--p-text-muted-color);
+  --color-status-danger: var(--p-status-danger);
+  --color-status-success: var(--p-status-success);
+  --color-shade: color-mix(in srgb, var(--p-surface-950), transparent 40%);
+
+  /* A mark drawn over the shade or a camera's picture: white in both schemes. */
+  --color-on-shade: var(--p-surface-0);
+
+  --font-*: initial;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* Call numbers, ISBNs, and barcodes line up in a fixed-width face. */
+  --font-mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+  --radius-*: initial;
+  --radius-control: 6px;
+  --radius-cover: 3px;
+
+  /* The smallest a control may be, with a pointer or a finger (WCAG 2.5.5). */
+  --spacing-target: 2.75rem;
+
+  /* Small text keeps lines 1.5 apart, as prose must (WCAG 1.4.8); Tailwind's own are closer. */
+  /* stylelint-disable custom-property-pattern -- Tailwind's own names for a size's line height */
+  --text-xs--line-height: 1.5;
+  --text-sm--line-height: 1.5;
+  /* stylelint-enable custom-property-pattern */
+
+  --container-page: 76rem;
+  --container-record: 60rem;
+  --container-narrow: 28rem;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    color: var(--color-ink);
+    background: var(--color-surface-page);
+    text-size-adjust: 100%;
+    color-scheme: light;
+  }
+
+  /* The browser's own parts (scrollbars, date pickers) take the scheme the page has. */
+  html.scheme-dark {
+    color-scheme: dark;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+  }
+
+  h1,
+  h2,
+  h3 {
+    margin: 0;
+    font-weight: 650;
+    line-height: 1.2;
+  }
+
+  a {
+    color: var(--color-accent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0s !important;
+      animation-duration: 0s !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Every control is at least the target size, whatever points at it. */
+  .p-button,
+  .p-inputtext,
+  .p-select,
+  .p-select-option,
+  .p-autocomplete-option,
+  .p-togglebutton,
+  .p-inputnumber-button,
+  .p-paginator-first,
+  .p-paginator-prev,
+  .p-paginator-page,
+  .p-paginator-next,
+  .p-paginator-last,
+  .p-rating-option {
+    min-width: var(--spacing-target);
+    min-height: var(--spacing-target);
+  }
+
+  .p-rating-option {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* A column named for screen readers that shows no heading: a cover, a row's buttons. */
+  .column-unlabelled .p-datatable-column-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* A toast along the bottom of a phone or a tablet sits above the tab bar, not on it. */
+  @media (width < 64rem) {
+    .p-toast-bottom-center {
+      bottom: calc(4.75rem + env(safe-area-inset-bottom));
+    }
+  }
+
+  /* A record's facts, a label beside each value. */
+  .detail-list {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.5rem 1.25rem;
+    margin: 0;
+  }
+
+  .detail-list dt {
+    color: var(--color-ink-muted);
+  }
+
+  .detail-list dd {
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* A link standing on its own, not in a sentence: its hit area reaches the target size above
+     and below the words without moving them. A record's facts link so too. */
+  .link-target,
+  .row-link,
+  .detail-list a {
+    display: inline-block;
+    padding-block: 0.75rem;
+    margin-block: -0.75rem;
+  }
+
+  /* The link that names a table's row. A title can be one long word
+     (Euthyphro/Apology/Crito/Meno/Phaedo): it breaks to fit a phone's column. A short one
+     ("Mind") is still a target of the full width. */
+  .row-link {
+    min-inline-size: var(--spacing-target);
+    font-weight: 600;
+    color: var(--color-ink);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+  }
+
+  .row-link:hover {
+    color: var(--color-accent);
+    text-decoration: underline;
+  }
+
+  /* A sortable column's heading is the button that sorts it. */
+  .p-datatable-sortable-column {
+    height: var(--spacing-target);
+  }
+
+  /* A number field is as wide as the field it is in: left alone its input keeps the width
+     of twenty characters and runs out of a narrow column. */
+  .p-inputnumber-input {
+    flex: 1 1 auto;
+    width: 1%;
+    min-width: 0;
+  }
+}
+
+/* Prose: descriptions, notes, and help. Short enough lines to read, room between them. */
+@utility prose-text {
+  max-width: 70ch;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}

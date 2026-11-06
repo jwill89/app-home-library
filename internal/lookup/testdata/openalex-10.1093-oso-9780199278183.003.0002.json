@@ -1,0 +1,203 @@
+{
+ "id": "https://openalex.org/W1554228597",
+ "doi": "https://doi.org/10.1093/oso/9780199278183.003.0002",
+ "title": "Causation as Folk Science",
+ "type": "book-chapter",
+ "keywords": [
+  {
+   "id": "https://openalex.org/keywords/causality",
+   "display_name": "causality",
+   "score": 0.9710000157356262
+  },
+  {
+   "id": "https://openalex.org/keywords/folk-science",
+   "display_name": "folk science",
+   "score": 0.7710000276565552
+  },
+  {
+   "id": "https://openalex.org/keywords/unity-of-science",
+   "display_name": "unity of science",
+   "score": 0.6430000066757202
+  },
+  {
+   "id": "https://openalex.org/keywords/natural-processes",
+   "display_name": "natural processes",
+   "score": 0.5400000214576721
+  },
+  {
+   "id": "https://openalex.org/keywords/philosophy-of-science",
+   "display_name": "philosophy of science",
+   "score": 0.699999988079071
+  }
+ ],
+ "primary_topic": {
+  "id": "https://openalex.org/T10778",
+  "display_name": "Philosophy and History of Science",
+  "score": 0.9872999787330627,
+  "subfield": {
+   "id": "https://openalex.org/subfields/1207",
+   "display_name": "History and Philosophy of Science"
+  },
+  "field": {
+   "id": "https://openalex.org/fields/12",
+   "display_name": "Arts and Humanities"
+  },
+  "domain": {
+   "id": "https://openalex.org/domains/2",
+   "display_name": "Social Sciences"
+  }
+ },
+ "topics": [
+  {
+   "id": "https://openalex.org/T10778",
+   "display_name": "Philosophy and History of Science",
+   "score": 0.9872999787330627,
+   "subfield": {
+    "id": "https://openalex.org/subfields/1207",
+    "display_name": "History and Philosophy of Science"
+   },
+   "field": {
+    "id": "https://openalex.org/fields/12",
+    "display_name": "Arts and Humanities"
+   },
+   "domain": {
+    "id": "https://openalex.org/domains/2",
+    "display_name": "Social Sciences"
+   }
+  },
+  {
+   "id": "https://openalex.org/T13558",
+   "display_name": "Philosophy, Science, and History",
+   "score": 0.007199999876320362,
+   "subfield": {
+    "id": "https://openalex.org/subfields/1207",
+    "display_name": "History and Philosophy of Science"
+   },
+   "field": {
+    "id": "https://openalex.org/fields/12",
+    "display_name": "Arts and Humanities"
+   },
+   "domain": {
+    "id": "https://openalex.org/domains/2",
+    "display_name": "Social Sciences"
+   }
+  },
+  {
+   "id": "https://openalex.org/T11477",
+   "display_name": "Epistemology, Ethics, and Metaphysics",
+   "score": 0.0008999999845400453,
+   "subfield": {
+    "id": "https://openalex.org/subfields/1211",
+    "display_name": "Philosophy"
+   },
+   "field": {
+    "id": "https://openalex.org/fields/12",
+    "display_name": "Arts and Humanities"
+   },
+   "domain": {
+    "id": "https://openalex.org/domains/2",
+    "display_name": "Social Sciences"
+   }
+  }
+ ],
+ "concepts": [
+  {
+   "id": "https://openalex.org/C166151441",
+   "wikidata": "https://www.wikidata.org/wiki/Q4923601",
+   "display_name": "Causation",
+   "level": 2,
+   "score": 0.9415483474731445
+  },
+  {
+   "id": "https://openalex.org/C193235544",
+   "wikidata": "https://www.wikidata.org/wiki/Q7991",
+   "display_name": "Natural science",
+   "level": 2,
+   "score": 0.7409238219261169
+  },
+  {
+   "id": "https://openalex.org/C64357122",
+   "wikidata": "https://www.wikidata.org/wiki/Q1149766",
+   "display_name": "Causality (physics)",
+   "level": 2,
+   "score": 0.724126935005188
+  },
+  {
+   "id": "https://openalex.org/C2776608160",
+   "wikidata": "https://www.wikidata.org/wiki/Q4785462",
+   "display_name": "Natural (archaeology)",
+   "level": 2,
+   "score": 0.6980830430984497
+  },
+  {
+   "id": "https://openalex.org/C111472728",
+   "wikidata": "https://www.wikidata.org/wiki/Q9471",
+   "display_name": "Epistemology",
+   "level": 1,
+   "score": 0.6329127550125122
+  },
+  {
+   "id": "https://openalex.org/C155785087",
+   "wikidata": "https://www.wikidata.org/wiki/Q29524",
+   "display_name": "Natural law",
+   "level": 2,
+   "score": 0.5155653953552246
+  },
+  {
+   "id": "https://openalex.org/C36503486",
+   "wikidata": "https://www.wikidata.org/wiki/Q11235244",
+   "display_name": "Domain (mathematical analysis)",
+   "level": 2,
+   "score": 0.41916424036026
+  },
+  {
+   "id": "https://openalex.org/C138885662",
+   "wikidata": "https://www.wikidata.org/wiki/Q5891",
+   "display_name": "Philosophy",
+   "level": 0,
+   "score": 0.3803091049194336
+  },
+  {
+   "id": "https://openalex.org/C95457728",
+   "wikidata": "https://www.wikidata.org/wiki/Q309",
+   "display_name": "History",
+   "level": 0,
+   "score": 0.22292408347129822
+  },
+  {
+   "id": "https://openalex.org/C33923547",
+   "wikidata": "https://www.wikidata.org/wiki/Q395",
+   "display_name": "Mathematics",
+   "level": 0,
+   "score": 0.2035822570323944
+  },
+  {
+   "id": "https://openalex.org/C121332964",
+   "wikidata": "https://www.wikidata.org/wiki/Q413",
+   "display_name": "Physics",
+   "level": 0,
+   "score": 0.1235455870628357
+  },
+  {
+   "id": "https://openalex.org/C166957645",
+   "wikidata": "https://www.wikidata.org/wiki/Q23498",
+   "display_name": "Archaeology",
+   "level": 1,
+   "score": 0.08109194040298462
+  },
+  {
+   "id": "https://openalex.org/C62520636",
+   "wikidata": "https://www.wikidata.org/wiki/Q944",
+   "display_name": "Quantum mechanics",
+   "level": 1,
+   "score": 0.0
+  },
+  {
+   "id": "https://openalex.org/C134306372",
+   "wikidata": "https://www.wikidata.org/wiki/Q7754",
+   "display_name": "Mathematical analysis",
+   "level": 1,
+   "score": 0.0
+  }
+ ]
+}

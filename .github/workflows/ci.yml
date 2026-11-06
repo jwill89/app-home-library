@@ -1,0 +1,92 @@
+name: CI
+
+# A tag always sits on a commit main already ran, and deploys happen from the owner's
+# machine, so tags do not trigger a second run.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Frontend dependencies
+        working-directory: web
+        env:
+          FONTAWESOME_TOKEN: ${{ secrets.FONTAWESOME_TOKEN }}
+        run: |
+          test -n "$FONTAWESOME_TOKEN" || { echo "::error::The FONTAWESOME_TOKEN repository secret is not set (docs/ops.md)."; exit 1; }
+          echo "//npm.fontawesome.com/:_authToken=${FONTAWESOME_TOKEN}" >> ~/.npmrc
+          npm ci --prefer-offline
+
+      # The Go packages embed web/dist, so the frontend builds before any Go command runs.
+      - name: Frontend
+        working-directory: web
+        run: |
+          npm run lint
+          npm run typecheck
+          npm run format:check
+          npm test
+          npm audit --omit=dev --audit-level=low
+          npm audit --audit-level=high
+          npm run build
+
+      - name: Generated code is current
+        run: |
+          go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
+          sqlc generate
+          go run ./cmd/homelibrary openapi > web/src/api/openapi.json
+          cd web && npx -y openapi-typescript@7.13.0 src/api/openapi.json -o src/api/schema.d.ts && npx prettier --write src/api/schema.d.ts src/api/openapi.json && cd ..
+          git diff --exit-code -- internal/db web/src/api
+
+      - run: go vet ./...
+
+      # Built from source with the pinned toolchain: a prebuilt linter binary cannot read
+      # export data from a newer Go than it was compiled with.
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.15.0
+          install-mode: goinstall
+
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
+
+      # Under the race detector: the background lookup runs beside the requests.
+      - run: go test -race ./...
+
+      # The whole app in the runner's Chrome, against a server of its own.
+      - name: End-to-end
+        working-directory: web
+        run: npx playwright test
+
+      - name: Scripts
+        shell: pwsh
+        run: |
+          Install-PSResource PSScriptAnalyzer -Version 1.25.0 -Scope CurrentUser -TrustRepository -Quiet
+          foreach ($f in 'scripts/deploy.ps1', 'scripts/deploy.config.example.ps1', 'scripts/pull-backup.ps1') {
+            $r = Invoke-ScriptAnalyzer -Path $f -Settings PSScriptAnalyzerSettings.psd1
+            $r | Format-Table -AutoSize
+            if ($r) { exit 1 }
+          }
+
+      - name: Linux binary
+        env:
+          GOOS: linux
+          GOARCH: amd64
+          CGO_ENABLED: '0'
+        run: go build -o dist/homelibrary-linux-amd64 ./cmd/homelibrary
