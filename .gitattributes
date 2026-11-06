@@ -1,0 +1,5 @@
+# LF everywhere, regardless of the machine's autocrlf setting. The deploy
+# script sends shell snippets to the droplet and the formatters expect LF.
+* text=auto eol=lf
+*.webp binary
+*.png binary

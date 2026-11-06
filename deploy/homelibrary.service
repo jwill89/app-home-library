@@ -1,0 +1,58 @@
+# Installed at /etc/systemd/system/homelibrary.service by every deploy (scripts/deploy.ps1),
+# which puts the one before back if the new build does not come up; see docs/ops.md.
+
+[Unit]
+Description=Home Library
+After=network-online.target
+Wants=network-online.target
+# Never given up on: a crash every few seconds is still worth restarting, five seconds apart.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=homelibrary
+Group=homelibrary
+WorkingDirectory=/opt/homelibrary
+EnvironmentFile=-/etc/homelibrary/homelibrary.env
+ExecStart=/opt/homelibrary/homelibrary serve
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+
+# A ceiling well above what it uses (tens of MB, more while it reads a large photo), so a
+# runaway cannot take the droplet's other sites down with it.
+MemoryMax=768M
+
+# Hardening. Every path the service writes must be under ReadWritePaths: the database, the
+# covers, and the documents' files, never the binary beside them.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/homelibrary/data
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallFilter=@system-service
+SystemCallArchitectures=native
+# Safe because the binary is pure Go with no runtime code generation.
+MemoryDenyWriteExecute=yes
+CapabilityBoundingSet=
+UMask=0077
+LogsDirectory=homelibrary
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=homelibrary
+
+[Install]
+WantedBy=multi-user.target

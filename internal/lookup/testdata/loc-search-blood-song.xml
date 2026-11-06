@@ -1,0 +1,95 @@
+<?xml version="1.0"?>
+<zs:searchRetrieveResponse xmlns:zs="http://www.loc.gov/zing/srw/"><zs:version>1.1</zs:version><zs:numberOfRecords>1</zs:numberOfRecords><zs:records><zs:record><zs:recordSchema>marcxml</zs:recordSchema><zs:recordPacking>xml</zs:recordPacking><zs:recordData><record xmlns="http://www.loc.gov/MARC21/slim">
+  <leader>01053cam a2200289 i 4500</leader>
+  <controlfield tag="001">17672004</controlfield>
+  <controlfield tag="005">20250607053328.3</controlfield>
+  <controlfield tag="008">130325s2011    nyub          000 1 eng  </controlfield>
+  <datafield tag="035" ind1=" " ind2=" ">
+    <subfield code="a">17672004</subfield>
+  </datafield>
+  <datafield tag="906" ind1=" " ind2=" ">
+    <subfield code="a">7</subfield>
+    <subfield code="b">cbc</subfield>
+    <subfield code="c">orignew</subfield>
+    <subfield code="d">1</subfield>
+    <subfield code="e">ecip</subfield>
+    <subfield code="f">20</subfield>
+    <subfield code="g">y-gencatlg</subfield>
+  </datafield>
+  <datafield tag="925" ind1="0" ind2=" ">
+    <subfield code="a">acquire</subfield>
+    <subfield code="b">2 shelf copies</subfield>
+    <subfield code="x">policy default</subfield>
+  </datafield>
+  <datafield tag="955" ind1=" " ind2=" ">
+    <subfield code="b">rg10 2013-03-25</subfield>
+    <subfield code="i">rg10 2013-03-25(Telework) to CIP</subfield>
+    <subfield code="a">rg10 2013-04-09 (ECIP chg req)</subfield>
+    <subfield code="a">rg10 2013-04-29 (ECIP chg req)</subfield>
+    <subfield code="a">xn05 2013-08-27 1 copy rec'd., to CIP ver.</subfield>
+    <subfield code="f">rm16 2014-05-29 (telework) to CALM</subfield>
+  </datafield>
+  <datafield tag="010" ind1=" " ind2=" ">
+    <subfield code="a">  2013003738</subfield>
+  </datafield>
+  <datafield tag="020" ind1=" " ind2=" ">
+    <subfield code="a">9780425267691</subfield>
+    <subfield code="q">hardcover</subfield>
+  </datafield>
+  <datafield tag="040" ind1=" " ind2=" ">
+    <subfield code="a">DLC</subfield>
+    <subfield code="b">eng</subfield>
+    <subfield code="c">DLC</subfield>
+    <subfield code="e">rda</subfield>
+    <subfield code="d">DLC</subfield>
+    <subfield code="d">DLC</subfield>
+  </datafield>
+  <datafield tag="042" ind1=" " ind2=" ">
+    <subfield code="a">pcc</subfield>
+  </datafield>
+  <datafield tag="050" ind1="0" ind2="0">
+    <subfield code="a">PR6118.Y3523</subfield>
+    <subfield code="b">B56 2011</subfield>
+  </datafield>
+  <datafield tag="082" ind1="0" ind2="0">
+    <subfield code="a">823/.92</subfield>
+    <subfield code="2">23</subfield>
+  </datafield>
+  <datafield tag="100" ind1="1" ind2=" ">
+    <subfield code="a">Ryan, Anthony.</subfield>
+  </datafield>
+  <datafield tag="245" ind1="1" ind2="0">
+    <subfield code="a">Blood song :</subfield>
+    <subfield code="b">a Raven's Shadow novel /</subfield>
+    <subfield code="c">Anthony Ryan.</subfield>
+  </datafield>
+  <datafield tag="250" ind1=" " ind2=" ">
+    <subfield code="a">Ace Hardcover Edition.</subfield>
+  </datafield>
+  <datafield tag="264" ind1=" " ind2="1">
+    <subfield code="a">New York :</subfield>
+    <subfield code="b">ACE Books,</subfield>
+    <subfield code="c">2011</subfield>
+  </datafield>
+  <datafield tag="300" ind1=" " ind2=" ">
+    <subfield code="a">582 pages :</subfield>
+    <subfield code="b">maps ;</subfield>
+    <subfield code="c">24 cm.</subfield>
+  </datafield>
+  <datafield tag="336" ind1=" " ind2=" ">
+    <subfield code="a">text</subfield>
+    <subfield code="2">rdacontent</subfield>
+  </datafield>
+  <datafield tag="337" ind1=" " ind2=" ">
+    <subfield code="a">unmediated</subfield>
+    <subfield code="2">rdamedia</subfield>
+  </datafield>
+  <datafield tag="338" ind1=" " ind2=" ">
+    <subfield code="a">volume</subfield>
+    <subfield code="2">rdacarrier</subfield>
+  </datafield>
+  <datafield tag="655" ind1=" " ind2="7">
+    <subfield code="a">Fantasy fiction.</subfield>
+    <subfield code="2">gsafd</subfield>
+  </datafield>
+</record></zs:recordData><zs:recordPosition>1</zs:recordPosition></zs:record></zs:records><zs:echoedSearchRetrieveRequest><zs:version>1.1</zs:version><zs:query>dc.title="blood song" and dc.creator="ryan"</zs:query><zs:maximumRecords>5</zs:maximumRecords><zs:recordPacking>xml</zs:recordPacking><zs:recordSchema>marcxml</zs:recordSchema></zs:echoedSearchRetrieveRequest></zs:searchRetrieveResponse>

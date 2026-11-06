@@ -1,0 +1,48 @@
+# Weekly dependency updates, grouped so a quiet week is one pull request per ecosystem.
+# The Font Awesome Pro packages come from a private registry: FONTAWESOME_TOKEN must also
+# exist as a Dependabot secret (Settings, Secrets and variables, Dependabot), since
+# Dependabot cannot read Actions secrets.
+version: 2
+registries:
+  fontawesome:
+    type: npm-registry
+    url: https://npm.fontawesome.com
+    token: ${{ secrets.FONTAWESOME_TOKEN }}
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      go:
+        patterns: ["*"]
+    ignore:
+      # Moved by hand: the scs repository's store tags (sqlite3store/v1.4.1) read to
+      # Dependabot as releases of this module, and the weekly run fails on them.
+      - dependency-name: github.com/alexedwards/scs/sqlite3store
+  - package-ecosystem: npm
+    directory: /web
+    registries:
+      - fontawesome
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      npm-minor:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    ignore:
+      # Held as in Kindred Nights: TypeScript at 6.0 until vue-tsc supports 7.1, and
+      # PrimeVue at 4 with its themes at 1, since PrimeVue 5 needs a license key.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+      - dependency-name: primevue
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@primeuix/themes"
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday

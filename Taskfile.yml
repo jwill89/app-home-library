@@ -1,0 +1,128 @@
+version: '3'
+
+dotenv: ['.env']
+
+vars:
+  MODULE: homelibrary
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo dev
+  COMMIT:
+    sh: git rev-parse --short HEAD 2>/dev/null || echo none
+  BUILD_DATE:
+    sh: git log -1 --format=%cI 2>/dev/null || echo unknown
+  LDFLAGS: >-
+    -s -w
+    -X {{.MODULE}}/internal/version.Version={{.VERSION}}
+    -X {{.MODULE}}/internal/version.Commit={{.COMMIT}}
+    -X {{.MODULE}}/internal/version.BuildDate={{.BUILD_DATE}}
+
+tasks:
+  setup:
+    desc: Install frontend dependencies
+    dir: web
+    cmds:
+      - npm ci
+
+  dev:
+    desc: Run the Vite dev server and the Go server together
+    deps: [dev:web, dev:api]
+
+  dev:web:
+    dir: web
+    cmds:
+      - npm run dev
+
+  dev:api:
+    cmds:
+      - go run ./cmd/homelibrary serve
+
+  gen:
+    desc: Regenerate sqlc code and the TypeScript API client from the OpenAPI document
+    # The Go packages embed web/dist, so the frontend must exist before go run compiles them.
+    deps: [build:web]
+    cmds:
+      - sqlc generate
+      - go run ./cmd/homelibrary openapi > web/src/api/openapi.json
+      - cd web && npx -y openapi-typescript@7.13.0 src/api/openapi.json -o src/api/schema.d.ts
+      - cd web && npx prettier --write src/api/schema.d.ts src/api/openapi.json
+
+  build:web:
+    dir: web
+    cmds:
+      - npm run build
+    sources:
+      - index.html
+      - package.json
+      - vite.config.ts
+      - tsconfig.json
+      - src/**/*
+      - public/**/*
+    generates:
+      - dist/index.html
+
+  build:
+    desc: Build the frontend and the native binary into dist/
+    deps: [build:web]
+    cmds:
+      - go build -ldflags "{{.LDFLAGS}}" -o dist/homelibrary{{exeExt}} ./cmd/homelibrary
+
+  build:linux:
+    desc: Build the static Linux binary the droplet runs
+    deps: [build:web]
+    env:
+      GOOS: linux
+      GOARCH: amd64
+      CGO_ENABLED: '0'
+    cmds:
+      - go build -ldflags "{{.LDFLAGS}}" -o dist/homelibrary-linux-amd64 ./cmd/homelibrary
+
+  lint:
+    desc: Lint, type-check, and format-check everything
+    deps: [build:web]
+    cmds:
+      - go vet ./...
+      - go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0 run ./...
+      - task: lint:web
+      - task: lint:scripts
+      - task: lint:vulns
+
+  # Known vulnerabilities: Go's in the code the app calls; npm's in what ships, at any
+  # severity, and in the build and lint tooling from high up (a moderate one there is a
+  # tool reading our own files).
+  lint:vulns:
+    cmds:
+      - go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
+      - cd web && npm audit --omit=dev --audit-level=low
+      - cd web && npm audit --audit-level=high
+
+  lint:web:
+    dir: web
+    cmds:
+      - npm run lint
+      - npm run typecheck
+      - npm run format:check
+
+  # PSScriptAnalyzer, with PSScriptAnalyzerSettings.psd1, over the tracked scripts only.
+  lint:scripts:
+    cmds:
+      - pwsh -NoProfile -Command 'foreach ($f in "scripts/deploy.ps1", "scripts/deploy.config.example.ps1", "scripts/pull-backup.ps1") { $r = Invoke-ScriptAnalyzer -Path $f -Settings PSScriptAnalyzerSettings.psd1; $r | Format-Table -AutoSize | Out-String | Write-Output; if ($r) { exit 1 } }'
+
+  test:
+    desc: Run the Go and frontend tests, then the end-to-end tests in a browser
+    deps: [build:web]
+    cmds:
+      - go test ./...
+      - cd web && npm test
+      - task: e2e
+
+  # The whole app in a real browser (Edge here, Chrome on CI), against a server of its own.
+  e2e:
+    deps: [build:web]
+    dir: web
+    cmds:
+      - npx playwright test
+
+  deploy:
+    desc: Deploy the tagged commit to the droplet (pass flags after --)
+    cmds:
+      - pwsh -NoProfile -File scripts/deploy.ps1 {{.CLI_ARGS}}
