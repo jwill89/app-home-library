@@ -4,6 +4,12 @@ What changes in Home Library, release by release. The format is [Keep a Changelo
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-11-07
+
+### Fixed
+
+- `/healthz` answers publicly, as the standards have it: the vhost no longer refuses it, so the deploy's check through Cloudflare can read the version, and an uptime check can poll it. It returns only the status, version, commit, build date and schema number. 1.1.0's deploy was rolled back on this check, so 1.1.1 is the first of the 1.1 line to run on the droplet.
+
 ## [1.1.0] - 2026-11-07
 
 ### Added
