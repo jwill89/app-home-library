@@ -53,7 +53,7 @@ $PSNativeCommandUseErrorActionPreference = $false
 Import-Module (Join-Path $PSScriptRoot '..\shared\deploy\pwsh\SharedDeploy.psd1') -Force
 trap { Close-DeployConnection; Write-Host "`nERROR: $($_.Exception.Message)" -ForegroundColor Red; exit 1 }
 
-$root = Split-Path -Parent $PSScriptRoot
+$root = Split-Path -Path $PSScriptRoot -Parent
 Set-Location $root
 
 $remoteDir = '/opt/homelibrary'
