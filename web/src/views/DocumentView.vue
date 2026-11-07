@@ -13,7 +13,7 @@ import {
   faMagnifyingGlass,
   faPen,
   faTrash,
-} from '@fortawesome/pro-regular-svg-icons'
+} from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import {
   api,
   fileURL,
@@ -58,7 +58,10 @@ const path = computed(() => ({ params: { path: { id: props.id } } }))
 
 async function load() {
   const { data, error } = await api.GET('/documents/{id}', path.value)
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   doc.value = data
   document.title = `${data.title} · Home Library`
 }
@@ -71,7 +74,9 @@ watch(() => props.id, load)
 
 const details = computed(() => {
   const d = doc.value
-  if (!d) return []
+  if (!d) {
+    return []
+  }
   const where = containerLabel(d.kind)
   const numbers = [
     d.volume && `volume ${d.volume}`,
@@ -106,7 +111,10 @@ async function lookUpAgain() {
   refreshing.value = true
   const { data, error } = await api.POST('/documents/{id}/refresh', path.value)
   refreshing.value = false
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   doc.value = data.document
   if (data.fields?.length) {
     suggestions.value = [data]
@@ -127,7 +135,10 @@ async function upload(file: Blob, name: string) {
   busy.value = true
   const { data, error } = await addDocumentFile(props.id, file, name)
   busy.value = false
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   doc.value = data
 }
 
@@ -141,9 +152,12 @@ async function chosen(e: Event) {
   const input = e.target as HTMLInputElement
   const picked = [...(input.files ?? [])]
   input.value = ''
-  for (const f of picked) await upload(f, f.name)
-  if (picked.length)
+  for (const f of picked) {
+    await upload(f, f.name)
+  }
+  if (picked.length) {
     notice.done(picked.length === 1 ? `${picked[0]?.name} added` : `${picked.length} files added`)
+  }
 }
 
 function removeFile(f: DocumentFile) {
@@ -158,7 +172,10 @@ function removeFile(f: DocumentFile) {
       const { data, error } = await api.DELETE('/documents/{id}/files/{fileId}', {
         params: { path: { id: props.id, fileId: f.id } },
       })
-      if (error) return notice.failed(error)
+      if (error) {
+        notice.failed(error)
+        return
+      }
       doc.value = data
     },
   )
@@ -175,7 +192,10 @@ function removeDocument() {
     },
     async () => {
       const { error } = await api.DELETE('/documents/{id}', path.value)
-      if (error) return notice.failed(error)
+      if (error) {
+        notice.failed(error)
+        return
+      }
       notice.done('Paper removed')
       await goBack(router, '/papers', `/papers/${props.id}`)
     },
@@ -190,12 +210,17 @@ function showText(f: DocumentFile) {
   textOpen.value = true
 }
 async function saveText(text: string) {
-  if (!texting.value) return
+  if (!texting.value) {
+    return
+  }
   const { data, error } = await api.PUT('/documents/{id}/files/{fileId}/text', {
     params: { path: { id: props.id, fileId: texting.value.file.id } },
     body: { text },
   })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   doc.value = data
   textOpen.value = false
 }

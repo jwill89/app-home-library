@@ -23,7 +23,9 @@ function search(query: string) {
 }
 
 function chose(v: DocumentRow | string | null) {
-  if (!v || typeof v === 'string') return
+  if (!v || typeof v === 'string') {
+    return
+  }
   emit('chosen', v)
   // Emptied once the box has taken the choice: emptied at once, it never sees a change.
   void nextTick(() => (picked.value = null))

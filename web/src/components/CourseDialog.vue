@@ -35,7 +35,9 @@ const choices = ref<Choices | null>(null)
 const busy = ref(false)
 
 watch(open, async (v) => {
-  if (!v) return
+  if (!v) {
+    return
+  }
   const c = props.course
   input.value = c
     ? {
@@ -72,7 +74,10 @@ async function save() {
       })
     : await api.POST('/courses', { body: input.value })
   busy.value = false
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   open.value = false
   emit('saved', data)
 }

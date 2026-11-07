@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, useTemplateRef } from 'vue'
 import Button from 'primevue/button'
-import { faCamera, faImage } from '@fortawesome/pro-regular-svg-icons'
+import { faCamera, faImage } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import CropDialog from './CropDialog.vue'
 
 // The one way a photo comes from the owner, of a cover or of a document's page: taken now
@@ -22,7 +22,9 @@ function chosen(e: Event) {
   const input = e.target as HTMLInputElement
   const f = input.files?.[0]
   input.value = ''
-  if (!f) return
+  if (!f) {
+    return
+  }
   file.value = f
   cropping.value = true
 }

@@ -1,46 +1,33 @@
-import { defineConfigWithVueTs, vueTsConfigs } from '@vue/eslint-config-typescript'
-import skipFormatting from '@vue/eslint-config-prettier/skip-formatting'
-import pluginVue from 'eslint-plugin-vue'
-import pluginVueA11y from 'eslint-plugin-vuejs-accessibility'
+import shared, { vueConventions, tsStylistic } from '@jwill89/lint-web'
 
-// The Vue style guide in full, typescript-eslint's type-aware rules, accessibility in the
-// templates, and the project's conventions (CLAUDE.md) where a rule can hold them.
-// Prettier does the formatting. A rule is turned off here with its reason, or at the one
-// line it does not fit with the reason beside it.
-export default defineConfigWithVueTs(
-  { files: ['**/*.{ts,mts,tsx,vue}'] },
-  // Generated from the API document: its shape is openapi-typescript's.
-  { ignores: ['dist/**', 'src/api/schema.d.ts'] },
-  pluginVue.configs['flat/recommended'],
-  ...pluginVueA11y.configs['flat/recommended'],
-  vueTsConfigs.recommendedTypeChecked,
-  vueTsConfigs.stylisticTypeChecked,
+// The shared front-end rules (shared-tooling's lint/web): the Vue style guide in full,
+// typescript-eslint's strict and stylistic type-aware rules, accessibility in the
+// templates, and the conventions every front end holds. Below them, what only this app
+// needs. A rule is turned off here with its reason, or at the one line it does not fit
+// with the reason beside it.
+export default [
   {
+    ignores: [
+      'dist/**',
+      'coverage/**',
+      'test-results/**',
+      // Generated from the API document: its shape is openapi-typescript's.
+      'src/api/schema.d.ts',
+      // Tooling run by node, in no tsconfig: the type-aware rules can't resolve them.
+      '*.config.js',
+      '*.config.mjs',
+      'scripts/**',
+      'public/**',
+    ],
+  },
+  ...shared,
+  vueConventions,
+  tsStylistic,
+  {
+    name: 'home-library/a11y',
     rules: {
-      // An empty string or false falls back as nothing would, so || stays where it is meant.
-      '@typescript-eslint/prefer-nullish-coalescing': [
-        'error',
-        { ignorePrimitives: { string: true, boolean: true } },
-      ],
-      // <script setup lang="ts"> everywhere, and no inline styles.
-      'vue/block-lang': ['error', { script: { lang: 'ts' } }],
-      'vue/component-api-style': ['error', ['script-setup']],
-      'vue/no-static-inline-styles': 'error',
-      'vue/define-macros-order': 'error',
-      'vue/require-typed-ref': 'error',
-      'vue/prefer-use-template-ref': 'error',
-      'vue/no-required-prop-with-default': 'error',
-      'vue/no-undef-components': [
-        'error',
-        { ignorePatterns: ['^Router(Link|View)$', '^FontAwesomeIcon$'] },
-      ],
-      'vue/no-unused-refs': 'error',
-      'vue/no-useless-v-bind': 'error',
-      'vue/no-useless-mustaches': 'error',
-      'vue/prefer-true-attribute-shorthand': 'error',
-      'vue/html-button-has-type': 'error',
-      // A label names its control by holding it or by `for`, and PrimeVue's inputs and the
-      // site's own are controls.
+      // A label names its control by holding it or by `for`, and PrimeVue's inputs are
+      // controls.
       'vuejs-accessibility/label-has-for': [
         'error',
         {
@@ -70,5 +57,4 @@ export default defineConfigWithVueTs(
       'vuejs-accessibility/no-autofocus': ['error', { ignoreNonDOM: true }],
     },
   },
-  skipFormatting,
-)
+]

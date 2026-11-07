@@ -18,7 +18,9 @@ const found = ref<DocProposal[]>([])
 const searching = ref(false)
 const problem = ref('')
 watch(open, async (now) => {
-  if (!now) return
+  if (!now) {
+    return
+  }
   found.value = []
   problem.value = ''
   searching.value = true

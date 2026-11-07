@@ -38,7 +38,9 @@ const borrowers = ref<string[]>([])
 const busy = ref(false)
 
 watch(open, async (v) => {
-  if (!v) return
+  if (!v) {
+    return
+  }
   input.value = props.loan ? loanInput(props.loan) : blank()
   copyId.value = props.loan?.copyId ?? props.copy?.id ?? 0
   const { data } = await api.GET('/choices')
@@ -46,7 +48,9 @@ watch(open, async (v) => {
 })
 
 const header = computed(() => {
-  if (props.loan) return `The loan of ${props.loan.barcode}`
+  if (props.loan) {
+    return `The loan of ${props.loan.barcode}`
+  }
   return props.copy ? `Lend ${props.copy.barcode}` : 'Lend a book'
 })
 const ready = computed(
@@ -67,7 +71,10 @@ async function save() {
         body: input.value,
       })
   busy.value = false
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   open.value = false
   emit('saved', data)
 }

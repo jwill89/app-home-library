@@ -8,7 +8,7 @@ import {
   faGear,
   faGraduationCap,
   faPlus,
-} from '@fortawesome/pro-regular-svg-icons'
+} from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import { useSession } from '@/app/session'
 
 const session = useSession()

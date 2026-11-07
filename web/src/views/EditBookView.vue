@@ -27,7 +27,10 @@ onMounted(async () => {
     api.GET('/books/{id}', { params: { path: { id: props.id } } }),
     api.GET('/choices'),
   ])
-  if (b.error) return notice.failed(b.error)
+  if (b.error) {
+    notice.failed(b.error)
+    return
+  }
   start.value = bookToInput(b.data)
   book.value = bookToInput(b.data)
   trail.value = [...bookTrail(b.data), { label: b.data.title, to: `/books/${props.id}` }]
@@ -35,14 +38,19 @@ onMounted(async () => {
 })
 
 async function save() {
-  if (!start.value || !book.value) return
+  if (!start.value || !book.value) {
+    return
+  }
   saving.value = true
   const { error } = await api.PUT('/books/{id}', {
     params: { path: { id: props.id } },
     body: prepare(start.value, book.value),
   })
   saving.value = false
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   library.loaded = false
   notice.done('Saved')
   void returnTo(router, `/books/${props.id}`)

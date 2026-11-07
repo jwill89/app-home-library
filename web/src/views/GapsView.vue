@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, useId } from 'vue'
+import { computed, onMounted, ref, useId, watch } from 'vue'
 import Button from 'primevue/button'
 import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'
 import Select from 'primevue/select'
-import { faArrowsRotate } from '@fortawesome/pro-regular-svg-icons'
-import { api, type BookGaps, type GapCount, type Suggestions } from '@/api/client'
+import { faArrowsRotate } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
+import { api, type BookGaps, type Suggestions } from '@/api/client'
 import { useConfirmAction } from '@/app/confirm'
-import { count, detailLabel } from '@/app/format'
+import { useFeed } from '@/app/feed'
+import { count, detailChoices, detailLabel } from '@/app/format'
 import { useNotice } from '@/app/problem'
 import { useQueue } from '@/app/queue'
+import { maxRefresh, refreshRows } from '@/app/rows'
 import BookCover from '@/components/BookCover.vue'
 import FormField from '@/components/FormField.vue'
 import PageHeader from '@/components/PageHeader.vue'
@@ -18,30 +20,45 @@ import QueueProgress from '@/components/QueueProgress.vue'
 import SuggestedChanges from '@/components/SuggestedChanges.vue'
 
 // The books that lack a detail: a cover, a Dewey number, a size, and so on. Each can be filled
-// by hand on its Edit page, or looked up again, one now or all in the background.
+// by hand on its Edit page, or looked up again, one now or all in the background; what the
+// background finds otherwise waits on the page of suggested changes.
 const notice = useNotice()
 const id = useId()
 
 const books = ref<BookGaps[]>([])
-const counts = ref<GapCount[]>([])
 const loaded = ref(false)
 async function load() {
   const { data, error } = await api.GET('/gaps')
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   books.value = data.books ?? []
-  counts.value = data.counts ?? []
   loaded.value = true
 }
 onMounted(load)
-const { queue, total, progress } = useQueue(load)
+// A book the background lookup fills, or one changed here or on another device, is asked about
+// again alone, and its row alone changes.
+async function refresh(refs: ReadonlySet<number>, all: boolean) {
+  if (all || refs.size > maxRefresh) {
+    return load()
+  }
+  const { data, error } = await api.GET('/gaps', { params: { query: { ids: [...refs] } } })
+  if (!error) {
+    refreshRows(books.value, refs, data.books ?? [], (b) => b.bookId)
+  }
+}
+useFeed(['book'], refresh)
+const { queue, total, progress } = useQueue()
 
 const field = ref('any')
-const fields = computed(() => [
-  { value: 'any', label: 'Any detail' },
-  ...counts.value
-    .filter((c) => c.books)
-    .map((c) => ({ value: c.field, label: `${detailLabel(c.field)} (${c.books})` })),
-])
+const fields = computed(() => detailChoices(books.value.map((b) => b.missing)))
+// A detail no book lacks any longer shows every book again.
+watch(fields, (now) => {
+  if (!now.some((o) => o.value === field.value)) {
+    field.value = 'any'
+  }
+})
 const shown = computed(() =>
   field.value === 'any'
     ? books.value
@@ -62,8 +79,11 @@ async function lookUp(b: BookGaps) {
     params: { path: { id: b.bookId } },
   })
   busy.value = 0
-  if (error) return notice.failed(error)
-  await load()
+  if (error) {
+    notice.failed(error)
+    return
+  }
+  await refresh(new Set([b.bookId]), false)
   // What a source gives otherwise is offered, to take or leave, as on the book's own page.
   if (data.fields?.length) {
     suggestions.value = [data]
@@ -78,10 +98,17 @@ async function lookUp(b: BookGaps) {
 
 async function lookUpAll() {
   const ids = shown.value.filter((b) => b.isbn13).map((b) => b.bookId)
-  if (!ids.length) return
+  if (!ids.length) {
+    return
+  }
   const { data, error } = await api.POST('/enrichment', { body: { ids } })
-  if (error) return notice.failed(error)
-  notice.done(`${count(data.queued, 'book')} queued for the background lookup`)
+  if (error) {
+    notice.failed(error)
+    return
+  }
+  notice.done(
+    `${count(data.queued, 'book')} queued for the background lookup. What the sources give otherwise waits in Suggested changes.`,
+  )
 }
 
 // The whole library, not only the books lacking what the list counts: a source may know more
@@ -92,14 +119,19 @@ function lookUpEvery() {
     {
       header: 'Look up every book again?',
       message:
-        'Every book with an ISBN goes back into the background lookup, and each source is asked about it again. Only blank details are filled: nothing you typed or an import brought is changed. It takes a second or two a book, while you carry on; a book you add meanwhile is looked up first.',
+        'Every book with an ISBN goes back into the background lookup, and each source is asked about it again. Blank details are filled at once. Wherever a source gives a detail otherwise, the change waits in Suggested changes for you to take or leave: nothing you typed or an import brought changes until you say. It takes a second or two a book, while you carry on; a book you add meanwhile is looked up first.',
       accept: 'Look them all up',
       reject: 'Not now',
     },
     async () => {
       const { data, error } = await api.POST('/enrichment', { body: { all: true } })
-      if (error) return notice.failed(error)
-      notice.done(`${count(data.queued, 'book')} queued for the background lookup`)
+      if (error) {
+        notice.failed(error)
+        return
+      }
+      notice.done(
+        `${count(data.queued, 'book')} queued for the background lookup. What the sources give otherwise waits in Suggested changes.`,
+      )
     },
   )
 }
@@ -120,6 +152,9 @@ function lookUpEvery() {
         ><FontAwesomeIcon :icon="faArrowsRotate" /> Look these up again</Button
       >
       <Button type="button" severity="secondary" label="Look up every book" @click="lookUpEvery" />
+      <RouterLink v-slot="{ navigate }" to="/suggestions" custom>
+        <Button type="button" severity="secondary" label="Suggested changes" @click="navigate" />
+      </RouterLink>
     </PageHeader>
 
     <PagePanel v-if="total > 0 && queue.pending > 0" title="Background lookup" class="mb-4">
@@ -140,6 +175,8 @@ function lookUpEvery() {
     <DataTable
       :value="shown"
       data-key="bookId"
+      sort-field="title"
+      :sort-order="1"
       :loading="!loaded"
       :paginator="shown.length > 50"
       :rows="50"
@@ -187,6 +224,10 @@ function lookUpEvery() {
       </Column>
     </DataTable>
 
-    <SuggestedChanges v-model:visible="suggesting" :suggestions="suggestions" @saved="load()" />
+    <SuggestedChanges
+      v-model:visible="suggesting"
+      :suggestions="suggestions"
+      @saved="(saved) => refresh(new Set(saved.map((b) => b.id)), false)"
+    />
   </div>
 </template>

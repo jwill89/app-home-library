@@ -1,9 +1,8 @@
 {
-  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  "extends": "@jwill89/lint-web/tsconfig.app.json",
   "compilerOptions": {
     "types": ["node", "vite/client"],
-    "paths": { "@/*": ["./src/*"] },
-    "noEmit": true
+    "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src", "e2e", "vite.config.ts", "playwright.config.ts"]
 }

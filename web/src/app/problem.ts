@@ -7,11 +7,19 @@ export function messageOf(error: unknown): string {
   if (error && typeof error === 'object') {
     const p = error as ErrorModel
     const field = p.errors?.find((e) => e.message)?.message
-    if (p.detail && p.detail !== 'validation failed') return p.detail
-    if (field) return field
-    if (p.title) return p.title
+    if (p.detail && p.detail !== 'validation failed') {
+      return p.detail
+    }
+    if (field) {
+      return field
+    }
+    if (p.title) {
+      return p.title
+    }
   }
-  if (error instanceof Error) return error.message
+  if (error instanceof Error) {
+    return error.message
+  }
   return 'Something went wrong. Try again.'
 }
 
@@ -33,7 +41,9 @@ export function useNotice() {
     },
     failed(error: unknown) {
       // Signed out or a link ended: the router has moved to the page that says so.
-      if (error && typeof error === 'object' && (error as ErrorModel).status === 401) return
+      if (error && typeof error === 'object' && (error as ErrorModel).status === 401) {
+        return
+      }
       toast.add({ severity: 'error', summary: messageOf(error), life: 6000 })
     },
     done(summary: string) {

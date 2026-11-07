@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
-import { faKey } from '@fortawesome/pro-regular-svg-icons'
+import { faKey } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import { messageOf } from '@/app/problem'
 import { useSession } from '@/app/session'
 import PublicPage from '@/components/PublicPage.vue'
@@ -25,7 +25,9 @@ async function signIn() {
     void router.replace(next)
   } catch (e) {
     // Closing the passkey prompt is a choice, not a failure.
-    if (!(e instanceof Error && e.name === 'NotAllowedError')) problem.value = messageOf(e)
+    if (!(e instanceof Error && e.name === 'NotAllowedError')) {
+      problem.value = messageOf(e)
+    }
   } finally {
     busy.value = false
   }
@@ -40,7 +42,7 @@ async function signIn() {
     <p v-if="problem" class="text-status-danger" role="alert">{{ problem }}</p>
     <p class="text-sm text-ink-muted">
       No passkey for this address yet?
-      <RouterLink to="/setup" class="text-accent">Set it up with a code</RouterLink>.
+      <RouterLink to="/setup" class="text-accent underline">Set it up with a code</RouterLink>.
     </p>
   </PublicPage>
 </template>

@@ -7,7 +7,11 @@ import DataTable from 'primevue/datatable'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import InputText from 'primevue/inputtext'
-import { faArrowsRotate, faMagnifyingGlass, faPlus } from '@fortawesome/pro-regular-svg-icons'
+import {
+  faArrowsRotate,
+  faMagnifyingGlass,
+  faPlus,
+} from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import { api, type DocumentRow, type DocumentSuggestions } from '@/api/client'
 import { useFeed } from '@/app/feed'
 import { count, documentKindLabel } from '@/app/format'
@@ -32,7 +36,10 @@ let timer: ReturnType<typeof setTimeout> | undefined
 async function load() {
   const q = search.value.trim()
   const { data, error } = await api.GET('/documents', { params: { query: q ? { q } : {} } })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   rows.value = data.documents ?? []
   searched.value = q
   loaded.value = true
@@ -50,8 +57,11 @@ watch(search, () => {
 const sortField = ref<string | undefined>('title')
 const sortOrder = ref<1 | -1 | 0 | undefined>(1)
 watch(searched, (now, before) => {
-  if (now && !before) sortField.value = undefined
-  else if (!now && sortField.value === undefined) [sortField.value, sortOrder.value] = ['title', 1]
+  if (now && !before) {
+    sortField.value = undefined
+  } else if (!now && sortField.value === undefined) {
+    ;[sortField.value, sortOrder.value] = ['title', 1]
+  }
 })
 // The words the Kind and Year columns sort by, beside each row.
 const shown = computed(() =>
@@ -80,14 +90,20 @@ async function lookUpAll() {
   const failed: string[] = []
   let asked = 0
   for (const d of list) {
-    if (stopping.value) break
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- the Stop button sets it during the await below
+    if (stopping.value) {
+      break
+    }
     progress.value = `Looking up ${asked + 1} of ${list.length}: ${d.title}`
     const { data, error } = await api.POST('/documents/{id}/refresh', {
       params: { path: { id: d.id } },
     })
     asked++
-    if (error) failed.push(d.title)
-    else if (data.fields?.length) found.push(data)
+    if (error) {
+      failed.push(d.title)
+    } else if (data.fields?.length) {
+      found.push(data)
+    }
   }
   looking.value = false
   const said = [
@@ -105,9 +121,13 @@ async function lookUpAll() {
 }
 
 const summary = computed(() => {
-  if (!loaded.value) return ''
+  if (!loaded.value) {
+    return ''
+  }
   const n = rows.value.length
-  if (searched.value) return `${count(n, 'paper has', 'papers have')} “${searched.value}”`
+  if (searched.value) {
+    return `${count(n, 'paper has', 'papers have')} “${searched.value}”`
+  }
   return count(n, 'paper')
 })
 

@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'
-import { faPlus } from '@fortawesome/pro-regular-svg-icons'
+import { faPlus } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import { api, type Course, type CourseDetail } from '@/api/client'
 import { count, courseName, levelLabel, termLabel } from '@/app/format'
 import { useNotice } from '@/app/problem'
@@ -18,13 +18,18 @@ const loaded = ref(false)
 
 onMounted(async () => {
   const { data, error } = await api.GET('/courses')
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   courses.value = data.courses ?? []
   loaded.value = true
 })
 
 const summary = computed(() => {
-  if (!loaded.value || !courses.value.length) return ''
+  if (!loaded.value || !courses.value.length) {
+    return ''
+  }
   const n = courses.value.length
   return count(n, 'course')
 })

@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { faArrowUpRightFromSquare, faFileArrowDown } from '@fortawesome/pro-regular-svg-icons'
+import {
+  faArrowUpRightFromSquare,
+  faFileArrowDown,
+} from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import { api, type Document, type OpenCopy } from '@/api/client'
@@ -22,14 +25,19 @@ const copy = ref<OpenCopy | null>(null)
 const adding = ref(false)
 
 watch(open, async (v) => {
-  if (!v || !props.doc.doi) return
+  if (!v || !props.doc.doi) {
+    return
+  }
   copy.value = null
   asking.value = true
   const { data, error } = await api.GET('/documents/{id}/open-copy', {
     params: { path: { id: props.doc.id } },
   })
   asking.value = false
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   copy.value = data.found ? data.copy : null
 })
 
@@ -41,17 +49,25 @@ const versions: Record<string, string> = {
 
 // OpenAlex writes licences as cc-by, cc-by-nc-nd, cc0, public-domain, other-oa.
 function licence(l: string): string {
-  if (!l) return 'no licence given: free to read'
-  if (l === 'cc0') return 'CC0'
-  if (l.startsWith('cc-')) return `CC ${l.slice(3).toUpperCase()}`
+  if (!l) {
+    return 'no licence given: free to read'
+  }
+  if (l === 'cc0') {
+    return 'CC0'
+  }
+  if (l.startsWith('cc-')) {
+    return `CC ${l.slice(3).toUpperCase()}`
+  }
   return l.replace(/-/g, ' ')
 }
 
 const said = computed(() => {
   const c = copy.value
-  if (!c) return ''
+  if (!c) {
+    return ''
+  }
   const what = versions[c.version] ?? 'a copy'
-  return `${what[0].toUpperCase()}${what.slice(1)}${c.host ? `, in ${c.host}` : ''}; ${licence(c.license)}.`
+  return `${what.charAt(0).toUpperCase()}${what.slice(1)}${c.host ? `, in ${c.host}` : ''}; ${licence(c.license)}.`
 })
 
 const library = computed(() =>
@@ -64,7 +80,10 @@ async function add() {
     params: { path: { id: props.doc.id } },
   })
   adding.value = false
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   notice.done('Added the open copy to the files')
   open.value = false
   emit('added', data)

@@ -8,7 +8,7 @@ import Dialog from 'primevue/dialog'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
 import SelectButton from 'primevue/selectbutton'
-import { faRuler } from '@fortawesome/pro-regular-svg-icons'
+import { faRuler } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import { api, apiURL, type LabelSheet, type QueuedLabel, type ShelvingRule } from '@/api/client'
 import { labelKindLabel, shelvingLabel, shelvings } from '@/app/format'
 import { useNotice } from '@/app/problem'
@@ -31,9 +31,18 @@ async function load() {
     api.GET('/labels'),
     api.GET('/sections'),
   ])
-  if (s.error) return notice.failed(s.error)
-  if (l.error) return notice.failed(l.error)
-  if (r.error) return notice.failed(r.error)
+  if (s.error) {
+    notice.failed(s.error)
+    return
+  }
+  if (l.error) {
+    notice.failed(l.error)
+    return
+  }
+  if (r.error) {
+    notice.failed(r.error)
+    return
+  }
   sheets.value = s.data.sheets ?? []
   queue.value = l.data.labels ?? []
   rules.value = r.data.sections ?? []
@@ -45,7 +54,9 @@ onMounted(load)
 const waiting = (kind: string) => queue.value.filter((l) => l.kind === kind)
 const printed = computed(() => sheets.value.filter((s) => s.enabled))
 const summary = computed(() => {
-  if (!loaded.value) return ''
+  if (!loaded.value) {
+    return ''
+  }
   const parts = printed.value
     .map((s) => ({ n: waiting(s.kind).length, kind: s.kind }))
     .filter((p) => p.n)
@@ -59,7 +70,10 @@ async function turn(sheet: LabelSheet, enabled: boolean) {
     params: { path: { kind: sheet.kind } },
     body: { xMm: sheet.xMm, yMm: sheet.yMm, enabled },
   })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   await load()
 }
 
@@ -67,16 +81,21 @@ async function turn(sheet: LabelSheet, enabled: boolean) {
 const offsets = ref<Record<string, { x: number; y: number }>>({})
 async function saveOffset(kind: string) {
   const o = offsets.value[kind]
-  if (!o) return
+  if (!o) {
+    return
+  }
   const { error } = await api.PUT('/label-sheets/{kind}', {
     params: { path: { kind: kind as LabelSheet['kind'] } },
     body: {
-      xMm: o.x ?? 0,
-      yMm: o.y ?? 0,
+      xMm: o.x,
+      yMm: o.y,
       enabled: sheets.value.find((s) => s.kind === kind)?.enabled ?? true,
     },
   })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   notice.done(
     `${labelKindLabel(kind)} will print moved ${o.x || 0} mm across and ${o.y || 0} mm down`,
   )
@@ -85,8 +104,12 @@ async function saveOffset(kind: string) {
 
 // A section's rule, and what its call numbers come to.
 function example(r: { shelving: string; prefix: string }): string {
-  if (r.shelving === 'author') return `${r.prefix} MCD v.3`
-  if (r.shelving === 'series') return `${r.prefix} ONE v.12`
+  if (r.shelving === 'author') {
+    return `${r.prefix} MCD v.3`
+  }
+  if (r.shelving === 'series') {
+    return `${r.prefix} ONE v.12`
+  }
   return r.prefix ? `823.92 MCD, or ${r.prefix} MCD with no number` : '823.92 MCD'
 }
 const editing = ref<{
@@ -100,13 +123,18 @@ function editRule(r: ShelvingRule) {
   ruleOpen.value = true
 }
 async function saveRule() {
-  if (!editing.value) return
+  if (!editing.value) {
+    return
+  }
   const { rule, shelving, prefix } = editing.value
   const { error } = await api.PUT('/sections/{id}', {
     params: { path: { id: rule.id } },
     body: { shelving, prefix },
   })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   ruleOpen.value = false
   await load()
 }

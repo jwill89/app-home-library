@@ -131,6 +131,11 @@ export const router = createRouter({
           meta: { title: 'Missing details' },
         },
         {
+          path: 'suggestions',
+          component: () => import('@/views/SuggestionsView.vue'),
+          meta: { title: 'Suggested changes' },
+        },
+        {
           path: 'labels',
           component: () => import('@/views/LabelsView.vue'),
           meta: { title: 'Labels' },
@@ -164,19 +169,26 @@ export const router = createRouter({
     },
     { path: '/:rest(.*)*', redirect: '/' },
   ],
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- vue-router 5's useScrollRestoration replaces it; moving is a change of its own
   scrollBehavior: (_to, _from, saved) => saved ?? { top: 0 },
 })
 
 router.beforeEach(async (to) => {
   const session = useSession()
-  if (!session.loaded) await session.load()
-  if (to.meta.public) return
+  if (!session.loaded) {
+    await session.load()
+  }
+  if (to.meta.public) {
+    return
+  }
   if (session.role === 'none') {
     return { path: '/sign-in', query: to.fullPath === '/' ? {} : { next: to.fullPath } }
   }
   // A visitor reads what their link shows; everywhere else is the owner's.
   const theirs = to.meta.reader && (!to.meta.shows || session.sees[to.meta.shows])
-  if (session.isVisitor && !theirs && to.path !== session.home) return session.home
+  if (session.isVisitor && !theirs && to.path !== session.home) {
+    return session.home
+  }
 })
 
 router.afterEach((to) => {
@@ -188,7 +200,9 @@ router.afterEach((to) => {
 api.use({
   onResponse({ response }) {
     const session = useSession()
-    if (response.status !== 401 || session.role === 'none') return
+    if (response.status !== 401 || session.role === 'none') {
+      return
+    }
     const visitor = session.isVisitor
     session.forget()
     void router.replace(visitor ? '/link-ended' : '/sign-in')

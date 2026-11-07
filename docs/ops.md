@@ -29,7 +29,7 @@ DNS: an A record for each of `books.jamescwill.com` and `books.mathdad.me` point
 From this machine, copy the units and the vhost up:
 
 ```powershell
-pscp -i <key.ppk> deploy/homelibrary.service deploy/homelibrary-text.service deploy/homelibrary-backup.service deploy/homelibrary-backup.timer deploy/apache-vhost.conf root@<host>:/tmp/
+pscp -i <key.ppk> deploy/homelibrary.service deploy/homelibrary-text.service deploy/apache-vhost.conf root@<host>:/tmp/
 ```
 
 Then once on the droplet as root. Idempotent.
@@ -53,8 +53,8 @@ HL_HARDCOVER_TOKEN=
 EOF
 chmod 600 /etc/homelibrary/homelibrary.env
 apt-get install -y sqlite3 poppler-utils tesseract-ocr tesseract-ocr-eng   # the deploy's snapshots; the text service's programs
-install -m 644 /tmp/homelibrary.service /tmp/homelibrary-text.service /tmp/homelibrary-backup.service /tmp/homelibrary-backup.timer /etc/systemd/system/
-systemctl daemon-reload && systemctl enable homelibrary homelibrary-text && systemctl enable --now homelibrary-backup.timer
+install -m 644 /tmp/homelibrary.service /tmp/homelibrary-text.service /etc/systemd/system/
+systemctl daemon-reload && systemctl enable homelibrary homelibrary-text
 install -m 644 /tmp/apache-vhost.conf /etc/apache2/sites-available/homelibrary.conf
 a2enmod proxy proxy_http headers rewrite ssl remoteip
 a2ensite homelibrary && apachectl configtest && systemctl reload apache2
@@ -63,7 +63,7 @@ certbot certificates | grep -A3 'jamescwill.com'   # both books.* names must be 
 
 Put the Google Books key in `HL_GOOGLE_BOOKS_KEY` with an editor. It is restricted in Google Cloud to the Books API and the droplet's address, so it works from the droplet and nowhere else; local development runs without it, or with a second key restricted to the home address.
 
-The first `task deploy` installs the binary and starts both services. Every deploy after it stops both, and starts the text service again on the new binary once the web service answers.
+The first `task deploy` installs the binary, starts both services, and installs the nightly backup's timer (see Backups). Every deploy after it stops both, and starts the text service again on the new binary once the web service answers.
 
 The text service (`homelibrary read-text`, unit `homelibrary-text`) reads the words in documents' files, one at a time, with `pdftotext` and Tesseract. The tools run at idle CPU and disk priority (`chrt`, `ionice`), and the service is capped at 80% of a CPU and 1 GB, with no network at all. The service itself keeps a normal priority: it holds the database's write lock while it saves what the tools read, and at idle priority a busy droplet could keep it there for seconds. `journalctl -u homelibrary-text` shows what it could not read; a file it fails on three times is left for the owner to type.
 
@@ -79,15 +79,15 @@ It prints a code good for 30 minutes and the two `/setup` addresses. Open either
 
 ## Releasing
 
-Until 1.0.0 nothing is committed, by the owner's decision, and a build reaches the droplet with `task deploy -- -Preview`: the same build, swap, health check, rollback, and pull, without the clean-and-tagged check, stamped `preview-<date-time>` (the version `/healthz` reports). From 1.0.0 on:
+1.0.0 was the first commit (2026-11-05). A build can reach the droplet to be tried before it is committed with `task deploy -- -Preview`: the same build, swap, health check, rollback, and pull, without the clean-and-tagged check, stamped `preview-<date-time>` (the version `/healthz` reports). A release:
 
-1. `task lint` and `task test` pass.
-2. Commit and tag (`git tag v1.0.0`, then the next version).
-3. `task deploy`. The script refuses a dirty or untagged tree, builds the Linux binary, and uploads it with the units and the vhost. On the droplet it stops both services, snapshots the database, installs the binary and whichever units changed, starts the service, and waits up to 30 seconds for `/healthz` to answer. If it does not, the previous binary and units go back, with the database snapshot taken a moment before the swap. Then the vhost, where it changed: kept if `apachectl configtest` passes it, and the one before put back (with a warning) if not. Last it pulls the live database, the covers, and the documents' files into `devdata/`, and removes that copy from the droplet. `-- -NoPull` skips the pull.
+1. `task check` passes. Raise the version in `web/package.json` (and its lockfile) and move the Unreleased entries in `CHANGELOG.md` under it, in one commit.
+2. Push to `main`. Once every CI job passes, the `release` job tags the commit `v<version>` and makes the GitHub Release from that version's CHANGELOG section; a version already released is skipped, so an ordinary push makes no tag. Nothing is tagged by hand.
+3. `task deploy`. The script fetches the tags, refuses a dirty tree or a HEAD without the tag `web/package.json` names, and builds the Linux binary. It runs on shared-tooling's SharedDeploy module over one held SSH connection (`Get-Help .\scripts\deploy.ps1 -Full` gives the whole run), and uploads the binary in one archive with the units and the vhost. On the droplet it checks the archive and that `apachectl configtest` takes the vhost before anything stops, then stops both services, snapshots the database (compressed, to `/opt/homelibrary/backups/homelibrary-pre-<time>.sqlite.gz`, the newest three kept), installs the binary and whichever units and vhost changed, starts both, and waits up to 30 seconds for `/healthz` to answer. If it does not, the previous binary, units and vhost go back, with the database snapshot taken a moment before the swap. Then it fetches the site through Cloudflare: `/healthz` must name the new version, and `/` its entry script, or everything goes back the same way. Then it checks the nightly backup's timer, and last it pulls the live database, the covers, and the documents' files into `devdata/`, and removes that copy from the droplet. `-- -NoDbPull` skips the pull.
 
 ## Backups
 
-Every morning at 09:30 UTC the timer runs `homelibrary backup` as the service user: a consistent snapshot through SQLite's `VACUUM INTO` at `/opt/homelibrary/backups/homelibrary-YYYY-MM-DD.sqlite`, and beside it `files-YYYY-MM-DD/` with the covers (`media/`) and documents' files (`documents/`) as they stood, both pruned after 28 days. The files are hard links: covers and documents are written once under new names and never changed, so a day's files take no room until the library lets one go, and a deleted cover or document stays recoverable for 28 days.
+Every morning at 09:30 UTC the timer runs `homelibrary backup` as the service user: a consistent snapshot through SQLite's `VACUUM INTO`, checked with `PRAGMA integrity_check` and compressed, at `/opt/homelibrary/backups/homelibrary-YYYY-MM-DD.sqlite.gz`, and beside it `files-YYYY-MM-DD/` with the covers (`media/`) and documents' files (`documents/`) as they stood, both pruned after 28 days. The files are hard links: covers and documents are written once under new names and never changed, so a day's files take no room until the library lets one go, and a deleted cover or document stays recoverable for 28 days.
 
 ```bash
 systemctl start homelibrary-backup.service && journalctl -u homelibrary-backup -n 5 --no-pager
@@ -96,7 +96,7 @@ systemctl start homelibrary-backup.service && journalctl -u homelibrary-backup -
 Those snapshots live on the droplet. Two things take a copy off it:
 
 - **Every release** pulls the live database, covers, and documents into `devdata/` on this machine (a working copy, replaced each time).
-- **Every day**, Task Scheduler on the owner's PC runs `scripts/pull-backup.ps1`, which copies the droplet's newest snapshot into a dated folder (`homelibrary.sqlite`, `files.tgz`, and `made.txt`, the size and time the droplet's file had, so a day made again is copied again) and keeps the newest 14. The folder is in OneDrive, so the copy reaches the cloud too. Each run adds a line to `pull-backup.log` there. A newest snapshot more than a day old is logged as stale and the task ends with result 1: the droplet's timer has stopped.
+- **Every day**, Task Scheduler on the owner's PC runs `scripts/pull-backup.ps1`, which copies the droplet's newest snapshot into a dated folder (`homelibrary.sqlite.gz`, `files.tgz`, and `made.txt`, the size and time the droplet's file had, so a day made again is copied again) and keeps the newest 14. The folder is in OneDrive, so the copy reaches the cloud too. Each run adds a line to `pull-backup.log` there. A newest snapshot more than a day old is logged as stale and the task ends with result 1: the droplet's timer has stopped.
 
 ```powershell
 # By hand, or to try it:
@@ -116,12 +116,12 @@ To restore covers and documents from a snapshot, on the droplet: `cp -a /opt/hom
 ## Restore
 
 ```bash
-ls -1t /opt/homelibrary/backups/homelibrary-????-??-??.sqlite | head
-systemctl stop homelibrary
-cp -p /opt/homelibrary/data/homelibrary.sqlite /opt/homelibrary/backups/homelibrary-before-restore-$(date +%Y%m%d-%H%M%S).sqlite
+ls -1t /opt/homelibrary/backups/homelibrary-????-??-??.sqlite.gz | head
+systemctl stop homelibrary-text homelibrary
+gzip -c /opt/homelibrary/data/homelibrary.sqlite > /opt/homelibrary/backups/homelibrary-before-restore-$(date -u +%Y%m%d-%H%M%S).sqlite.gz
 rm -f /opt/homelibrary/data/homelibrary.sqlite-wal /opt/homelibrary/data/homelibrary.sqlite-shm
-install -m 640 -o homelibrary -g homelibrary /opt/homelibrary/backups/homelibrary-YYYY-MM-DD.sqlite /opt/homelibrary/data/homelibrary.sqlite
-systemctl start homelibrary && curl -s http://127.0.0.1:8130/healthz
+gunzip -c /opt/homelibrary/backups/homelibrary-YYYY-MM-DD.sqlite.gz > /opt/homelibrary/data/homelibrary.sqlite
+systemctl start homelibrary homelibrary-text && curl -s http://127.0.0.1:8130/healthz
 ```
 
 ## Importing from another app
@@ -144,7 +144,7 @@ On the site: **Loans → Make a calendar link**, then copy the address. On an iP
 ## Developer machine
 
 - `task setup` once, then `task dev` runs Vite on 5173 and the server on 8130. `.env` (from `.env.example`) holds the local settings.
-- The Font Awesome Pro packages need the account's token in the user `~/.npmrc` (`//npm.fontawesome.com/:_authToken=<token>`). CI reads it from the `FONTAWESOME_TOKEN` repository secret, and Dependabot from a Dependabot secret of the same name.
+- The Font Awesome kit (`@awesome.me/kit-4f2bd9b614`, shared with the Gallery and Fantasy Dossier) needs the account's token in the user `~/.npmrc` (`//npm.fontawesome.com/:_authToken=<token>`). CI reads it from the `FONTAWESOME_NPM_TOKEN` repository secret, and Dependabot from a Dependabot secret of the same name.
 - `homelibrary dev-session` prints a signed-in cookie for a browser that cannot make a passkey; it refuses unless every origin is localhost.
-- `task lint` includes the vulnerability scans, which need the network: govulncheck reads the Go vulnerability database, and `npm audit` asks the registry.
-- `task test` ends with the end-to-end tests (`task e2e` runs them alone). They build the frontend and the binary, start it on 8140 against a database in a temporary folder, and drive Microsoft Edge, so nothing is downloaded; port 8140 must be free.
+- `task check` runs what CI runs, in its order: `task lint`, then the tests with their coverage floors, then the end-to-end tests. `task lint` includes the vulnerability scans, which need the network: govulncheck reads the Go vulnerability database, and `npm audit` asks the registry.
+- `task test` ends with the end-to-end tests (`task test:e2e` runs them alone, axe on every main page included). They build the frontend and the binary, start it on 8140 against a database in a temporary folder, and drive Microsoft Edge, so nothing is downloaded; port 8140 must be free.

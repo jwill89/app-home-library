@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive } from 'vue'
-import { faCheck } from '@fortawesome/pro-regular-svg-icons'
+import { faCheck } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import type { CoverChoice } from '@/api/client'
 import { sourceLabel } from '@/app/format'
 import BookCover from './BookCover.vue'
@@ -33,13 +33,17 @@ const tiles = (): Tile[] => [
 
 function sizeText(t: Tile): string {
   const size = t.url ? sizes.get(t.url) : undefined
-  if (size === 'failed') return 'Not shown'
+  if (size === 'failed') {
+    return 'Not shown'
+  }
   return size ? `${size.width} × ${size.height}` : ''
 }
 
 function nameOf(t: Tile): string {
   const size = t.url ? sizes.get(t.url) : undefined
-  if (size === 'failed') return `${t.name}, which could not be shown`
+  if (size === 'failed') {
+    return `${t.name}, which could not be shown`
+  }
   return size ? `${t.name}, ${size.width} by ${size.height} pixels` : t.name
 }
 </script>

@@ -2,6 +2,11 @@ version: '3'
 
 dotenv: ['.env']
 
+# The tasks every repo shares, from the shared-tooling submodule (shared:lint:scripts,
+# shared:golangci:check, shared:update and the rest).
+includes:
+  shared: ./shared/repo/Taskfile.yml
+
 vars:
   MODULE: homelibrary
   VERSION:
@@ -17,6 +22,11 @@ vars:
     -X {{.MODULE}}/internal/version.BuildDate={{.BUILD_DATE}}
 
 tasks:
+  default:
+    silent: true
+    cmds:
+      - task --list
+
   setup:
     desc: Install frontend dependencies
     dir: web
@@ -81,9 +91,16 @@ tasks:
     deps: [build:web]
     cmds:
       - go vet ./...
+      # The config is the shared template's with .golangci.local.yml on top; this fails if
+      # it has drifted from them.
+      - task: shared:golangci:check
+      # Built from source with the pinned toolchain, the same way CI installs it.
       - go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0 run ./...
       - task: lint:web
       - task: lint:scripts
+      - task: shared:lint:md
+      - task: shared:repo:check
+      - task: shared:version:check
       - task: lint:vulns
 
   # Known vulnerabilities: Go's in the code the app calls; npm's in what ships, at any
@@ -91,7 +108,7 @@ tasks:
   # tool reading our own files).
   lint:vulns:
     cmds:
-      - go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
+      - go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
       - cd web && npm audit --omit=dev --audit-level=low
       - cd web && npm audit --audit-level=high
 
@@ -102,25 +119,45 @@ tasks:
       - npm run typecheck
       - npm run format:check
 
-  # PSScriptAnalyzer, with PSScriptAnalyzerSettings.psd1, over the tracked scripts only.
+  # PSScriptAnalyzer, with the shared settings, on every tracked script (the local
+  # deploy.config.ps1 is the owner's and untracked). Install it once with
+  # Install-PSResource PSScriptAnalyzer -Version 1.25.0 -Scope CurrentUser -TrustRepository
   lint:scripts:
     cmds:
-      - pwsh -NoProfile -Command 'foreach ($f in "scripts/deploy.ps1", "scripts/deploy.config.example.ps1", "scripts/pull-backup.ps1") { $r = Invoke-ScriptAnalyzer -Path $f -Settings PSScriptAnalyzerSettings.psd1; $r | Format-Table -AutoSize | Out-String | Write-Output; if ($r) { exit 1 } }'
+      - task: shared:lint:scripts
 
   test:
     desc: Run the Go and frontend tests, then the end-to-end tests in a browser
+    aliases: [tests]
     deps: [build:web]
     cmds:
       - go test ./...
       - cd web && npm test
-      - task: e2e
+      - task: test:e2e
 
-  # The whole app in a real browser (Edge here, Chrome on CI), against a server of its own.
-  e2e:
+  test:coverage:
+    desc: Run the Go and frontend tests with coverage; the frontend's fails below its floor
+    deps: [build:web]
+    cmds:
+      - go test -cover ./...
+      - cd web && npm run test:coverage
+
+  # The whole app in a real browser (Edge here, Chrome on CI), against a server of its own, on a
+  # throwaway library in the temp folder, never devdata's.
+  test:e2e:
+    desc: Run the end-to-end suite (Playwright and axe) on the real server, in the installed Edge
+    aliases: [e2e, tests:e2e]
     deps: [build:web]
     dir: web
     cmds:
-      - npx playwright test
+      - npm run test:e2e
+
+  check:
+    desc: Everything CI checks, in its order
+    cmds:
+      - task: lint
+      - task: test:coverage
+      - task: test:e2e
 
   deploy:
     desc: Deploy the tagged commit to the droplet (pass flags after --)

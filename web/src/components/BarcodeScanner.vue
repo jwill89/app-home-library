@@ -8,7 +8,7 @@ import {
   faCircleInfo,
   faFlashlight,
   faStop,
-} from '@fortawesome/pro-regular-svg-icons'
+} from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import { cameraProblem, createDetector, type Detector, type ScanNote } from '@/app/barcodes'
 
 // The one camera scanner. It reads barcodes until stopped and hands each new one to the page;
@@ -45,6 +45,7 @@ async function start() {
       audio: false,
     })
     const track = stream.getVideoTracks()[0]
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- an older browser's track has no getCapabilities
     const can = (track?.getCapabilities?.() ?? {}) as { torch?: boolean; focusMode?: string[] }
     torch.value = can.torch ? false : null
     if (can.focusMode?.includes('continuous')) {
@@ -71,15 +72,21 @@ function stop() {
   stream?.getTracks().forEach((t) => t.stop())
   stream = null
   torch.value = null
-  if (video.value) video.value.srcObject = null
+  if (video.value) {
+    video.value.srcObject = null
+  }
 }
 
 async function tick() {
   const el = video.value
-  if (!running.value || !el || !detector) return
+  if (!running.value || !el || !detector) {
+    return
+  }
   if (el.readyState >= 2) {
     try {
-      for (const found of await detector.detect(el)) heard(found.rawValue)
+      for (const found of await detector.detect(el)) {
+        heard(found.rawValue)
+      }
     } catch {
       // A frame that cannot be read is skipped; the next one is a moment away.
     }
@@ -89,8 +96,11 @@ async function tick() {
 
 function heard(value: string) {
   const now = Date.now()
-  if (!value || (value === last.value && now - last.at < 3000)) return
+  if (!value || (value === last.value && now - last.at < 3000)) {
+    return
+  }
   last = { value, at: now }
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Safari has no vibrate, whatever the DOM types say
   navigator.vibrate?.(60)
   flash.value = true
   setTimeout(() => (flash.value = false), 300)
@@ -99,7 +109,9 @@ function heard(value: string) {
 
 async function toggleTorch() {
   const track = stream?.getVideoTracks()[0]
-  if (!track || torch.value === null) return
+  if (!track || torch.value === null) {
+    return
+  }
   const on = !torch.value
   await track.applyConstraints({ advanced: [{ torch: on } as MediaTrackConstraintSet] })
   torch.value = on
@@ -107,7 +119,9 @@ async function toggleTorch() {
 
 // A page in the background has no use for the camera, and the battery does.
 function hidden() {
-  if (document.hidden) stop()
+  if (document.hidden) {
+    stop()
+  }
 }
 onMounted(() => document.addEventListener('visibilitychange', hidden))
 onUnmounted(() => {

@@ -7,7 +7,7 @@ import DataTable from 'primevue/datatable'
 import Dialog from 'primevue/dialog'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
-import { faPlus, faTags } from '@fortawesome/pro-regular-svg-icons'
+import { faPlus, faTags } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import {
   api,
   apiURL,
@@ -44,8 +44,14 @@ async function load() {
     api.GET('/bookcases'),
     api.GET('/layout', { params: { query: { proposal: proposal.value } } }),
   ])
-  if (b.error) return notice.failed(b.error)
-  if (l.error) return notice.failed(l.error)
+  if (b.error) {
+    notice.failed(b.error)
+    return
+  }
+  if (l.error) {
+    notice.failed(l.error)
+    return
+  }
   bookcases.value = b.data.bookcases ?? []
   layout.value = l.data
   fill.value = l.data.fillPercent
@@ -59,7 +65,9 @@ const { unit } = storeToRefs(useUnits())
 
 const shelfCount = computed(() => bookcases.value.reduce((n, b) => n + (b.shelves?.length ?? 0), 0))
 const summary = computed(() => {
-  if (!loaded.value || !bookcases.value.length) return ''
+  if (!loaded.value || !bookcases.value.length) {
+    return ''
+  }
   const n = bookcases.value.length
   return `${count(n, 'bookcase')}, ${count(shelfCount.value, 'shelf', 'shelves')}`
 })
@@ -69,7 +77,9 @@ const percent = (p: ShelfPlan) => Math.round((p.usedMm / p.widthMm) * 100)
 // title) is named by its title instead.
 const range = (p: ShelfPlan) => {
   const books = p.books ?? []
-  if (!books.length) return ''
+  if (!books.length) {
+    return ''
+  }
   const first = callNumberText(p.first) || (books[0]?.title ?? '')
   const last = callNumberText(p.last) || (books.at(-1)?.title ?? '')
   return first === last ? first : `${first} to ${last}`
@@ -79,7 +89,10 @@ const range = (p: ShelfPlan) => {
 const fill = ref(80)
 async function saveFill() {
   const { error } = await api.PUT('/layout', { body: { fillPercent: fill.value } })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   notice.done(`Shelves are planned ${fill.value}% full`)
   await load()
 }
@@ -87,12 +100,17 @@ async function saveFill() {
 function useLayout() {
   const go = async () => {
     const { error } = await api.PUT('/layout/in-use')
-    if (error) return notice.failed(error)
+    if (error) {
+      notice.failed(error)
+      return
+    }
     proposal.value = false
     notice.done('Layout in use. New books will go to the shelf they belong on.')
     await load()
   }
-  if (!layout.value?.inUse && !proposal.value) return void go()
+  if (!layout.value?.inUse && !proposal.value) {
+    return void go()
+  }
   ask(
     {
       header: 'Use the new layout?',
@@ -115,7 +133,10 @@ function stopLayout() {
     },
     async () => {
       const { error } = await api.DELETE('/layout/in-use')
-      if (error) return notice.failed(error)
+      if (error) {
+        notice.failed(error)
+        return
+      }
       await load()
     },
   )
@@ -153,7 +174,10 @@ const measured = (s: ShelfInput) => s.widthMm >= 100 && s.heightMm >= 50 && s.de
 async function createCase() {
   const { name, shelves, shelf } = newCase.value
   const { error } = await api.POST('/bookcases', { body: { name, shelves, ...shelf } })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   newCaseOpen.value = false
   await load()
 }
@@ -165,13 +189,18 @@ function editCase(b: Bookcase) {
   caseOpen.value = true
 }
 async function saveCase() {
-  if (!editingCase.value) return
+  if (!editingCase.value) {
+    return
+  }
   const { id: bid, name, position } = editingCase.value
   const { error } = await api.PUT('/bookcases/{id}', {
     params: { path: { id: bid } },
     body: { name, position },
   })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   caseOpen.value = false
   await load()
 }
@@ -187,7 +216,10 @@ function removeCase(b: Bookcase) {
     },
     async () => {
       const { error } = await api.DELETE('/bookcases/{id}', { params: { path: { id: b.id } } })
-      if (error) return notice.failed(error)
+      if (error) {
+        notice.failed(error)
+        return
+      }
       await load()
     },
   )
@@ -228,7 +260,9 @@ function editShelf(p: ShelfPlan) {
   shelfOpen.value = true
 }
 async function saveShelf() {
-  if (!shelfEdit.value) return
+  if (!shelfEdit.value) {
+    return
+  }
   const { shelfId, bookcaseId, shelf } = shelfEdit.value
   const { error } = shelfId
     ? await api.PUT('/shelves/{id}', { params: { path: { id: shelfId } }, body: shelf })
@@ -236,7 +270,10 @@ async function saveShelf() {
         params: { path: { id: bookcaseId } },
         body: shelf,
       })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   shelfOpen.value = false
   await load()
 }
@@ -252,7 +289,10 @@ function removeShelf(p: ShelfPlan) {
     },
     async () => {
       const { error } = await api.DELETE('/shelves/{id}', { params: { path: { id: p.id } } })
-      if (error) return notice.failed(error)
+      if (error) {
+        notice.failed(error)
+        return
+      }
       await load()
     },
   )
@@ -263,9 +303,14 @@ const findCopy = ref(0)
 const place = ref<ShelfPlace | null>(null)
 watch(findCopy, async (copyId) => {
   place.value = null
-  if (!copyId) return
+  if (!copyId) {
+    return
+  }
   const { data, error } = await api.GET('/copies/{id}/place', { params: { path: { id: copyId } } })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   place.value = data
 })
 const whereItGoes = computed(() => (place.value ? placeLine(place.value, true) : ''))

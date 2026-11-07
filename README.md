@@ -16,8 +16,7 @@ See [PLAN.md](PLAN.md) for the decisions, the data model, and the phases, and [d
 ```bash
 task setup   # frontend dependencies
 task dev     # Vite on :5173, the server on :8130
-task test
-task lint
+task check   # what CI runs: lint, the tests with their coverage floors, the end-to-end suite
 ```
 
-Go 1.27, Node 26, Task, sqlc. Copy `.env.example` to `.env`.
+Go 1.27, Node 26, Task, sqlc, PowerShell 7 with PSScriptAnalyzer. A fresh clone runs `git submodule update --init` first, for the shared tooling in `shared/`. Copy `.env.example` to `.env`. [AGENTS.md](AGENTS.md) is the guide to working on it, and [shared/standards/README.md](shared/standards/README.md) the standards it follows.

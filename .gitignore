@@ -16,6 +16,8 @@ web/node_modules/
 web/e2e/.state.json
 web/test-results/
 web/playwright-report/
+# The front end's coverage report (npm run test:coverage)
+web/coverage/
 
 # Tool caches
 .task/

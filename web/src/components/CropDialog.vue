@@ -2,7 +2,7 @@
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
-import { faArrowsRotate, faRotateRight } from '@fortawesome/pro-regular-svg-icons'
+import { faArrowsRotate, faRotateRight } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import { detectCover } from '@/app/detect'
 import { outputSize, warp, type Point, type Quad } from '@/app/perspective'
 
@@ -66,7 +66,9 @@ const shade = computed(() => {
 watch(
   () => [visible.value, props.file] as const,
   async ([open, file]) => {
-    if (!open || !file) return
+    if (!open || !file) {
+      return
+    }
     failed.value = ''
     try {
       // The browser applies the photo's own orientation, which a phone records sideways.
@@ -90,7 +92,9 @@ watch(
 watch(
   [source, canvas],
   ([src, view]) => {
-    if (!src || !view) return
+    if (!src || !view) {
+      return
+    }
     view.width = src.width
     view.height = src.height
     view.getContext('2d')?.drawImage(src, 0, 0)
@@ -102,16 +106,22 @@ watch(
 // where a cover usually is, until the owner moves them.
 async function find() {
   const src = source.value
-  if (!src) return
+  if (!src) {
+    return
+  }
   found.value = null
   reset()
   finding.value = true
   note.value = `Looking for the edges of the ${props.subject}…`
   const quad = await detectCover(src)
   finding.value = false
-  if (source.value !== src) return // turned or replaced while it looked
+  if (source.value !== src) {
+    return
+  } // turned or replaced while it looked
   found.value = quad
-  if (quad) corners.value = quad
+  if (quad) {
+    corners.value = quad
+  }
   note.value = quad
     ? `The corners are on the ${props.subject} that was found. Move any that are off.`
     : `No clear edges were found. Drag the corners onto the ${props.subject}.`
@@ -119,7 +129,9 @@ async function find() {
 
 function reset() {
   const src = source.value
-  if (!src) return
+  if (!src) {
+    return
+  }
   if (found.value) {
     corners.value = found.value
     return
@@ -136,12 +148,16 @@ function reset() {
 
 function rotate() {
   const src = source.value
-  if (!src) return
+  if (!src) {
+    return
+  }
   const c = document.createElement('canvas')
   c.width = src.height
   c.height = src.width
   const ctx = c.getContext('2d')
-  if (!ctx) return
+  if (!ctx) {
+    return
+  }
   ctx.translate(c.width, 0)
   ctx.rotate(Math.PI / 2)
   ctx.drawImage(src, 0, 0)
@@ -151,7 +167,9 @@ function rotate() {
 
 function place(i: number, p: Point) {
   const src = source.value
-  if (!src) return
+  if (!src) {
+    return
+  }
   const next = [...corners.value] as Quad
   next[i] = { x: Math.min(Math.max(p.x, 0), src.width), y: Math.min(Math.max(p.y, 0), src.height) }
   corners.value = next
@@ -166,7 +184,9 @@ function grab(i: number, e: PointerEvent) {
 function drag(e: PointerEvent) {
   const i = dragging.value
   const box = stage.value?.getBoundingClientRect()
-  if (i < 0 || !box) return
+  if (i < 0 || !box) {
+    return
+  }
   place(i, {
     x: ((e.clientX - box.left) / box.width) * width.value,
     y: ((e.clientY - box.top) / box.height) * height.value,
@@ -183,9 +203,13 @@ function magnify(i: number) {
   const src = source.value
   const view = loupe.value
   const p = corners.value[i]
-  if (!src || !view || !p) return
+  if (!src || !view || !p) {
+    return
+  }
   const ctx = view.getContext('2d')
-  if (!ctx) return
+  if (!ctx) {
+    return
+  }
   const zoom = 3
   const span = view.width / zoom
   ctx.clearRect(0, 0, view.width, view.height)
@@ -203,7 +227,9 @@ function nudge(i: number, e: KeyboardEvent) {
   }
   const move = moves[e.key]
   const p = corners.value[i]
-  if (!move || !p) return
+  if (!move || !p) {
+    return
+  }
   e.preventDefault()
   place(i, { x: p.x + move.x, y: p.y + move.y })
 }
@@ -211,7 +237,9 @@ function nudge(i: number, e: KeyboardEvent) {
 async function finish() {
   const src = source.value
   const ctx = src?.getContext('2d')
-  if (!src || !ctx) return
+  if (!src || !ctx) {
+    return
+  }
   busy.value = true
   // Let the button show it is working before the straightening holds the thread.
   await new Promise((resolve) => setTimeout(resolve, 0))

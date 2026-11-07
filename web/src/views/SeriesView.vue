@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, useId, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
-import { faArrowsRotate, faCheck, faPen } from '@fortawesome/pro-regular-svg-icons'
+import { faArrowsRotate, faCheck, faPen } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import Button from 'primevue/button'
 import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'
@@ -36,12 +36,17 @@ const formId = useId()
 const series = ref<Series | null>(null)
 async function load() {
   const { data, error } = await api.GET('/series/{id}', { params: { path: { id: props.id } } })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   series.value = data
   document.title = `${data.name} · Home Library`
 }
 onMounted(() => {
-  if (!loaded.value) void library.load()
+  if (!loaded.value) {
+    void library.load()
+  }
 })
 watch(() => props.id, load, { immediate: true })
 
@@ -63,7 +68,9 @@ const row = (d: unknown) => d as BookRow
 
 const summary = computed(() => {
   const s = series.value
-  if (!s) return ''
+  if (!s) {
+    return ''
+  }
   return [
     count(s.books, 'book', 'books'),
     s.gaps?.length ? `missing ${numberRanges(s.gaps)}` : '',
@@ -82,10 +89,14 @@ async function changed() {
 // fallen -- bk. 9" into "Malazan Book of the Fallen"): then that series is the page to be on.
 async function saved(moved: Book[]) {
   await library.load()
-  if (books.value.length) return load()
+  if (books.value.length) {
+    return load()
+  }
   const into = new Set(moved.map((b) => b.seriesId).filter(Boolean))
   progress.value = ''
-  if (into.size === 1) return router.replace(`/series/${[...into][0]}`)
+  if (into.size === 1) {
+    return router.replace(`/series/${[...into][0]}`)
+  }
   return goBack(router, '/series', `/series/${props.id}`)
 }
 
@@ -105,14 +116,20 @@ async function lookUpAll() {
   const failed: string[] = []
   let asked = 0
   for (const b of list) {
-    if (stopping.value) break
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- the Stop button sets it during the await below
+    if (stopping.value) {
+      break
+    }
     progress.value = `Looking up ${asked + 1} of ${list.length}: ${b.title}`
     const { data, error } = await api.POST('/books/{id}/refresh', {
       params: { path: { id: b.id } },
     })
     asked++
-    if (error) failed.push(b.title)
-    else if (data.fields?.length) found.push(data)
+    if (error) {
+      failed.push(b.title)
+    } else if (data.fields?.length) {
+      found.push(data)
+    }
   }
   looking.value = false
   await changed()
@@ -120,7 +137,7 @@ async function lookUpAll() {
     `Looked up ${count(asked, 'book', 'books')}${asked < list.length ? ` of ${list.length}` : ''}.`,
     found.length
       ? `${count(found.length, 'has', 'have')} details the sources give otherwise.`
-      : 'Blanks are filled where a source knew more; nothing else differs.',
+      : 'Blanks are filled where a source knew more; nothing else to offer.',
     failed.length ? `No source answered for ${failed.join(', ')}: try again later.` : '',
   ]
   progress.value = said.filter(Boolean).join(' ')
@@ -133,7 +150,9 @@ async function lookUpAll() {
 // It records the past, so no book is given a day.
 function markRead() {
   const s = series.value
-  if (!s) return
+  if (!s) {
+    return
+  }
   ask(
     {
       header: `Mark ${s.name} read?`,
@@ -147,7 +166,10 @@ function markRead() {
         params: { path: { id: s.id } },
         body: { readStatus: 'read' },
       })
-      if (error) return notice.failed(error)
+      if (error) {
+        notice.failed(error)
+        return
+      }
       notice.done(
         data.changed === 0
           ? `Every book of ${s.name} was read already`
@@ -160,7 +182,9 @@ function markRead() {
 
 function leave(b: BookRow) {
   const s = series.value
-  if (!s) return
+  if (!s) {
+    return
+  }
   ask(
     {
       header: `Take ${b.title} out of ${s.name}?`,
@@ -173,10 +197,15 @@ function leave(b: BookRow) {
       const { error } = await api.DELETE('/series/{id}/books/{bookId}', {
         params: { path: { id: s.id, bookId: b.id } },
       })
-      if (error) return notice.failed(error)
+      if (error) {
+        notice.failed(error)
+        return
+      }
       notice.done(`${b.title} is out of ${s.name}`)
       await library.load()
-      if (!books.value.length) return goBack(router, '/series', `/series/${s.id}`)
+      if (!books.value.length) {
+        return goBack(router, '/series', `/series/${s.id}`)
+      }
       await load()
     },
   )
@@ -186,7 +215,9 @@ function leave(b: BookRow) {
 // name is kept as no series, so no lookup or import makes it one again.
 function dismiss() {
   const s = series.value
-  if (!s) return
+  if (!s) {
+    return
+  }
   ask(
     {
       header: `Is ${s.name} not a series?`,
@@ -197,7 +228,10 @@ function dismiss() {
     },
     async () => {
       const { data, error } = await api.DELETE('/series/{id}', { params: { path: { id: s.id } } })
-      if (error) return notice.failed(error)
+      if (error) {
+        notice.failed(error)
+        return
+      }
       notice.done(`${s.name} is no series now: ${count(data.changed, 'book', 'books')} left it`)
       await goBack(router, '/series', `/series/${s.id}`)
     },
@@ -216,12 +250,17 @@ async function rename() {
 }
 async function saveName() {
   const s = series.value
-  if (!s) return
+  if (!s) {
+    return
+  }
   const { data, error } = await api.PUT('/series/{id}', {
     params: { path: { id: s.id } },
     body: { name: name.value },
   })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   renaming.value = false
   if (data.id !== s.id) {
     notice.done(`${s.name} is part of ${name.value.trim()} now`)

@@ -15,7 +15,7 @@ import {
   faMagnifyingGlass,
   faPlus,
   faTags,
-} from '@fortawesome/pro-regular-svg-icons'
+} from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import { api, type BookRow } from '@/api/client'
 import {
   categories,
@@ -72,15 +72,21 @@ async function loadSheets() {
 }
 useFeed(['label'], loadSheets)
 onMounted(() => {
-  if (!loaded.value) void library.load()
-  if (session.isOwner) void loadSheets()
+  if (!loaded.value) {
+    void library.load()
+  }
+  if (session.isOwner) {
+    void loadSheets()
+  }
 })
 
 const summary = computed(() => {
   const n = books.value.length
   const reading = books.value.filter((r) => r.readStatus === 'reading').length
   const parts = [count(n, 'book')]
-  if (reading) parts.push(`${reading} being read`)
+  if (reading) {
+    parts.push(`${reading} being read`)
+  }
   return parts.join(' · ')
 })
 
@@ -94,7 +100,9 @@ const formatOptions = [{ value: ALL, label: 'Any format' }, ...formats.filter((f
 // Every category a book here is in, with how many, and the one chosen though it has none now.
 const categoryTabs = computed(() => {
   const counts = new Map<string, number>()
-  for (const r of books.value) counts.set(r.category, (counts.get(r.category) ?? 0) + 1)
+  for (const r of books.value) {
+    counts.set(r.category, (counts.get(r.category) ?? 0) + 1)
+  }
   return [
     { value: ALL, label: 'All', count: books.value.length },
     ...categories

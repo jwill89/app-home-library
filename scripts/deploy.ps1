@@ -1,264 +1,200 @@
 #!/usr/bin/env pwsh
+#Requires -Version 7.4
+
 <#
 .SYNOPSIS
 Deploy the tagged commit to the droplet and bring a copy of the library home.
 
 .DESCRIPTION
-Builds the static Linux binary and uploads it with pscp, beside the systemd units and the
-Apache vhost from deploy/. On the droplet it stops the service and the text service, snapshots
-the database, installs the binary and the units, and waits up to 30 seconds for /healthz. A
-build that does not answer goes back: the binary and units before it, and the database as the
-snapshot left it. Then the vhost, kept only if `apachectl configtest` takes it.
+Built on shared-tooling's SharedDeploy module (shared/deploy/pwsh), the shape every
+deploy follows: one archive, one held SSH connection, one remote run.
 
-Last, a consistent online snapshot of the live database and an archive of the covers and
-documents' files come down to devdata/ (skip with -NoPull), and leave the droplet. Both
-include the owner's own photographs and scans, which exist nowhere else, so every release
-leaves a copy of them on this machine.
+Builds the static Linux binary and packs it into one archive with the systemd units and the
+Apache vhost from deploy/, opens one SSH connection and keeps it for the run, and uploads the
+archive. In one remote run it checks the archive and that Apache takes the vhost before
+anything stops, then stops the service and the text service, snapshots the database
+(compressed), installs the binary and whichever units and vhost differ, starts both, and waits
+up to 30 seconds for /healthz. A build that does not answer goes back: the binary, units and
+vhost before it, and the database as the snapshot left it, since the new build may have
+migrated it before it fell over.
+
+Then the site is fetched through Cloudflare: /healthz must name this version, and / this
+build's entry script, which must load. A failure there rolls back the same way. Then the
+nightly backup's timer is checked (shared-tooling's Install-BackupTimer: where the droplet's
+units differ from the ones it writes, the new ones go in and `homelibrary backup` runs once,
+the old ones coming back if it fails).
+
+Last, an online snapshot of the live database comes down to devdata/homelibrary.sqlite, and an
+archive of the covers and documents' files to devdata/media and devdata/documents (skip both
+with -NoDbPull); neither stays on the droplet. Both include the owner's own photographs and
+scans, which exist nowhere else, so every release leaves a copy of them on this machine.
 
 Settings resolve from the parameter, then $env:DEPLOY_*, then the git-ignored
-scripts/deploy.config.ps1. A run opens at most four SSH connections, which stays under
-the host's `ufw limit ssh`.
+scripts/deploy.config.ps1. A run is one SSH connection (plus one only if it drops and
+reconnects), which stays under the host's `ufw limit ssh`.
 
-Requires a clean tree at a tagged commit, PuTTY's pscp and plink on PATH, and the key
-loaded in Pageant. -Preview ships the working tree as it is, stamped preview-<time>: the
-owner commits nothing until 1.0.0, and a build still has to reach a phone to be tried.
+Requires a clean tree at the commit CI tagged with web/package.json's version (the script
+fetches the tags first), PuTTY's plink 0.85 or later, and the key loaded in Pageant.
+-Preview ships the working tree as it is, stamped preview-<time>, so a build reaches a phone
+to be tried before it is committed.
 #>
 [CmdletBinding()]
 param(
-    [string]$VpsHost = $env:DEPLOY_VPS_HOST,
-    [string]$VpsUser = $env:DEPLOY_VPS_USER,
-    [string]$KeyPath = $env:DEPLOY_KEY_PATH,
+    [string]$VpsHost,
+    [string]$VpsUser,
+    [string]$KeyPath,
     [switch]$SkipBuild,
-    [switch]$NoPull,
+    [switch]$NoDbPull,
     [switch]$Preview
 )
 
 $ErrorActionPreference = 'Stop'
+$PSNativeCommandUseErrorActionPreference = $false
+Import-Module (Join-Path $PSScriptRoot '..\shared\deploy\pwsh\SharedDeploy.psd1') -Force
+trap { Close-DeployConnection; Write-Host "`nERROR: $($_.Exception.Message)" -ForegroundColor Red; exit 1 }
+
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 
 $remoteDir = '/opt/homelibrary'
 $envFile = '/etc/homelibrary/homelibrary.env'
+$serviceUser = 'homelibrary'
+# The text service writes the database too: neither the new build's migration nor a
+# rollback's restore runs under it, so the two stop, start and go back together.
+$services = 'homelibrary', 'homelibrary-text'
+$units = 'homelibrary.service', 'homelibrary-text.service'
+$vhostPath = '/etc/apache2/sites-available/homelibrary.conf'
+$remoteDb = "$remoteDir/data/homelibrary.sqlite"
+$snapshotPrefix = "$remoteDir/backups/homelibrary-pre-"
+$pullFolder = "$remoteDir/backups/pull-deploy"
 $localDb = Join-Path $root 'devdata/homelibrary.sqlite'
-$localMedia = Join-Path $root 'devdata/media'
-$localDocs = Join-Path $root 'devdata/documents'
 $binary = Join-Path $root 'dist/homelibrary-linux-amd64'
-$release = Join-Path $root 'dist/release'
 
-$configFile = Join-Path $PSScriptRoot 'deploy.config.ps1'
-if (Test-Path $configFile) { . $configFile }
-if (-not $VpsHost) { $VpsHost = $DeployVpsHost }
-if (-not $VpsUser) { $VpsUser = $DeployVpsUser }
-if (-not $KeyPath) { $KeyPath = $DeployKeyPath }
-foreach ($name in 'VpsHost', 'VpsUser', 'KeyPath') {
-    if (-not (Get-Variable $name -ValueOnly)) {
-        throw "Missing $name. Pass -$name, set DEPLOY_*, or fill scripts/deploy.config.ps1."
-    }
-}
-$target = "$VpsUser@$VpsHost"
-
-function Invoke-Remote([string]$Script) {
-    # Merge stderr so a failing remote step shows its reason before the throw.
-    $out = & plink -batch -i $KeyPath $target ($Script -replace "`r", '') 2>&1 | ForEach-Object { "$_" }
-    if ($LASTEXITCODE -ne 0) {
-        $out | Write-Host
-        throw "Remote command failed ($LASTEXITCODE)"
-    }
-    $out
-}
+$settings = Resolve-DeploySetting -ConfigPath (Join-Path $PSScriptRoot 'deploy.config.ps1') `
+    -Value @{ VpsHost = $VpsHost; VpsUser = $VpsUser; KeyPath = $KeyPath } `
+    -Required VpsHost, VpsUser, KeyPath
 
 if ($Preview) {
     $version = 'preview-' + (Get-Date -Format 'yyyyMMdd-HHmm')
 } else {
-    if (git status --porcelain) { throw 'Working tree is not clean. Commit or stash first.' }
-    $version = git describe --tags --exact-match 2>$null
-    if (-not $version) { throw 'HEAD is not tagged. Deploys ship tagged commits only, or pass -Preview.' }
+    Assert-CleanWorkingTree
+    # CI tags a release once main is green (the release job), so its tag is fetched before
+    # HEAD is checked; the tag must be the version web/package.json names.
+    git -C $root fetch --tags --quiet
+    if ($LASTEXITCODE -ne 0) { Write-Warning 'Could not fetch tags; checking against the local ones.' }
+    $version = Get-ReleaseTag -Path $root
+    $expected = 'v' + (Get-Content -LiteralPath (Join-Path $root 'web\package.json') -Raw | ConvertFrom-Json).version
+    if ($version -ne $expected) {
+        throw "HEAD is tagged $version, but web/package.json says $expected."
+    }
 }
 
-if (-not $SkipBuild) {
+if ($SkipBuild) {
+    Write-Step 'Skipping the build (-SkipBuild); using dist/homelibrary-linux-amd64'
+} else {
     if ($Preview) { task build:linux VERSION=$version } else { task build:linux }
     if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
 }
 if (-not (Test-Path $binary)) { throw "Binary not found: $binary" }
 
-Write-Host "Deploying $version to $target"
+# The built page names its entry script, which the smoke check looks for and loads.
+$entryScript = [regex]::Match((Get-Content -LiteralPath (Join-Path $root 'web/dist/index.html') -Raw), 'src="(/assets/[^"]+\.js)"').Groups[1].Value
+if (-not $entryScript) { throw 'web/dist/index.html names no entry script under /assets; build the front end first.' }
 
-# The binary, the units, and the vhost go up together, beside the live ones; nothing stops
-# until the upload is complete.
-Remove-Item -Recurse -Force $release -ErrorAction SilentlyContinue
-New-Item -ItemType Directory $release | Out-Null
-Copy-Item $binary (Join-Path $release 'homelibrary')
-Copy-Item (Join-Path $root 'deploy/*') $release
-& pscp -batch -C -r -i $KeyPath $release "${target}:$remoteDir/"
-if ($LASTEXITCODE -ne 0) { throw 'Upload failed.' }
-Remove-Item -Recurse -Force $release
-
-# One connection: stop, snapshot, install, start, verify, roll back on failure, then the
-# vhost and the snapshot to bring home. The settings come first; the script after them is
-# bash as it stands, nothing in it expanded here.
-$settings = @"
-dir=$remoteDir
-env_file=$envFile
-stamp=$(Get-Date -Format 'yyyyMMdd-HHmmss')
-pull=$(if ($NoPull) { '' } else { '1' })
-"@
-$install = @'
-set -eu
-# What this writes (snapshots, the archive to bring home) is for root and the service alone.
-umask 077
-rel=$dir/release
-db=$dir/data/homelibrary.sqlite
-snapshot=$dir/backups/homelibrary-pre-$stamp.sqlite
-units='homelibrary.service homelibrary-text.service homelibrary-backup.service homelibrary-backup.timer'
-vhost=/etc/apache2/sites-available/homelibrary.conf
-
-text=
-if systemctl is-enabled --quiet homelibrary-text 2>/dev/null; then text=1; fi
-restart=
-finish() {
-  # Whatever fails while the services are down, they come back up on what is in place.
-  if [ -n "$restart" ]; then
-    systemctl start homelibrary || true
-    if [ -n "$text" ]; then systemctl start homelibrary-text || true; fi
-  fi
-  rm -rf "$rel"
-}
-trap finish EXIT
-
-# The text service writes the database too: neither the new build's migration nor a
-# rollback's restore runs under it.
-restart=1
-systemctl stop homelibrary-text 2>/dev/null || true
-systemctl stop homelibrary
+$archive = Compress-DeployArchive -Content ([ordered]@{
+        'homelibrary'              = $binary
+        'homelibrary.service'      = Join-Path $root 'deploy/homelibrary.service'
+        'homelibrary-text.service' = Join-Path $root 'deploy/homelibrary-text.service'
+        'apache-vhost.conf'        = Join-Path $root 'deploy/apache-vhost.conf'
+    })
 
 # The binary and its directory are root's, so the service runs the one and cannot change it;
 # the data and the backups are the service's, and nobody else's to read.
-chown root:root "$dir"
-chmod 755 "$dir"
-chmod 750 "$dir/data" "$dir/backups"
-find "$dir/backups" -maxdepth 1 -type f ! -perm 600 -exec chmod 600 {} +
-
-if [ -f "$dir/homelibrary" ]; then install -m 755 -o root -g root "$dir/homelibrary" "$dir/homelibrary.old"; fi
-if [ -f "$db" ]; then
-  sqlite3 "$db" ".backup '$snapshot'"
-  # The newest three deploy snapshots stay; their names sort as their times do.
-  find "$dir/backups" -maxdepth 1 -name 'homelibrary-pre-*.sqlite' -print0 | sort -zr | tail -zn +4 | xargs -0r rm --
-fi
-
-# The units as they were, for a rollback, then the new ones where they differ.
-mkdir "$rel/before"
-units_changed=
-for u in $units; do
-  if [ -f "/etc/systemd/system/$u" ]; then cp -p "/etc/systemd/system/$u" "$rel/before/$u"; fi
-  if ! cmp -s "$rel/$u" "/etc/systemd/system/$u"; then
-    install -m 644 -o root -g root "$rel/$u" "/etc/systemd/system/$u"
-    units_changed=1
-  fi
-done
-if [ -n "$units_changed" ]; then systemctl daemon-reload; fi
-install -m 755 -o root -g root "$rel/homelibrary" "$dir/homelibrary"
-
-# A start that fails outright is left for the check, which rolls back. The check waits for an
-# answer, not only a running process: a build that migrates, then fails to listen, goes back.
-systemctl start homelibrary || true
-addr=$(sed -n 's/^HL_ADDR=//p' "$env_file")
-addr=${addr:-127.0.0.1:8130}
-healthy=
-for _ in $(seq 30); do
-  if curl -fs -m 2 -o /dev/null "http://$addr/healthz"; then healthy=1; break; fi
-  sleep 1
-done
-if [ -z "$healthy" ]; then
-  echo 'The new build did not answer /healthz within 30 seconds; rolling back.' >&2
-  journalctl -u homelibrary -n 30 --no-pager >&2 || true
-  systemctl stop homelibrary || true
-  if [ -f "$dir/homelibrary.old" ]; then install -m 755 -o root -g root "$dir/homelibrary.old" "$dir/homelibrary"; fi
-  for u in $units; do
-    if [ -f "$rel/before/$u" ]; then install -m 644 -o root -g root "$rel/before/$u" "/etc/systemd/system/$u"; fi
-  done
-  systemctl daemon-reload
-  # The new build may have migrated the database before it fell over, and the old one cannot
-  # read a schema ahead of it, so the snapshot taken a moment ago goes back too.
-  if [ -f "$snapshot" ]; then
-    rm -f "$db-wal" "$db-shm"
-    cat "$snapshot" > "$db"
-    echo 'The database is back as the snapshot before the deploy left it.' >&2
-  fi
-  exit 1
-fi
-restart=
-echo "homelibrary is active: $(curl -fsS -m 5 "http://$addr/healthz")"
-if [ -n "$text" ]; then
-  systemctl start homelibrary-text || echo 'The text service did not start: journalctl -u homelibrary-text' >&2
-fi
-if [ -n "$units_changed" ]; then systemctl try-restart homelibrary-backup.timer; fi
-
-# The vhost, where it differs, kept only if Apache takes it; the one before stays otherwise.
-if ! cmp -s "$rel/apache-vhost.conf" "$vhost"; then
-  cp -p "$vhost" "$rel/vhost.before"
-  install -m 644 -o root -g root "$rel/apache-vhost.conf" "$vhost"
-  if verdict=$(apachectl configtest 2>&1); then
-    systemctl reload apache2
-    echo 'Apache took the new vhost.'
-  else
-    cat "$rel/vhost.before" > "$vhost"
-    echo "vhost-refused: $verdict"
-  fi
-fi
-
-# A consistent online snapshot and the covers and documents' files, for the trip home. The
-# service runs on: the backup API copies a live database whole, and the files never change.
-if [ -n "$pull" ] && [ -f "$db" ]; then
-  out=$dir/backups/pull-deploy
-  rm -rf "$out"
-  mkdir "$out"
-  sqlite3 "$db" ".backup '$out/homelibrary.sqlite'"
-  install -d -o homelibrary -g homelibrary -m 750 "$dir/data/documents"
-  tar -czf "$out/files.tgz" -C "$dir/data" media documents
-  echo pull-ready
-fi
+$layout = Format-RemoteScript -Value @{ DIR = $remoteDir; USER = $serviceUser } -Template @'
+chown root:root '__DIR__'
+chmod 755 '__DIR__'
+chmod 750 '__DIR__/data' '__DIR__/backups'
+find '__DIR__/backups' -maxdepth 1 -type f ! -perm 600 -exec chmod 600 {} +
+install -d -o '__USER__' -g '__USER__' -m 750 '__DIR__/data/documents'
 '@
-$installed = Invoke-Remote ($settings + "`n" + $install)
-$installed | Where-Object { $_ -notmatch '^(pull-ready|vhost-refused: )' } | Write-Host
-$refused = $installed | Where-Object { $_ -match '^vhost-refused: ' }
-if ($refused) {
-    Write-Warning "Apache refused the new vhost, so the one before it stays. $($refused -replace '^vhost-refused: ', '')"
-}
-Write-Host "Deployed $version"
-if ($NoPull) { return }
-if ($installed -notcontains 'pull-ready') {
-    Write-Host 'No database on the host yet; skipping the pull.'
-    return
+
+$restore = {
+    Restore-ServiceBinary -ServiceName $services -Binary "$remoteDir/homelibrary" -Owner 'root' -Unit $units `
+        -VhostPath $vhostPath -Database $remoteDb -SnapshotPrefix $snapshotPrefix -SnapshotSuffix '.sqlite'
 }
 
-# Down in one connection, then off the droplet: a copy of the whole library stays there no
-# longer than the trip, whether or not it arrives.
-$pulled = Join-Path $root 'devdata/pull'
-Remove-Item -Recurse -Force $pulled -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Force $pulled | Out-Null
+$connection = $settings | Open-DeployConnection
 try {
-    & pscp -batch -C -i $KeyPath "${target}:$remoteDir/backups/pull-deploy/*" $pulled
-    if ($LASTEXITCODE -ne 0) { throw 'The copy of the library could not be downloaded.' }
-} finally {
-    Invoke-Remote "rm -rf $remoteDir/backups/pull-deploy" | Out-Null
-}
+    Write-Step "Deploying $version to $($connection.Target)"
+    # Nothing stops until the upload is complete and checked.
+    $upload = Invoke-Upload -Path $archive.Path -Destination 'homelibrary-deploy.tgz' -Activity "Uploading Home Library $version" -FileCount $archive.FileCount
+    if (-not $upload.Ok) { throw "Upload failed; the live server is untouched.`n$($upload.Err)" }
 
-if (Test-Path $localDb) {
+    Invoke-DeployBundle -Archive 'homelibrary-deploy.tgz' -Sha256 $archive.Sha256 -ExpectedFileCount $archive.FileCount -Step @(
+        $layout
+        Install-ServiceBinary -AsStep -ServiceName $services -Binary "$remoteDir/homelibrary" -Owner 'root' `
+            -Unit $units -Vhost 'apache-vhost.conf' -VhostPath $vhostPath -Umask '077' `
+            -Database $remoteDb -SnapshotPrefix $snapshotPrefix -SnapshotSuffix '.sqlite' -RestoreDatabaseOnRollback `
+            -EnvFile $envFile -HealthUrl 'http://{HL_ADDR}/healthz' -HealthDefault @{ HL_ADDR = '127.0.0.1:8130' } `
+            -HealthTimeoutSeconds 30
+    )
+    Write-Ok "Deployed $version"
+
+    # The site as visitors reach it, through Cloudflare and Apache: the first of its origins.
+    $origins = "$(@(Invoke-Remote -Script "sed -n 's/^HL_ORIGINS=//p' '$envFile'") | Select-Object -First 1)"
+    $site = ($origins -split ',')[0].Trim().TrimEnd('/')
+    if ($site -notmatch '^https?://') { throw "The host names no site address (HL_ORIGINS in $envFile), so the site could not be checked. $version is running." }
+    Write-Step "Checking $site..."
+    # A fresh token on each address, so no answer Cloudflare kept from before can pass.
+    $token = [guid]::NewGuid().ToString('N').Substring(0, 12)
+    Invoke-SmokeCheck -Attempts 3 -DelaySeconds 2 -Rollback $restore -Check @(
+        @{ Url = "$site/healthz?deploy=$token"; Contains = "`"version`":`"$version`"" }
+        @{ Url = "$site/?deploy=$token"; Contains = $entryScript }
+        @{ Url = "$site$entryScript" }
+    )
+
+    # The nightly backup: 09:30 UTC, half an hour before Kindred Nights' on the same droplet,
+    # `homelibrary backup` as the service user, with the service's hardening. One writable path
+    # over both the data and the backups, not one each: each would be its own mount, and the
+    # files' snapshot is hard links, which cannot cross mounts.
+    Write-Step 'Checking the nightly backup...'
     try {
-        Move-Item -Force $localDb "$localDb.bak"
+        Install-BackupTimer -Name 'homelibrary' -Command "$remoteDir/homelibrary backup" -Owner $serviceUser `
+            -EnvironmentFile $envFile -WorkingDirectory $remoteDir -ReadWritePath $remoteDir `
+            -OnCalendar '*-*-* 09:30:00 UTC' -RandomizedDelay '10min' -Description 'Home Library nightly backup'
     } catch {
-        # A running local dev server holds the file. The deploy is done; the swap can wait.
-        Write-Warning "Local database is in use (stop the dev server to refresh it). The live copy and its files are in $pulled."
-        return
+        throw "$version is deployed and running, but its nightly backup is not: $($_.Exception.Message)"
     }
-}
-Remove-Item -Force "$localDb-wal", "$localDb-shm" -ErrorAction SilentlyContinue
-Move-Item (Join-Path $pulled 'homelibrary.sqlite') $localDb
-Write-Host "Local database refreshed: $localDb"
 
-Remove-Item -Recurse -Force $localMedia, $localDocs -ErrorAction SilentlyContinue
-# Windows' own tar by its path: Git's GNU tar, first on a Git Bash PATH, reads "C:" as a host.
-& (Join-Path $env:SystemRoot 'System32/tar.exe') -xzf (Join-Path $pulled 'files.tgz') -C (Join-Path $root 'devdata')
-if ($LASTEXITCODE -ne 0) { throw "The files' archive could not be unpacked; it is in $pulled." }
-Remove-Item -Recurse -Force $pulled
-Write-Host "Covers and documents copied: $localMedia, $localDocs"
+    if (-not $NoDbPull) {
+        $null = Copy-LiveDatabase -Database $remoteDb -Destination $localDb -Owner $serviceUser
+
+        # The covers and documents' files, in one archive, then off the droplet whether or not
+        # it arrives. The service runs on: the files are written once and never change.
+        Write-Step 'Bringing the covers and documents home...'
+        $tgz = Join-Path ([IO.Path]::GetTempPath()) "homelibrary-files-$token.tgz"
+        try {
+            $null = Invoke-Remote -Script (Format-RemoteScript -Value @{ DIR = $remoteDir; OUT = $pullFolder } -Template @'
+umask 077
+rm -rf '__OUT__'
+mkdir '__OUT__'
+tar -czf '__OUT__/files.tgz' -C '__DIR__/data' media documents
+'@)
+            if (-not (Get-File -Source "$pullFolder/files.tgz" -Destination $tgz)) {
+                throw 'The covers and documents could not be downloaded.'
+            }
+        } finally {
+            $null = Invoke-Remote -Script "rm -rf '$pullFolder'"
+        }
+        $devdata = Join-Path $root 'devdata'
+        Remove-Item -Recurse -Force (Join-Path $devdata 'media'), (Join-Path $devdata 'documents') -ErrorAction SilentlyContinue
+        & (Resolve-TarTool) -xzf $tgz -C $devdata
+        if ($LASTEXITCODE -ne 0) { throw "The files' archive could not be unpacked; it is in $tgz." }
+        Remove-Item -LiteralPath $tgz
+        Write-Ok "Covers and documents copied to $devdata"
+    }
+} finally {
+    Close-DeployConnection
+    Remove-Item -LiteralPath $archive.Path -ErrorAction SilentlyContinue
+}
+Write-Host "`n[OK] Deployed $version" -ForegroundColor Green

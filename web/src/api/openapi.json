@@ -1448,6 +1448,42 @@
         "required": ["book", "copy", "coverUrl", "wanted"],
         "type": "object"
       },
+      "Declined": {
+        "additionalProperties": false,
+        "properties": {
+          "fields": {
+            "items": {
+              "enum": [
+                "title",
+                "subtitle",
+                "contributors",
+                "series",
+                "seriesNumber",
+                "lccn",
+                "publisher",
+                "publishPlace",
+                "published",
+                "editionStatement",
+                "format",
+                "pages",
+                "heightMm",
+                "widthMm",
+                "thicknessMm",
+                "language",
+                "ddc",
+                "lcc",
+                "description"
+              ],
+              "type": "string"
+            },
+            "maxItems": 19,
+            "minItems": 1,
+            "type": ["array", "null"]
+          }
+        },
+        "required": ["fields"],
+        "type": "object"
+      },
       "Dismiss-seriesResponse": {
         "additionalProperties": false,
         "properties": {
@@ -2082,31 +2118,6 @@
         "required": ["bookId", "title", "finishedOn", "pages"],
         "type": "object"
       },
-      "GapCount": {
-        "additionalProperties": false,
-        "properties": {
-          "books": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "field": {
-            "enum": [
-              "cover",
-              "ddc",
-              "heightMm",
-              "thicknessMm",
-              "pages",
-              "format",
-              "publisher",
-              "published",
-              "description"
-            ],
-            "type": "string"
-          }
-        },
-        "required": ["field", "books"],
-        "type": "object"
-      },
       "GapsOutputBody": {
         "additionalProperties": false,
         "properties": {
@@ -2115,15 +2126,9 @@
               "$ref": "#/components/schemas/BookGaps"
             },
             "type": ["array", "null"]
-          },
-          "counts": {
-            "items": {
-              "$ref": "#/components/schemas/GapCount"
-            },
-            "type": ["array", "null"]
           }
         },
-        "required": ["books", "counts"],
+        "required": ["books"],
         "type": "object"
       },
       "GoneInput": {
@@ -4019,6 +4024,66 @@
         "required": ["id", "name", "shelving", "prefix", "copies"],
         "type": "object"
       },
+      "SuggestedBook": {
+        "additionalProperties": false,
+        "properties": {
+          "authors": {
+            "type": "string"
+          },
+          "bookId": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "cover": {
+            "$ref": "#/components/schemas/Cover"
+          },
+          "fields": {
+            "items": {
+              "enum": [
+                "title",
+                "subtitle",
+                "contributors",
+                "series",
+                "seriesNumber",
+                "lccn",
+                "publisher",
+                "publishPlace",
+                "published",
+                "editionStatement",
+                "format",
+                "pages",
+                "heightMm",
+                "widthMm",
+                "thicknessMm",
+                "language",
+                "ddc",
+                "lcc",
+                "description"
+              ],
+              "type": "string"
+            },
+            "type": ["array", "null"]
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": ["bookId", "title", "authors", "cover", "fields"],
+        "type": "object"
+      },
+      "SuggestionListOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "books": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestedBook"
+            },
+            "type": ["array", "null"]
+          }
+        },
+        "required": ["books"],
+        "type": "object"
+      },
       "Suggestions": {
         "additionalProperties": false,
         "properties": {
@@ -4729,6 +4794,53 @@
         "summary": "Make a photo or an image file the cover"
       }
     },
+    "/books/{id}/declined-suggestions": {
+      "post": {
+        "operationId": "decline-suggestions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Declined"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Keep the book as it is in these details: what the sources give for them is not offered again while they give it"
+      }
+    },
     "/books/{id}/read-again": {
       "post": {
         "operationId": "read-again",
@@ -4879,6 +4991,50 @@
           }
         ],
         "summary": "Look the book up again: fill its blanks, and suggest what the sources now give otherwise"
+      }
+    },
+    "/books/{id}/suggestions": {
+      "get": {
+        "operationId": "get-suggestions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Suggestions"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "What the book's last lookup the owner asked for offers to change now"
       }
     },
     "/borrowers": {
@@ -6706,6 +6862,23 @@
     "/gaps": {
       "get": {
         "operationId": "list-gaps",
+        "parameters": [
+          {
+            "description": "Only these books, as the change feed names them; one not among the answer is no longer listed",
+            "explode": false,
+            "in": "query",
+            "name": "ids",
+            "schema": {
+              "description": "Only these books, as the change feed names them; one not among the answer is no longer listed",
+              "items": {
+                "format": "int64",
+                "type": "integer"
+              },
+              "maxItems": 500,
+              "type": ["array", "null"]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -8722,6 +8895,56 @@
           }
         ],
         "summary": "Change a shelf's measurements, or whether it takes oversize books"
+      }
+    },
+    "/suggestions": {
+      "get": {
+        "operationId": "list-suggestions",
+        "parameters": [
+          {
+            "description": "Only these books, as the change feed names them; one not among the answer is no longer listed",
+            "explode": false,
+            "in": "query",
+            "name": "ids",
+            "schema": {
+              "description": "Only these books, as the change feed names them; one not among the answer is no longer listed",
+              "items": {
+                "format": "int64",
+                "type": "integer"
+              },
+              "maxItems": 500,
+              "type": ["array", "null"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionListOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "The books whose last lookup the owner asked for gives details otherwise, with which details"
       }
     }
   },

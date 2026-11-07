@@ -27,10 +27,18 @@ async function authPost<T>(path: string, body?: unknown): Promise<T> {
 /** A name for a new passkey that says which device made it. */
 export function deviceName(): string {
   const ua = navigator.userAgent
-  if (/Android/i.test(ua)) return 'Android phone'
-  if (/iPhone|iPad/i.test(ua)) return 'iPhone or iPad'
-  if (/Windows/i.test(ua)) return 'Windows computer'
-  if (/Mac/i.test(ua)) return 'Mac'
+  if (/Android/i.test(ua)) {
+    return 'Android phone'
+  }
+  if (/iPhone|iPad/i.test(ua)) {
+    return 'iPhone or iPad'
+  }
+  if (/Windows/i.test(ua)) {
+    return 'Windows computer'
+  }
+  if (/Mac/i.test(ua)) {
+    return 'Mac'
+  }
   return 'This device'
 }
 
@@ -53,7 +61,7 @@ export const useSession = defineStore('session', () => {
     if (isOffline(response)) {
       // No connection: who this device last knew, so the installed app opens. The server
       // judges again once it can be asked.
-      role.value = (recall('hl.role') as Role) || 'none'
+      role.value = (recall('hl.role') || 'none') as Role
     } else {
       role.value = data?.role ?? 'none'
       name.value = data?.name ?? ''

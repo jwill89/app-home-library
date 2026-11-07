@@ -35,7 +35,9 @@ try {
 const waiting = new Set<number>()
 scope.addEventListener('unhandledrejection', (e) => {
   unable = `The cover detection stopped: ${String(e.reason)}`
-  for (const id of waiting) scope.postMessage({ id, points: null, error: unable })
+  for (const id of waiting) {
+    scope.postMessage({ id, points: null, error: unable })
+  }
   waiting.clear()
 })
 
@@ -51,8 +53,11 @@ function opencv(): Promise<void> {
       onAbort?: (what: unknown) => void
     }
     m.onAbort = (what) => reject(new Error(`OpenCV did not start: ${String(what)}`))
-    if (typeof m.then === 'function') m.then(() => resolve())
-    else resolve()
+    if (typeof m.then === 'function') {
+      m.then(() => resolve())
+    } else {
+      resolve()
+    }
   })
   return ready
 }
@@ -99,7 +104,9 @@ function find(cv: CV, image: ImageData): Point[] | null {
     }
     return best
   } finally {
-    for (const m of [src, gray, edges, kernel, contours, hierarchy]) m.delete()
+    for (const m of [src, gray, edges, kernel, contours, hierarchy]) {
+      m.delete()
+    }
   }
 }
 

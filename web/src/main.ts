@@ -43,6 +43,8 @@ createApp(App)
 if ('serviceWorker' in navigator) {
   void navigator.serviceWorker.register('/sw.js').catch(() => undefined)
   void router.isReady().then(() => {
-    if (useSession().isOwner && navigator.onLine) void import('@/views/ScanView.vue')
+    if (useSession().isOwner && navigator.onLine) {
+      void import('@/views/ScanView.vue')
+    }
   })
 }

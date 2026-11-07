@@ -5,13 +5,11 @@ import { listen } from './feed'
 import { today } from './format'
 import { messageOf } from './problem'
 import { savedCatalog, saveCatalog } from './offline'
+import { maxRefresh, refreshRows } from './rows'
 import { useSession } from './session'
 
 /** The filter value that filters nothing: a real value, so the select shows its label. */
 export const ALL = 'all'
-
-// More books changed at once than this (an import) are fetched as the whole list.
-const maxRefresh = 200
 
 // The library list and how it is being looked at. It lives in a store so the search and
 // filters are still there when the owner comes back from a book.
@@ -63,30 +61,24 @@ export const useLibrary = defineStore('library', () => {
   // changed here, on another device, or by the background lookup is fetched again, alone.
   let following = false
   function follow() {
-    if (following) return
+    if (following) {
+      return
+    }
     following = true
     listen(['book'], (refs, all) => refresh(refs, all))
   }
 
   async function refresh(refs: ReadonlySet<number>, all: boolean) {
-    if (all || refs.size > maxRefresh) return load()
-    const { data, error } = await api.GET('/books', { params: { query: { ids: [...refs] } } })
-    if (error) return
-    // A book asked for and not in the answer is gone; one not in the list yet is new. A row is
-    // replaced only when it differs, in place: a row drawn again closes a menu open on it.
-    const fresh = new Map((data.books ?? []).map((b) => [b.id, b]))
-    const list = rows.value
-    let changed = false
-    for (const id of refs) {
-      const at = list.findIndex((r) => r.id === id)
-      const now = fresh.get(id)
-      if (at < 0 && now) list.push(now)
-      else if (at >= 0 && !now) list.splice(at, 1)
-      else if (at >= 0 && now && JSON.stringify(list[at]) !== JSON.stringify(now)) list[at] = now
-      else continue
-      changed = true
+    if (all || refs.size > maxRefresh) {
+      return load()
     }
-    if (changed) void saveCatalog(list)
+    const { data, error } = await api.GET('/books', { params: { query: { ids: [...refs] } } })
+    if (error) {
+      return
+    }
+    if (refreshRows(rows.value, refs, data.books ?? [], (b) => b.id)) {
+      void saveCatalog(rows.value)
+    }
   }
 
   /**
@@ -99,7 +91,9 @@ export const useLibrary = defineStore('library', () => {
       body: { readStatus, on: today() },
     })
     const row = rows.value.find((r) => r.id === id)
-    if (result.data && row) row.readStatus = result.data.readStatus
+    if (result.data && row) {
+      row.readStatus = result.data.readStatus
+    }
     return result
   }
 
@@ -114,10 +108,18 @@ export const useLibrary = defineStore('library', () => {
   const filtered = computed(() => {
     const found = matching(search.value)
     return books.value.filter((r) => {
-      if (section.value !== ALL && !r.sections.split(',').includes(section.value)) return false
-      if (status.value !== ALL && r.readStatus !== status.value) return false
-      if (format.value !== ALL && r.format !== format.value) return false
-      if (category.value !== ALL && r.category !== category.value) return false
+      if (section.value !== ALL && !r.sections.split(',').includes(section.value)) {
+        return false
+      }
+      if (status.value !== ALL && r.readStatus !== status.value) {
+        return false
+      }
+      if (format.value !== ALL && r.format !== format.value) {
+        return false
+      }
+      if (category.value !== ALL && r.category !== category.value) {
+        return false
+      }
       return found(r)
     })
   })
@@ -152,7 +154,9 @@ export const useLibrary = defineStore('library', () => {
 export function matching(query: string): (r: BookRow) => boolean {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean)
   return (r) => {
-    if (!words.length) return true
+    if (!words.length) {
+      return true
+    }
     const hay = [
       r.title,
       r.subtitle,

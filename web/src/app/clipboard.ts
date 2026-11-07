@@ -4,6 +4,7 @@
  */
 export async function copyText(text: string, html?: string): Promise<boolean> {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- a browser without the async clipboard's write has none, whatever the DOM types say
     if (html && typeof ClipboardItem === 'function' && navigator.clipboard.write) {
       await navigator.clipboard.write([
         new ClipboardItem({

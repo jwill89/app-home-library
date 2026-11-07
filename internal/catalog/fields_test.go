@@ -1,19 +1,39 @@
 package catalog
 
 import (
+	"context"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
+	"homelibrary/internal/db"
 	"homelibrary/internal/lookup"
 )
 
-// The fields a lookup names are one list: the Suggestions enum the frontend is typed from
-// says the same.
+// The fields a lookup names are one list: each enum the frontend is typed from says the same,
+// and the declined suggestions' table takes every one.
 func TestLookupFieldsAreTheSuggestionsEnum(t *testing.T) {
-	f, _ := reflect.TypeFor[Suggestions]().FieldByName("Fields")
-	if got, want := f.Tag.Get("enum"), strings.Join(lookupFields, ","); got != want {
-		t.Errorf("Suggestions.Fields enum %q, lookupFields %q", got, want)
+	for _, of := range []reflect.Type{reflect.TypeFor[Suggestions](), reflect.TypeFor[SuggestedBook](), reflect.TypeFor[Declined]()} {
+		f, _ := of.FieldByName("Fields")
+		if got, want := f.Tag.Get("enum"), strings.Join(lookupFields, ","); got != want {
+			t.Errorf("%s.Fields enum %q, lookupFields %q", of.Name(), got, want)
+		}
+	}
+	if f, _ := reflect.TypeFor[Declined]().FieldByName("Fields"); f.Tag.Get("maxItems") != strconv.Itoa(len(lookupFields)) {
+		t.Errorf("Declined.Fields maxItems %q, %d fields", f.Tag.Get("maxItems"), len(lookupFields))
+	}
+	ctx := context.Background()
+	s := newService(t)
+	id, err := s.Create(ctx, BookInput{Title: "Any", ReadStatus: "unread"}, &CopyInput{PriceCents: -1}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := db.New(s.DB.Write)
+	for _, f := range lookupFields {
+		if err := q.DeclineSuggestion(ctx, db.DeclineSuggestionParams{EditionID: id, Field: f, Value: `""`}); err != nil {
+			t.Errorf("declining %s: %v", f, err)
+		}
 	}
 }
 
@@ -59,7 +79,6 @@ func TestValueListsAreTheirEnums(t *testing.T) {
 		{"Roles", lookup.Roles, enum(reflect.TypeFor[lookup.Contributor](), "Role")},
 		{"documentKinds", documentKinds, enum(reflect.TypeFor[DocumentInput](), "Kind")},
 		{"GapFields (missing)", GapFields, enum(reflect.TypeFor[BookGaps](), "Missing")},
-		{"GapFields (counted)", GapFields, enum(reflect.TypeFor[GapCount](), "Field")},
 	} {
 		if got := strings.Join(c.list, ","); got != c.tag {
 			t.Errorf("%s: list %q, enum %q", c.name, got, c.tag)

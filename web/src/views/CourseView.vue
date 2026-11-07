@@ -5,7 +5,7 @@ import Button from 'primevue/button'
 import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'
 import ToggleSwitch from 'primevue/toggleswitch'
-import { faPen, faPlus, faTrash } from '@fortawesome/pro-regular-svg-icons'
+import { faPen, faPlus, faTrash } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import { api, type CourseBook, type CourseDetail, type DocumentRow } from '@/api/client'
 import { useConfirmAction } from '@/app/confirm'
 import { calendarDate, courseName, documentKindLabel, levelLabel, termLabel } from '@/app/format'
@@ -26,7 +26,10 @@ const path = computed(() => ({ params: { path: { id: props.id } } }))
 
 async function load() {
   const { data, error } = await api.GET('/courses/{id}', path.value)
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   shown(data)
 }
 function shown(c: CourseDetail) {
@@ -39,7 +42,9 @@ watch(() => props.id, load)
 const name = computed(() => (course.value ? courseName(course.value) : ''))
 const details = computed(() => {
   const c = course.value
-  if (!c) return []
+  if (!c) {
+    return []
+  }
   return [
     { label: 'When', value: termLabel(c) },
     { label: 'School', value: c.school },
@@ -61,7 +66,10 @@ function remove() {
     },
     async () => {
       const { error } = await api.DELETE('/courses/{id}', path.value)
-      if (error) return notice.failed(error)
+      if (error) {
+        notice.failed(error)
+        return
+      }
       notice.done('Course removed')
       await goBack(router, '/courses', `/courses/${props.id}`)
     },
@@ -73,7 +81,10 @@ async function setRequired(b: CourseBook, required: boolean) {
     params: { path: { id: props.id, copyId: b.copyId } },
     body: { required },
   })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   shown(data)
 }
 
@@ -89,7 +100,10 @@ function takeOff(b: CourseBook) {
       const { error } = await api.DELETE('/courses/{id}/copies/{copyId}', {
         params: { path: { id: props.id, copyId: b.copyId } },
       })
-      if (error) return notice.failed(error)
+      if (error) {
+        notice.failed(error)
+        return
+      }
       await load()
     },
   )

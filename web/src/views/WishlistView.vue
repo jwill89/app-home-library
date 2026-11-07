@@ -5,7 +5,7 @@ import { storeToRefs } from 'pinia'
 import Button from 'primevue/button'
 import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'
-import { faPlus, faTrash } from '@fortawesome/pro-regular-svg-icons'
+import { faPlus, faTrash } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import { api, type BookRow } from '@/api/client'
 import { emptyCopy } from '@/app/book'
 import { useConfirmAction } from '@/app/confirm'
@@ -24,7 +24,9 @@ const session = useSession()
 const notice = useNotice()
 const router = useRouter()
 onMounted(() => {
-  if (!loaded.value) void library.load()
+  if (!loaded.value) {
+    void library.load()
+  }
 })
 
 const summary = computed(() => {
@@ -58,7 +60,9 @@ function removeHad() {
         }
         removed++
       }
-      if (removed) notice.done(`Removed ${count(removed, 'book')} you have`)
+      if (removed) {
+        notice.done(`Removed ${count(removed, 'book')} you have`)
+      }
       await library.load()
     },
   )
@@ -70,7 +74,10 @@ async function gotIt(r: BookRow) {
     params: { path: { id: r.id } },
     body: emptyCopy(''),
   })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   notice.done(`${r.title} is in your library now`)
   await library.load()
 }

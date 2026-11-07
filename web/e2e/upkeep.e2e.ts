@@ -206,7 +206,7 @@ test('every book is looked up again, after asking first', async ({ page, request
   await page.goto('/gaps')
   await page.getByRole('button', { name: 'Look up every book' }).click()
   const dialog = page.getByRole('alertdialog').or(page.getByRole('dialog'))
-  await expect(dialog).toContainText('Only blank details are filled')
+  await expect(dialog).toContainText('the change waits in Suggested changes')
   await dialog.getByRole('button', { name: 'Look them all up' }).click()
   await expect(page.getByText(/queued for the background lookup/)).toBeVisible()
 })

@@ -15,7 +15,7 @@ function before(): string | null {
   return typeof back === 'string' ? back : null
 }
 
-const pathOf = (address: string) => address.split(/[?#]/)[0]
+const pathOf = (address: string) => address.split(/[?#]/)[0] ?? ''
 
 /**
  * The one way to leave an edit for the record it edits: back to the record when it is the page
@@ -23,7 +23,11 @@ const pathOf = (address: string) => address.split(/[?#]/)[0]
  */
 export function returnTo(router: Router, path: string) {
   const back = before()
-  return back !== null && pathOf(back) === path ? router.back() : router.replace(path)
+  if (back !== null && pathOf(back) === path) {
+    router.back()
+    return
+  }
+  return router.replace(path)
 }
 
 /**
@@ -34,5 +38,9 @@ export function goBack(router: Router, fallback: string, leaving?: string) {
   const back = before()
   const path = back === null ? '' : pathOf(back)
   const stale = leaving !== undefined && (path === leaving || path.startsWith(`${leaving}/`))
-  return back !== null && !stale ? router.back() : router.replace(fallback)
+  if (back !== null && !stale) {
+    router.back()
+    return
+  }
+  return router.replace(fallback)
 }

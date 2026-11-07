@@ -16,7 +16,7 @@ import {
   faPen,
   faPlus,
   faTrash,
-} from '@fortawesome/pro-regular-svg-icons'
+} from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import {
   api,
   formData,
@@ -91,10 +91,15 @@ const busy = ref('')
 
 async function load() {
   const { data, error } = await api.GET('/books/{id}', { params: { path: { id: props.id } } })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   book.value = data
   document.title = `${data.title} · Home Library`
-  if (owner) await findPlaces(data)
+  if (owner) {
+    await findPlaces(data)
+  }
 }
 
 // Where each copy in the house stands on the shelves, which is the owner's alone to know: asked
@@ -107,7 +112,9 @@ async function findPlaces(b: Book) {
       .filter((c) => !c.goneAs)
       .map(async (c) => {
         const { data } = await api.GET('/copies/{id}/place', { params: { path: { id: c.id } } })
-        if (data) found[c.id] = data
+        if (data) {
+          found[c.id] = data
+        }
       }),
   )
   places.value = found
@@ -118,7 +125,9 @@ async function findPlaces(b: Book) {
 const route = useRoute()
 const scanned = computed(() => Number(route.query.copy) || 0)
 async function showScanned() {
-  if (!scanned.value) return
+  if (!scanned.value) {
+    return
+  }
   await nextTick()
   const el = document.getElementById(`copy-${scanned.value}`)
   el?.scrollIntoView({ block: 'center' })
@@ -136,7 +145,9 @@ useFeed(
 onMounted(async () => {
   await load()
   await showScanned()
-  if (!owner) return
+  if (!owner) {
+    return
+  }
   const { data } = await api.GET('/choices')
   sections.value = data?.sections ?? []
 })
@@ -155,9 +166,14 @@ const status = computed({
 })
 
 async function setStatus(v: string) {
-  if (!book.value || v === book.value.readStatus) return
+  if (!book.value || v === book.value.readStatus) {
+    return
+  }
   const { data, error } = await library.setStatus(book.value.id, v as ReadStatus)
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   book.value = data
 }
 
@@ -165,7 +181,10 @@ async function uploadCover(blob: Blob) {
   busy.value = 'cover'
   const { data, error } = await api.PUT('/books/{id}/cover', { ...path.value, ...formData(blob) })
   busy.value = ''
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   changed(data)
   notice.done('Cover saved')
 }
@@ -175,18 +194,22 @@ const candidates = ref<CoverChoice[]>([])
 const candidate = ref('')
 const choosing = ref(false)
 async function findCovers() {
-  if (!book.value?.isbn13) return
+  if (!book.value?.isbn13) {
+    return
+  }
   busy.value = 'find'
   const { data, error } = await api.GET('/lookup/isbn/{isbn}', {
     params: { path: { isbn: book.value.isbn13 } },
   })
   busy.value = ''
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   candidates.value = data.proposal.covers ?? []
   if (!candidates.value.length) {
-    return notice.failed(
-      new Error('No source has a cover for this ISBN. Take a photo of it instead.'),
-    )
+    notice.failed(new Error('No source has a cover for this ISBN. Take a photo of it instead.'))
+    return
   }
   candidate.value = candidates.value[0]?.url ?? ''
   choosing.value = true
@@ -200,7 +223,10 @@ async function useCandidate() {
     body: { url: candidate.value },
   })
   busy.value = ''
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   changed(data)
 }
 
@@ -214,7 +240,10 @@ function removeCover() {
     },
     async () => {
       const { data, error } = await api.DELETE('/books/{id}/cover', path.value)
-      if (error) return notice.failed(error)
+      if (error) {
+        notice.failed(error)
+        return
+      }
       changed(data)
     },
   )
@@ -227,14 +256,17 @@ async function lookUpAgain() {
   busy.value = 'refresh'
   const { data, error } = await api.POST('/books/{id}/refresh', path.value)
   busy.value = ''
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   changed(data.book)
   if (data.fields?.length) {
     suggestions.value = [data]
     suggesting.value = true
     return
   }
-  notice.done('Looked up again. Blanks are filled where a source knew more; nothing else differs.')
+  notice.done('Looked up again. Blanks are filled where a source knew more; nothing else to offer.')
 }
 
 function removeBook() {
@@ -247,7 +279,10 @@ function removeBook() {
     },
     async () => {
       const { error } = await api.DELETE('/books/{id}', path.value)
-      if (error) return notice.failed(error)
+      if (error) {
+        notice.failed(error)
+        return
+      }
       notice.done('Book removed')
       await goBack(router, '/', `/books/${props.id}`)
     },
@@ -265,12 +300,17 @@ function editCopy(c?: Copy) {
 }
 
 async function saveCopy() {
-  if (!editing.value) return
+  if (!editing.value) {
+    return
+  }
   const { id, input } = editing.value
   const { error } = id
     ? await api.PUT('/copies/{id}', { params: { path: { id } }, body: input })
     : await api.POST('/books/{id}/copies', { ...path.value, body: input })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   copyOpen.value = false
   await load()
 }
@@ -285,7 +325,10 @@ function removeCopy(c: Copy) {
     },
     async () => {
       const { error } = await api.DELETE('/copies/{id}', { params: { path: { id: c.id } } })
-      if (error) return notice.failed(error)
+      if (error) {
+        notice.failed(error)
+        return
+      }
       await load()
     },
   )
@@ -311,24 +354,34 @@ const goneCopy = ref<Copy | null>(null)
 const goneOpen = computed({
   get: () => goneCopy.value !== null,
   set: (v) => {
-    if (!v) goneCopy.value = null
+    if (!v) {
+      goneCopy.value = null
+    }
   },
 })
 async function bringBack(c: Copy) {
   const { error } = await api.DELETE('/copies/{id}/gone', { params: { path: { id: c.id } } })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   notice.done(`${c.barcode} is back in the library`)
   await load()
 }
 
 // Read again: the read it had is kept among the earlier ones.
 async function readAgain() {
-  if (!book.value) return
+  if (!book.value) {
+    return
+  }
   const { data, error } = await api.POST('/books/{id}/read-again', {
     params: { path: { id: book.value.id } },
     body: { on: today() },
   })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   book.value = data
   notice.done('Begun again today')
 }
@@ -342,7 +395,10 @@ function removeReading(r: Reading) {
     },
     async () => {
       const { error } = await api.DELETE('/readings/{id}', { params: { path: { id: r.id } } })
-      if (error) return notice.failed(error)
+      if (error) {
+        notice.failed(error)
+        return
+      }
       await load()
     },
   )
@@ -350,7 +406,9 @@ function removeReading(r: Reading) {
 
 const returnLoan = useReturnLoan()
 async function returned(l: Loan) {
-  if (await returnLoan(l)) await load()
+  if (await returnLoan(l)) {
+    await load()
+  }
 }
 
 const courseOpen = ref(false)
@@ -367,7 +425,10 @@ function takeOff(u: CourseUse) {
       const { error } = await api.DELETE('/courses/{id}/copies/{copyId}', {
         params: { path: { id: u.course.id, copyId: u.copyId } },
       })
-      if (error) return notice.failed(error)
+      if (error) {
+        notice.failed(error)
+        return
+      }
       await load()
     },
   )
@@ -378,7 +439,10 @@ async function reprint(c: Copy) {
     const { error } = await api.PUT('/labels/{kind}/{copyId}', {
       params: { path: { kind, copyId: c.id } },
     })
-    if (error) return notice.failed(error)
+    if (error) {
+      notice.failed(error)
+      return
+    }
   }
   notice.done(`${c.barcode}'s labels wait with the others to print`)
   await load()
@@ -418,13 +482,15 @@ const shownDetails = [
 const numbers = new Set(['isbn13', 'isbn10', 'ddc', 'lcc', 'lccn'])
 const details = computed(() => {
   const b = book.value
-  if (!b) return []
+  if (!b) {
+    return []
+  }
   return shownDetails
     .map((field) => ({
       label: detailLabel(field),
       value: detailText(b, field, unit.value),
       mono: numbers.has(field),
-      source: sourceLabel(b.sources?.[field]),
+      source: sourceLabel(b.sources[field]),
     }))
     .filter((r) => r.value)
 })
@@ -439,10 +505,18 @@ function copyLine(c: Copy): string {
   ]
     .filter(Boolean)
     .join(' ')
-  if (bought) parts.push(bought)
-  if (c.condition !== 'unknown') parts.push(conditionLabel(c.condition))
-  if (c.dustJacket === 'yes') parts.push('Dust jacket')
-  if (c.signed) parts.push('Signed')
+  if (bought) {
+    parts.push(bought)
+  }
+  if (c.condition !== 'unknown') {
+    parts.push(conditionLabel(c.condition))
+  }
+  if (c.dustJacket === 'yes') {
+    parts.push('Dust jacket')
+  }
+  if (c.signed) {
+    parts.push('Signed')
+  }
   return parts.join(' · ')
 }
 </script>

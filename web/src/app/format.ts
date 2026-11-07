@@ -155,7 +155,9 @@ export function numberRanges(numbers: string[] | null | undefined): string {
   let start = 0
   let end = 0
   const close = () => {
-    if (start) out.push(start === end ? String(start) : `${start}–${end}`)
+    if (start) {
+      out.push(start === end ? String(start) : `${start}–${end}`)
+    }
     start = 0
   }
   for (const v of numbers ?? []) {
@@ -203,6 +205,27 @@ const detailLabels: Record<string, string> = {
 
 /** A detail of a book, by its field's name, in words. */
 export const detailLabel = (field: string) => detailLabels[field] ?? field
+
+/**
+ * The choices of a filter by detail: any detail, then each detail some book has in its list
+ * (lacks, or differs in), with how many books, the most first.
+ */
+export function detailChoices<F extends string>(
+  lists: readonly (readonly F[] | null | undefined)[],
+): { value: F | 'any'; label: string }[] {
+  const books = new Map<F, number>()
+  for (const list of lists) {
+    for (const f of list ?? []) {
+      books.set(f, (books.get(f) ?? 0) + 1)
+    }
+  }
+  return [
+    { value: 'any', label: 'Any detail' },
+    ...[...books]
+      .sort(([a, n], [b, m]) => m - n || detailLabel(a).localeCompare(detailLabel(b)))
+      .map(([f, n]) => ({ value: f, label: `${detailLabel(f)} (${n})` })),
+  ]
+}
 
 /** A detail of a book as text, as its page shows it: a book saved, or one being edited. */
 export function detailText(b: Book | BookInput, field: string, unit: Unit): string {
@@ -271,7 +294,9 @@ const textStatuses: { value: DocumentFile['textStatus']; label: string }[] = [
 
 /** A file's size as a person reads it: 340 KB, 2.4 MB. */
 export function fileSize(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  if (bytes < 1024 * 1024) {
+    return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  }
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
@@ -370,7 +395,9 @@ const sourceNames: Record<string, string> = {
 
 /** Where a field's value came from, in words. */
 export function sourceLabel(source: string | undefined): string {
-  if (!source) return ''
+  if (!source) {
+    return ''
+  }
   return sourceNames[source] ?? source
 }
 
@@ -389,7 +416,9 @@ export function inUnit(mm: number, unit: Unit, places: 1 | 2 = 1): number {
   const scale = 10 ** places
   for (const step of (unit === 'in' ? inchSteps : [1, 0.1]).filter((s) => s * scale >= 1)) {
     const v = Math.round(Math.round(exact / step) * step * 100) / 100
-    if (fromUnit(v, unit) === mm) return v
+    if (fromUnit(v, unit) === mm) {
+      return v
+    }
   }
   return Math.round(exact * scale) / scale
 }
@@ -407,7 +436,9 @@ export const lengthIn = (mm: number, unit: Unit) => (mm ? `${inUnit(mm, unit)} $
  * `neighbours` the books either side of it there.
  */
 export function placeLine(p: ShelfPlace, neighbours = false): string {
-  if (!p.placed) return 'No shelf has room for it. Add a shelf, or plan the shelves fuller.'
+  if (!p.placed) {
+    return 'No shelf has room for it. Add a shelf, or plan the shelves fuller.'
+  }
   const where = `${p.bookcase}, shelf ${p.position} from the top${p.oversize ? ' (oversize)' : ''}`
   const between = !neighbours
     ? ''
@@ -435,13 +466,17 @@ export function shelfSize(
   unit: Unit,
 ): string {
   const size = `${inUnit(s.widthMm, unit)} × ${inUnit(s.heightMm, unit)} × ${inUnit(s.depthMm, unit)} ${unit}`
-  if (!s.braceHeightMm || !s.braceWidthMm) return size
+  if (!s.braceHeightMm || !s.braceWidthMm) {
+    return size
+  }
   return `${size}, braces ${inUnit(s.braceHeightMm, unit)} × ${inUnit(s.braceWidthMm, unit)} ${unit}`
 }
 
 /** Cents as dollars, or empty when the price is not known (-1). */
 export function money(cents: number): string {
-  if (cents < 0) return ''
+  if (cents < 0) {
+    return ''
+  }
   return (cents / 100).toLocaleString(undefined, { style: 'currency', currency: 'USD' })
 }
 
@@ -451,9 +486,15 @@ const fullDate = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
 /** A date as precisely as it is known: 2014, June 2014, or Jun 2, 2014. */
 export function calendarDate(value: string): string {
   const [y, m, d] = value.split('-').map(Number)
-  if (!y) return ''
-  if (!m) return String(y)
-  if (!d) return monthYear.format(new Date(y, m - 1, 1))
+  if (!y) {
+    return ''
+  }
+  if (!m) {
+    return String(y)
+  }
+  if (!d) {
+    return monthYear.format(new Date(y, m - 1, 1))
+  }
   return fullDate.format(new Date(y, m - 1, d))
 }
 
@@ -477,7 +518,9 @@ export function addDays(date: string, days: number): string {
 
 /** How many days past `due` a copy still out is on `on`; 0 when it is not late. */
 export function daysLate(due: string, on: string): number {
-  if (!due || due >= on) return 0
+  if (!due || due >= on) {
+    return 0
+  }
   const [a, b] = [due, on].map((s) => {
     const [y = 0, m = 1, d = 1] = s.split('-').map(Number)
     return Date.UTC(y, m - 1, d)
@@ -514,8 +557,12 @@ export function names(people: { name: string; role: string }[] | null, role: str
 
 /** "A", "A and B", "A, B, and C"; APA's citations write the last "and" as "&". */
 export function listed(list: readonly string[], and = 'and'): string {
-  if (list.length <= 1) return list.join('')
-  if (list.length === 2) return `${list[0]} ${and} ${list[1]}`
+  if (list.length <= 1) {
+    return list.join('')
+  }
+  if (list.length === 2) {
+    return `${list[0]} ${and} ${list[1]}`
+  }
   return `${list.slice(0, -1).join(', ')}, ${and} ${list[list.length - 1]}`
 }
 

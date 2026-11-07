@@ -2,7 +2,7 @@
 import { computed, useId } from 'vue'
 import Button from 'primevue/button'
 import SelectButton from 'primevue/selectbutton'
-import { faCopy } from '@fortawesome/pro-regular-svg-icons'
+import { faCopy } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import { cite, citeStyles, html, plainText, type CiteStyle, type CiteWork } from '@/app/cite'
 import { useNotice } from '@/app/problem'
 import { useRemembered } from '@/app/remember'
@@ -21,8 +21,11 @@ const style = useRemembered<CiteStyle>('hl.citeStyle', ['apa', 'mla', 'chicago']
 const pieces = computed(() => cite(props.work, style.value))
 
 async function copy() {
-  if (await copyText(plainText(pieces.value), html(pieces.value))) notice.done('Citation copied')
-  else notice.failed(new Error('The citation could not be copied. Select it and copy it by hand.'))
+  if (await copyText(plainText(pieces.value), html(pieces.value))) {
+    notice.done('Citation copied')
+  } else {
+    notice.failed(new Error('The citation could not be copied. Select it and copy it by hand.'))
+  }
 }
 </script>
 

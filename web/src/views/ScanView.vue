@@ -3,7 +3,7 @@ import { computed, onMounted, ref, useId } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
-import { faPlus } from '@fortawesome/pro-regular-svg-icons'
+import { faPlus } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import { api, isOffline, type CopyInput, type Scan } from '@/api/client'
 import { emptyCopy } from '@/app/book'
 import { useConfirmAction } from '@/app/confirm'
@@ -37,7 +37,9 @@ const typed = ref('')
 const note = ref<ScanNote | null>(null)
 function tell(text: string, tone: ScanNote['tone'], toast = true) {
   note.value = scanNote(text, tone)
-  if (toast) notice.scanned(note.value)
+  if (toast) {
+    notice.scanned(note.value)
+  }
 }
 
 // Every scan joins the list; the server looks each up while the next is scanned.
@@ -47,18 +49,27 @@ const pending = ref(0)
 let latest = 0
 async function load() {
   const { data, error, response } = await api.GET('/scans')
-  if (isOffline(response)) return
+  if (isOffline(response)) {
+    return
+  }
   // An error leaves the list as it was, rather than empty.
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   scans.value = data.scans ?? []
-  pending.value = data.pending ?? 0
+  pending.value = data.pending
   const last = scans.value.find((s) => s.id === latest)
   if (last && last.status !== 'pending') {
     latest = 0
     const name = last.title || last.isbn13
-    if (last.status === 'found') tell(`Not in your library: ${name}`, 'good', false)
-    else if (last.status === 'owned') tell(`Already in your library: ${name}`, 'info', false)
-    else tell(`${scanStatusLabel(last.status)}: ${name}`, 'bad', false)
+    if (last.status === 'found') {
+      tell(`Not in your library: ${name}`, 'good', false)
+    } else if (last.status === 'owned') {
+      tell(`Already in your library: ${name}`, 'info', false)
+    } else {
+      tell(`${scanStatusLabel(last.status)}: ${name}`, 'bad', false)
+    }
   }
 }
 // A scan looked up, added, or let go, here or on another device, is told on the change feed.
@@ -66,7 +77,10 @@ useFeed(['scan'], load)
 
 async function queue(code: string) {
   const { data, error } = await api.POST('/scans', { body: { code } })
-  if (error) return tell(messageOf(error), 'bad')
+  if (error) {
+    tell(messageOf(error), 'bad')
+    return
+  }
   const name = data.title || data.isbn13
   if (data.status === 'pending' && data.id !== latest) {
     latest = data.id
@@ -83,9 +97,16 @@ async function queue(code: string) {
 // opens the copy it is on, and anything else is explained.
 async function heard(code: string) {
   const { data, error, response } = await api.GET('/codes/{code}', { params: { path: { code } } })
-  if (isOffline(response)) return checkOffline(code)
-  if (error) return tell(messageOf(error), 'bad')
-  if (data.kind === 'isbn') return queue(code)
+  if (isOffline(response)) {
+    return checkOffline(code)
+  }
+  if (error) {
+    tell(messageOf(error), 'bad')
+    return
+  }
+  if (data.kind === 'isbn') {
+    return queue(code)
+  }
   if (data.kind === 'copy' && data.bookId) {
     tell(`Your copy: ${data.title}`, 'good')
     return router.push(`/books/${data.bookId}?copy=${data.copyId}`)
@@ -96,19 +117,32 @@ async function heard(code: string) {
 // With no connection, the list this device kept answers "do I own this?". Nothing joins the
 // list of scans until the server can be asked.
 async function checkOffline(code: string) {
-  if (!library.loaded) await library.load()
+  if (!library.loaded) {
+    await library.load()
+  }
   const isbn = isbn13(code)
-  if (!isbn) return tell('No connection, and that is not an ISBN to check offline.', 'bad')
+  if (!isbn) {
+    tell('No connection, and that is not an ISBN to check offline.', 'bad')
+    return
+  }
   const row = library.rows.find((r) => r.isbn13 === isbn)
   const since = library.offlineSince ? ` (offline: as of ${day(library.offlineSince)})` : ''
-  if (!row) return tell(`Not in your library${since}`, 'info')
-  if (row.wantedOn) return tell(`On your wishlist: ${row.title}${since}`, 'good')
+  if (!row) {
+    tell(`Not in your library${since}`, 'info')
+    return
+  }
+  if (row.wantedOn) {
+    tell(`On your wishlist: ${row.title}${since}`, 'good')
+    return
+  }
   tell(`In your library: ${row.title}${since}`, 'good')
 }
 
 function submitTyped() {
   const code = typed.value.replace(/[\s-]/g, '')
-  if (!code) return
+  if (!code) {
+    return
+  }
   typed.value = ''
   void heard(code)
 }
@@ -116,7 +150,9 @@ function submitTyped() {
 const found = computed(() => scans.value.filter((s) => s.status === 'found'))
 const counts = computed(() => {
   const n = scans.value.length
-  if (!n) return ''
+  if (!n) {
+    return ''
+  }
   const by = (status: string) => scans.value.filter((s) => s.status === status).length
   const parts = [
     found.value.length && `${found.value.length} to add`,
@@ -138,17 +174,26 @@ async function add(list: Scan[], wanted = false) {
       wanted,
     },
   })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   remember(lastSectionKey, shared.value.section)
   const n = data.adding
-  if (wanted) notice.done(n === 1 ? 'Putting it on the wishlist' : `Putting ${n} on the wishlist`)
-  else notice.done(n === 1 ? 'Adding the book' : `Adding ${n} books`)
+  if (wanted) {
+    notice.done(n === 1 ? 'Putting it on the wishlist' : `Putting ${n} on the wishlist`)
+  } else {
+    notice.done(n === 1 ? 'Adding the book' : `Adding ${n} books`)
+  }
   await load()
 }
 
 async function done(s: Scan) {
   const { error } = await api.POST('/scans/{id}/done', { params: { path: { id: s.id } } })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   await load()
 }
 
@@ -156,19 +201,27 @@ async function remove(s: Scan) {
   const { error } = await api.DELETE('/scans/{id}', {
     params: { path: { id: s.id }, query: { removeBook: false } },
   })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   await load()
 }
 
 async function clearAll() {
   const { error } = await api.POST('/scans/done')
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   await load()
 }
 
 function clear() {
   const left = found.value.length
-  if (!left) return void clearAll()
+  if (!left) {
+    return void clearAll()
+  }
   ask(
     {
       header: 'Clear the list?',
@@ -192,7 +245,10 @@ function undo(s: Scan) {
       const { error } = await api.DELETE('/scans/{id}', {
         params: { path: { id: s.id }, query: { removeBook: true } },
       })
-      if (error) return notice.failed(error)
+      if (error) {
+        notice.failed(error)
+        return
+      }
       await load()
     },
   )
@@ -204,7 +260,10 @@ async function addCopy(s: Scan) {
     params: { path: { id: s.bookId } },
     body: copy,
   })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   notice.done(s.wantedOn ? `${s.title} is in your library now` : `Another copy of ${s.title} added`)
   await done(s)
 }

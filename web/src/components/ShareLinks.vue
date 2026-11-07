@@ -8,7 +8,12 @@ import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
 import ToggleSwitch from 'primevue/toggleswitch'
-import { faCopy, faLink, faPen, faShareNodes } from '@fortawesome/pro-regular-svg-icons'
+import {
+  faCopy,
+  faLink,
+  faPen,
+  faShareNodes,
+} from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import {
   api,
   type BookRow,
@@ -45,7 +50,10 @@ const shares = ref<ShareLink[]>([])
 
 async function load() {
   const { data, error } = await api.GET('/shares')
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   shares.value = data.shares ?? []
 }
 onMounted(load)
@@ -104,11 +112,21 @@ const courses = ref<Course[]>([])
 const papers = ref<DocumentRow[]>([])
 let choicesLoaded = false
 async function loadChoices() {
-  if (!library.loaded) void library.load()
-  if (choicesLoaded) return
+  if (!library.loaded) {
+    void library.load()
+  }
+  if (choicesLoaded) {
+    return
+  }
   const [c, d] = await Promise.all([api.GET('/courses'), api.GET('/documents')])
-  if (c.error) return notice.failed(c.error)
-  if (d.error) return notice.failed(d.error)
+  if (c.error) {
+    notice.failed(c.error)
+    return
+  }
+  if (d.error) {
+    notice.failed(d.error)
+    return
+  }
   courses.value = c.data.courses ?? []
   papers.value = d.data.documents ?? []
   choicesLoaded = true
@@ -161,7 +179,9 @@ const chosenBooks = computed(() =>
 )
 function addBook(b: BookRow) {
   const ids = scope.value.bookIds ?? []
-  if (!ids.includes(b.id)) scope.value.bookIds = [...ids, b.id]
+  if (!ids.includes(b.id)) {
+    scope.value.bookIds = [...ids, b.id]
+  }
 }
 function removeBook(b: number) {
   scope.value.bookIds = (scope.value.bookIds ?? []).filter((x) => x !== b)
@@ -199,29 +219,38 @@ const courseOptions = computed(() =>
     .map((c) => ({ value: c.id, label: courseLabel(c) })),
 )
 watch(courseToAdd, (c) => {
-  if (c === null) return
+  if (c === null) {
+    return
+  }
   scope.value.courseIds = [...(scope.value.courseIds ?? []), c]
   courseToAdd.value = null
 })
 function addPaper(d: DocumentRow) {
   const ids = scope.value.paperIds ?? []
-  if (!ids.includes(d.id)) scope.value.paperIds = [...ids, d.id]
+  if (!ids.includes(d.id)) {
+    scope.value.paperIds = [...ids, d.id]
+  }
 }
 function removePaper(c: PaperChoice) {
-  if (c.kind === 'course')
+  if (c.kind === 'course') {
     scope.value.courseIds = (scope.value.courseIds ?? []).filter((x) => x !== c.id)
-  else scope.value.paperIds = (scope.value.paperIds ?? []).filter((x) => x !== c.id)
+  } else {
+    scope.value.paperIds = (scope.value.paperIds ?? []).filter((x) => x !== c.id)
+  }
 }
 
 // What the link still lacks, as the server would say it: the button waits until it has it.
 const lacks = computed(() => {
   const s = scope.value
-  if (s.books === 'some' && !(s.categories ?? []).length && !(s.bookIds ?? []).length)
+  if (s.books === 'some' && !(s.categories ?? []).length && !(s.bookIds ?? []).length) {
     return 'Choose a kind of book or a book to share, or share every book or none.'
-  if (s.papers === 'some' && !(s.courseIds ?? []).length && !(s.paperIds ?? []).length)
+  }
+  if (s.papers === 'some' && !(s.courseIds ?? []).length && !(s.paperIds ?? []).length) {
     return 'Choose a course or a paper to share, or share every paper or none.'
-  if (s.books === 'none' && s.papers === 'none')
+  }
+  if (s.books === 'none' && s.papers === 'none') {
     return 'A link has to share something: some books, or some papers.'
+  }
   return ''
 })
 
@@ -236,36 +265,53 @@ async function save() {
   if (was) {
     const { error } = await api.PUT('/shares/{id}', { params: { path: { id: was.id } }, body })
     busy.value = false
-    if (error) return notice.failed(error)
+    if (error) {
+      notice.failed(error)
+      return
+    }
     notice.done(`Saved the link for ${body.name.trim()}`)
     open.value = false
     return load()
   }
   const { data, error } = await api.POST('/shares', { body })
   busy.value = false
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   // On the name this page is on: the link works on both, and this is the one in use.
   made.value = { name: data.share.name, url: `${location.origin}/s/${data.token}` }
   // The form that had focus is gone; the link takes it, selected, ready to copy.
   await nextTick()
   const field = document.getElementById(`${id}-url`)
-  if (field instanceof HTMLInputElement) field.select()
+  if (field instanceof HTMLInputElement) {
+    field.select()
+  }
   await load()
 }
 
 async function copy() {
-  if (!made.value) return
-  if (await copyText(made.value.url)) notice.done('Link copied')
-  else notice.failed(new Error('The link could not be copied. Select it and copy it by hand.'))
+  if (!made.value) {
+    return
+  }
+  if (await copyText(made.value.url)) {
+    notice.done('Link copied')
+  } else {
+    notice.failed(new Error('The link could not be copied. Select it and copy it by hand.'))
+  }
 }
 
 async function share() {
-  if (!made.value) return
+  if (!made.value) {
+    return
+  }
   try {
     await navigator.share({ title: 'My library', url: made.value.url })
   } catch (e) {
     // Closing the share sheet is a choice, not a failure.
-    if (!(e instanceof Error && e.name === 'AbortError')) notice.failed(e)
+    if (!(e instanceof Error && e.name === 'AbortError')) {
+      notice.failed(e)
+    }
   }
 }
 
@@ -280,7 +326,10 @@ function revoke(s: ShareLink) {
     },
     async () => {
       const { error } = await api.DELETE('/shares/{id}', { params: { path: { id: s.id } } })
-      if (error) return notice.failed(error)
+      if (error) {
+        notice.failed(error)
+        return
+      }
       await load()
     },
   )
@@ -288,12 +337,16 @@ function revoke(s: ShareLink) {
 
 const ended = (s: ShareLink) => s.expiresAt !== '' && new Date(s.expiresAt) <= new Date()
 function goodUntil(s: ShareLink): string {
-  if (!s.expiresAt) return 'Until revoked'
+  if (!s.expiresAt) {
+    return 'Until revoked'
+  }
   return ended(s) ? `Ended ${lastDay(s.expiresAt)}` : `Through ${lastDay(s.expiresAt)}`
 }
 
 const header = computed(() => {
-  if (made.value) return `The link for ${made.value.name}`
+  if (made.value) {
+    return `The link for ${made.value.name}`
+  }
   return editing.value ? `Change the link for ${editing.value.name}` : 'Make a share link'
 })
 const link = (d: unknown) => d as ShareLink

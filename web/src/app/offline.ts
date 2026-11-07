@@ -15,7 +15,9 @@ interface Saved {
 
 /** Keeps the list for when the device is offline, where the browser allows. */
 export async function saveCatalog(rows: BookRow[]): Promise<void> {
-  if (!('caches' in globalThis)) return
+  if (!('caches' in globalThis)) {
+    return
+  }
   try {
     const cache = await caches.open(CACHE)
     const saved: Saved = { savedAt: new Date().toISOString(), rows }
@@ -30,7 +32,9 @@ export async function saveCatalog(rows: BookRow[]): Promise<void> {
 
 /** The list last kept, and when, or nothing. */
 export async function savedCatalog(): Promise<Saved | null> {
-  if (!('caches' in globalThis)) return null
+  if (!('caches' in globalThis)) {
+    return null
+  }
   try {
     const hit = await caches.match(KEY, { cacheName: CACHE })
     return hit ? ((await hit.json()) as Saved) : null
@@ -41,7 +45,9 @@ export async function savedCatalog(): Promise<Saved | null> {
 
 /** Forgets the list, as when the owner signs out of this device. */
 export async function forgetCatalog(): Promise<void> {
-  if (!('caches' in globalThis)) return
+  if (!('caches' in globalThis)) {
+    return
+  }
   try {
     await caches.delete(CACHE)
   } catch {

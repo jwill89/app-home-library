@@ -53,7 +53,9 @@ function open() {
   source.addEventListener('ping', heard)
   source.addEventListener('reset', () => {
     heard()
-    for (const l of listeners) void l.changed(new Set(), true)
+    for (const l of listeners) {
+      void l.changed(new Set(), true)
+    }
   })
   source.addEventListener('change', (e) => {
     heard()
@@ -66,21 +68,29 @@ function open() {
   source.onerror = () => {
     // The browser opens a dropped stream again by itself, but gives up for good when the
     // server answers with an error, as it does for a moment while it restarts.
-    if (source?.readyState === EventSource.CLOSED) reopen = setTimeout(open, reopenMs)
+    if (source?.readyState === EventSource.CLOSED) {
+      reopen = setTimeout(open, reopenMs)
+    }
   }
 }
 
 function take(c: Change) {
   last = Math.max(last, c.id)
   for (const l of listeners) {
-    if (!l.types.includes(c.type)) continue
+    if (!l.types.includes(c.type)) {
+      continue
+    }
     const refs = gathered.get(l) ?? new Set<number>()
     refs.add(c.ref)
     gathered.set(l, refs)
   }
   flush ??= setTimeout(() => {
     flush = undefined
-    for (const [l, refs] of gathered) if (listeners.has(l)) void l.changed(refs, false)
+    for (const [l, refs] of gathered) {
+      if (listeners.has(l)) {
+        void l.changed(refs, false)
+      }
+    }
     gathered.clear()
   }, gatherMs)
 }
@@ -96,8 +106,12 @@ function close() {
 // A tab back in view whose stream has been quiet may have lost it while hidden: it opens again
 // now, not when the silence runs out.
 function onVisible() {
-  if (document.visibilityState !== 'visible') return
-  if (source?.readyState === EventSource.CLOSED || Date.now() - heardAt > 30_000) open()
+  if (document.visibilityState !== 'visible') {
+    return
+  }
+  if (source?.readyState === EventSource.CLOSED || Date.now() - heardAt > 30_000) {
+    open()
+  }
 }
 
 /**
@@ -105,7 +119,9 @@ function onVisible() {
  * long as it lives. A visitor has no feed.
  */
 export function listen(types: readonly ChangeType[], changed: Changed): () => void {
-  if (!useSession().isOwner) return () => undefined
+  if (!useSession().isOwner) {
+    return () => undefined
+  }
   const l = { types, changed }
   listeners.add(l)
   clearTimeout(linger)
@@ -116,7 +132,9 @@ export function listen(types: readonly ChangeType[], changed: Changed): () => vo
   return () => {
     listeners.delete(l)
     gathered.delete(l)
-    if (!listeners.size) linger = setTimeout(close, lingerMs)
+    if (!listeners.size) {
+      linger = setTimeout(close, lingerMs)
+    }
   }
 }
 

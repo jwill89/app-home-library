@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import Button from 'primevue/button'
 import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'
-import { faPrint } from '@fortawesome/pro-regular-svg-icons'
+import { faPrint } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import { api, apiURL, type LabelSheet, type QueuedLabel } from '@/api/client'
 import { callNumberText, count, labelKindLabel } from '@/app/format'
 import { useNotice } from '@/app/problem'
@@ -22,8 +22,12 @@ const full = computed(() => Math.floor(props.labels.length / per.value))
 const rest = computed(() => props.labels.length % per.value)
 const status = computed(() => {
   const n = props.labels.length
-  if (!n) return 'Nothing is waiting.'
-  if (!full.value) return `${n} waiting, ${per.value - n} short of a full sheet.`
+  if (!n) {
+    return 'Nothing is waiting.'
+  }
+  if (!full.value) {
+    return `${n} waiting, ${per.value - n} short of a full sheet.`
+  }
   const more = rest.value ? `, and ${rest.value} toward the next` : ''
   return `${n} waiting: ${count(full.value, 'full sheet')}${more}.`
 })
@@ -42,14 +46,16 @@ const shown = computed(() =>
 )
 const gaps = computed(() => {
   const parts: string[] = []
-  if (noDewey.value)
+  if (noDewey.value) {
     parts.push(
       `${noDewey.value} ${noDewey.value === 1 ? 'has' : 'have'} no Dewey number, so the label would carry only the author's letters`,
     )
-  if (noVolume.value)
+  }
+  if (noVolume.value) {
     parts.push(
       `${noVolume.value} ${noVolume.value === 1 ? 'is' : 'are'} in a series with no volume number`,
     )
+  }
   return parts.join(', and ')
 })
 const missingLabel = (m: string) => (m === 'dewey' ? 'No Dewey number' : 'No volume number')
@@ -61,7 +67,10 @@ async function takeOff(copies: number[]) {
   const { error } = await api.DELETE('/labels/{kind}', {
     params: { path: { kind: props.sheet.kind }, query: { copies } },
   })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   emit('changed')
 }
 

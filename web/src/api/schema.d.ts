@@ -130,6 +130,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/books/{id}/declined-suggestions': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Keep the book as it is in these details: what the sources give for them is not offered again while they give it */
+    post: operations['decline-suggestions']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/books/{id}/read-again': {
     parameters: {
       query?: never
@@ -175,6 +192,23 @@ export interface paths {
     put?: never
     /** Look the book up again: fill its blanks, and suggest what the sources now give otherwise */
     post: operations['refresh-book']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/books/{id}/suggestions': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** What the book's last lookup the owner asked for offers to change now */
+    get: operations['get-suggestions']
+    put?: never
+    post?: never
     delete?: never
     options?: never
     head?: never
@@ -1279,6 +1313,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/suggestions': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** The books whose last lookup the owner asked for gives details otherwise, with which details */
+    get: operations['list-suggestions']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
@@ -1774,6 +1825,31 @@ export interface components {
       /** @description Put it on the wishlist instead: no copy is made */
       wanted: boolean
     }
+    Declined: {
+      fields:
+        | (
+            | 'title'
+            | 'subtitle'
+            | 'contributors'
+            | 'series'
+            | 'seriesNumber'
+            | 'lccn'
+            | 'publisher'
+            | 'publishPlace'
+            | 'published'
+            | 'editionStatement'
+            | 'format'
+            | 'pages'
+            | 'heightMm'
+            | 'widthMm'
+            | 'thicknessMm'
+            | 'language'
+            | 'ddc'
+            | 'lcc'
+            | 'description'
+          )[]
+        | null
+    }
     'Dismiss-seriesResponse': {
       /**
        * Format: int64
@@ -2014,24 +2090,8 @@ export interface components {
       pages: number
       title: string
     }
-    GapCount: {
-      /** Format: int64 */
-      books: number
-      /** @enum {string} */
-      field:
-        | 'cover'
-        | 'ddc'
-        | 'heightMm'
-        | 'thicknessMm'
-        | 'pages'
-        | 'format'
-        | 'publisher'
-        | 'published'
-        | 'description'
-    }
     GapsOutputBody: {
       books: components['schemas']['BookGaps'][] | null
-      counts: components['schemas']['GapCount'][] | null
     }
     GoneInput: {
       /** @enum {string} */
@@ -2791,6 +2851,39 @@ export interface components {
       /** @enum {string} */
       shelving: 'dewey' | 'author' | 'series'
     }
+    SuggestedBook: {
+      authors: string
+      /** Format: int64 */
+      bookId: number
+      cover: components['schemas']['Cover']
+      fields:
+        | (
+            | 'title'
+            | 'subtitle'
+            | 'contributors'
+            | 'series'
+            | 'seriesNumber'
+            | 'lccn'
+            | 'publisher'
+            | 'publishPlace'
+            | 'published'
+            | 'editionStatement'
+            | 'format'
+            | 'pages'
+            | 'heightMm'
+            | 'widthMm'
+            | 'thicknessMm'
+            | 'language'
+            | 'ddc'
+            | 'lcc'
+            | 'description'
+          )[]
+        | null
+      title: string
+    }
+    SuggestionListOutputBody: {
+      books: components['schemas']['SuggestedBook'][] | null
+    }
     Suggestions: {
       book: components['schemas']['Book']
       fields:
@@ -3290,6 +3383,39 @@ export interface operations {
       }
     }
   }
+  'decline-suggestions': {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: number
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['Declined']
+      }
+    }
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+    }
+  }
   'read-again': {
     parameters: {
       query?: never
@@ -3361,6 +3487,37 @@ export interface operations {
     }
   }
   'refresh-book': {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['Suggestions']
+        }
+      }
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+    }
+  }
+  'get-suggestions': {
     parameters: {
       query?: never
       header?: never
@@ -4670,7 +4827,10 @@ export interface operations {
   }
   'list-gaps': {
     parameters: {
-      query?: never
+      query?: {
+        /** @description Only these books, as the change feed names them; one not among the answer is no longer listed */
+        ids?: number[] | null
+      }
       header?: never
       path?: never
       cookie?: never
@@ -6156,6 +6316,38 @@ export interface operations {
           [name: string]: unknown
         }
         content?: never
+      }
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+    }
+  }
+  'list-suggestions': {
+    parameters: {
+      query?: {
+        /** @description Only these books, as the change feed names them; one not among the answer is no longer listed */
+        ids?: number[] | null
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['SuggestionListOutputBody']
+        }
       }
       /** @description Error */
       default: {

@@ -3,7 +3,7 @@ import { computed, nextTick, onMounted, ref, useId, watch } from 'vue'
 import AutoComplete from 'primevue/autocomplete'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
-import { faBarcodeRead } from '@fortawesome/pro-regular-svg-icons'
+import { faBarcodeRead } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import { api, type Book, type BookRow } from '@/api/client'
 import { scanNote, type ScanNote } from '@/app/barcodes'
 import { matching, useLibrary } from '@/app/library'
@@ -32,7 +32,9 @@ const notice = useNotice()
 const id = useId()
 
 onMounted(() => {
-  if (!library.loaded) void library.load()
+  if (!library.loaded) {
+    void library.load()
+  }
 })
 
 // The search box holds the words while they are typed, and the book once one is chosen.
@@ -53,7 +55,7 @@ const copies = computed(() =>
     .map((c) => ({
       value: c.id,
       label: copyLabel(c),
-      disabled: !!props.onShelf && c.onLoan,
+      disabled: props.onShelf && c.onLoan,
     })),
 )
 
@@ -63,7 +65,9 @@ const wanted = ref(0)
 watch(picked, async (v) => {
   copyId.value = 0
   book.value = null
-  if (!v || typeof v === 'string') return
+  if (!v || typeof v === 'string') {
+    return
+  }
   if (props.whole) {
     emit('chosen', v)
     // Emptied once the box has taken the choice: emptied at once, it never sees a change.
@@ -71,20 +75,34 @@ watch(picked, async (v) => {
     return
   }
   const { data, error } = await api.GET('/books/{id}', { params: { path: { id: v.id } } })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   book.value = data
   const free = copies.value.filter((c) => !c.disabled)
   const scannedCopy = free.find((c) => c.value === wanted.value)
-  if (scannedCopy) copyId.value = scannedCopy.value
-  else if (free.length === 1 && free[0]) copyId.value = free[0].value
+  if (scannedCopy) {
+    copyId.value = scannedCopy.value
+  } else if (free.length === 1 && free[0]) {
+    copyId.value = free[0].value
+  }
 })
 
 const note = computed(() => {
-  if (!book.value) return ''
-  if (!copies.value.length) return 'This book has no copy on record. Add one on its page first.'
-  if (copies.value.every((c) => c.disabled)) return 'Every copy of this book is out on loan.'
+  if (!book.value) {
+    return ''
+  }
+  if (!copies.value.length) {
+    return 'This book has no copy on record. Add one on its page first.'
+  }
+  if (copies.value.every((c) => c.disabled)) {
+    return 'Every copy of this book is out on loan.'
+  }
   const scannedCopy = copies.value.find((c) => c.value === wanted.value)
-  if (scannedCopy?.disabled) return `The copy you scanned is out: ${scannedCopy.label}.`
+  if (scannedCopy?.disabled) {
+    return `The copy you scanned is out: ${scannedCopy.label}.`
+  }
   return ''
 })
 
@@ -92,14 +110,20 @@ const scanning = ref(false)
 const said = ref<ScanNote | null>(null)
 async function scanned(code: string) {
   const { data, error } = await api.GET('/codes/{code}', { params: { path: { code } } })
-  if (error) return (said.value = scanNote(messageOf(error), 'bad'))
+  if (error) {
+    return (said.value = scanNote(messageOf(error), 'bad'))
+  }
   if (!data.bookId) {
     const why = data.message || 'That book is not in your library.'
     return (said.value = scanNote(why, 'bad'))
   }
-  if (!library.loaded) await library.load()
+  if (!library.loaded) {
+    await library.load()
+  }
   const row = library.rows.find((r) => r.id === data.bookId)
-  if (!row) return (said.value = scanNote('That book is not in your library.', 'bad'))
+  if (!row) {
+    return (said.value = scanNote('That book is not in your library.', 'bad'))
+  }
   wanted.value = data.kind === 'copy' ? data.copyId : 0
   picked.value = row
   scanning.value = false

@@ -16,13 +16,18 @@ const series = ref<Series[]>([])
 const loaded = ref(false)
 onMounted(async () => {
   const { data, error } = await api.GET('/series')
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   series.value = data.series ?? []
   loaded.value = true
 })
 
 const summary = computed(() => {
-  if (!loaded.value) return ''
+  if (!loaded.value) {
+    return ''
+  }
   const n = series.value.length
   const gaps = series.value.filter((s) => s.gaps?.length).length
   return [`${n} series`, gaps ? `${gaps} with gaps` : ''].filter(Boolean).join(' · ')

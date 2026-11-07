@@ -30,8 +30,12 @@ export function useLength(
   return computed({
     get: () => {
       const mm = get()
-      if (!mm) return null
-      if (typed.value && fromUnit(typed.value, units.unit) === mm) return typed.value
+      if (!mm) {
+        return null
+      }
+      if (typed.value && fromUnit(typed.value, units.unit) === mm) {
+        return typed.value
+      }
       return inUnit(mm, units.unit, 2)
     },
     set: (v) => {

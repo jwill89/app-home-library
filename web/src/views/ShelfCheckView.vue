@@ -25,7 +25,10 @@ const shelf = ref<ShelfPlan | null>(null)
 const loaded = ref(false)
 async function load() {
   const { data, error } = await api.GET('/layout', { params: { query: { proposal: false } } })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   shelf.value = data.shelves?.find((s) => s.id === props.id) ?? null
   loaded.value = true
 }
@@ -58,13 +61,21 @@ async function seen(copyId: number) {
     params: { path: { id: copyId } },
     body: { on: today() },
   })
-  if (error) notice.failed(error)
+  if (error) {
+    notice.failed(error)
+  }
 }
 
 async function heard(code: string) {
   const { data, error } = await api.GET('/codes/{code}', { params: { path: { code } } })
-  if (error) return tell(messageOf(error), 'bad')
-  if (data.kind === 'retail') return tell(data.message, 'bad')
+  if (error) {
+    tell(messageOf(error), 'bad')
+    return
+  }
+  if (data.kind === 'retail') {
+    tell(data.message, 'bad')
+    return
+  }
   // A label names its copy; an ISBN, the next copy of its book this shelf still lacks.
   const here =
     data.kind === 'copy'
@@ -73,15 +84,20 @@ async function heard(code: string) {
   if (here) {
     found.value = new Set(found.value).add(here.copyId)
     await seen(here.copyId)
-    return tell(`Found: ${here.title}`, 'good')
+    tell(`Found: ${here.title}`, 'good')
+    return
   }
-  if (!data.bookId) return tell('Not in your library', 'bad')
+  if (!data.bookId) {
+    tell('Not in your library', 'bad')
+    return
+  }
   if (data.kind === 'copy') {
     await seen(data.copyId)
     const place = await api.GET('/copies/{id}/place', { params: { path: { id: data.copyId } } })
     const where = place.data ? placeLine(place.data) : 'Somewhere else'
     elsewhere.value = [{ barcode: data.barcode, title: data.title, where }, ...elsewhere.value]
-    return tell(`Belongs elsewhere: ${data.title}`, 'info')
+    tell(`Belongs elsewhere: ${data.title}`, 'info')
+    return
   }
   tell(`Not on this shelf: ${data.title}`, 'info')
 }
@@ -90,7 +106,9 @@ const typed = ref('')
 function submitTyped() {
   const code = typed.value.replace(/[\s-]/g, '')
   typed.value = ''
-  if (code) void heard(code)
+  if (code) {
+    void heard(code)
+  }
 }
 
 // A book not found may be lost: the owner says so, through the one form for a copy gone.
@@ -98,7 +116,9 @@ const lostCopy = ref<ShelfBook | null>(null)
 const lostOpen = computed({
   get: () => lostCopy.value !== null,
   set: (v) => {
-    if (!v) lostCopy.value = null
+    if (!v) {
+      lostCopy.value = null
+    }
   },
 })
 const row = (d: unknown) => d as ShelfBook

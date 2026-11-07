@@ -25,18 +25,25 @@ const f = (name: string) => `${id}-${name}`
 const input = ref<GoneInput>({ as: 'lost', on: today(), note: '' })
 const busy = ref(false)
 watch(open, (v) => {
-  if (v) input.value = { as: props.as ?? 'lost', on: today(), note: '' }
+  if (v) {
+    input.value = { as: props.as ?? 'lost', on: today(), note: '' }
+  }
 })
 
 async function save() {
-  if (!props.copy) return
+  if (!props.copy) {
+    return
+  }
   busy.value = true
   const { error } = await api.PUT('/copies/{id}/gone', {
     params: { path: { id: props.copy.id } },
     body: input.value,
   })
   busy.value = false
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   notice.done(`${props.copy.barcode}: ${goneKindLabel(input.value.as).toLowerCase()}`)
   open.value = false
   emit('saved')

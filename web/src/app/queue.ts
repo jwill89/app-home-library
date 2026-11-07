@@ -19,17 +19,23 @@ export function useQueue(onProgress?: () => unknown, enabled = true) {
 
   async function load() {
     const { data } = await api.GET('/enrichment')
-    if (data) queue.value = data
+    if (data) {
+      queue.value = data
+    }
   }
 
   useFeed(['lookup'], async () => {
     const finished = queue.value.done + queue.value.failed
     await load()
-    if (queue.value.done + queue.value.failed !== finished) await onProgress?.()
+    if (queue.value.done + queue.value.failed !== finished) {
+      await onProgress?.()
+    }
   })
 
   onMounted(() => {
-    if (enabled) void load()
+    if (enabled) {
+      void load()
+    }
   })
 
   return { queue, total, progress }

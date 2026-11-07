@@ -11,7 +11,7 @@ import {
   faFileCsv,
   faKey,
   faRightFromBracket,
-} from '@fortawesome/pro-regular-svg-icons'
+} from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import { api, apiURL, type Passkey, type SetupCode } from '@/api/client'
 import { useConfirmAction } from '@/app/confirm'
 import { day } from '@/app/format'
@@ -42,7 +42,10 @@ const libraryProblem = computed(() =>
 
 async function load() {
   const { data, error } = await api.GET('/passkeys')
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   passkeys.value = data.passkeys ?? []
 }
 onMounted(load)
@@ -59,7 +62,10 @@ async function addHere() {
 
 async function makeCode() {
   const { data, error } = await api.POST('/setup-codes')
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   code.value = data
 }
 
@@ -73,7 +79,10 @@ function remove(p: Passkey) {
     },
     async () => {
       const { error } = await api.DELETE('/passkeys/{id}', { params: { path: { id: p.id } } })
-      if (error) return notice.failed(error)
+      if (error) {
+        notice.failed(error)
+        return
+      }
       await load()
     },
   )

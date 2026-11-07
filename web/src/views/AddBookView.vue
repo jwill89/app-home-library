@@ -10,7 +10,7 @@ import {
   faFileImport,
   faFileLines,
   faMagnifyingGlass,
-} from '@fortawesome/pro-regular-svg-icons'
+} from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import {
   api,
   formData,
@@ -109,7 +109,9 @@ const destinations = [
 ]
 
 function setPhoto(blob: Blob | null) {
-  if (photoURL.value) URL.revokeObjectURL(photoURL.value)
+  if (photoURL.value) {
+    URL.revokeObjectURL(photoURL.value)
+  }
   photo.value = blob
   photoURL.value = blob ? URL.createObjectURL(blob) : ''
 }
@@ -140,8 +142,10 @@ async function lookUp(code = isbn.value) {
   }
   existing.value = data.existingId
   answered.value = data.answered ?? []
-  unreachable.value = Object.keys(data.failed ?? {})
-  if (data.existingId) return
+  unreachable.value = Object.keys(data.failed)
+  if (data.existingId) {
+    return
+  }
   if (!data.answered?.length) {
     problem.value = 'No source knows this ISBN. Check the digits, or add the book by hand.'
     unknownISBN.value = data.proposal.isbn13
@@ -160,8 +164,9 @@ async function find() {
     return
   }
   results.value = data.candidates ?? []
-  if (!results.value.length)
+  if (!results.value.length) {
     problem.value = 'Nothing found. Try fewer words, or add the book by hand.'
+  }
 }
 
 async function pick(c: Candidate) {
@@ -215,7 +220,9 @@ async function save() {
       params: { path: { id: data.id } },
       ...formData(photo.value),
     })
-    if (res.error) notice.failed(res.error)
+    if (res.error) {
+      notice.failed(res.error)
+    }
   }
   saving.value = false
   remember(lastSectionKey, copy.value.section)

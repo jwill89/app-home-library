@@ -2,7 +2,7 @@
 import { onMounted, ref, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
-import { faFileArrowUp } from '@fortawesome/pro-regular-svg-icons'
+import { faFileArrowUp } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import { api, type Course, type DocumentInput } from '@/api/client'
 import { addDocumentFile, documentFileTypes, documentToInput, emptyDocument } from '@/app/documents'
 import { fileSize } from '@/app/format'
@@ -41,9 +41,14 @@ function leaveOut(f: File) {
 onMounted(async () => {
   const c = await api.GET('/courses')
   courses.value = c.data?.courses ?? []
-  if (!props.id) return
+  if (!props.id) {
+    return
+  }
   const { data, error } = await api.GET('/documents/{id}', { params: { path: { id: props.id } } })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   doc.value = documentToInput(data)
   savedTitle.value = data.title
   loaded.value = true
@@ -56,7 +61,8 @@ async function save() {
     : await api.POST('/documents', { body: doc.value })
   if (error) {
     busy.value = false
-    return notice.failed(error)
+    notice.failed(error)
+    return
   }
   if (props.id) {
     busy.value = false
@@ -67,8 +73,11 @@ async function save() {
   let added = 0
   for (const f of files.value) {
     const sent = await addDocumentFile(data.id, f, f.name)
-    if (sent.error) notice.failed(new Error(`${f.name} was not added: ${messageOf(sent.error)}`))
-    else added++
+    if (sent.error) {
+      notice.failed(new Error(`${f.name} was not added: ${messageOf(sent.error)}`))
+    } else {
+      added++
+    }
   }
   busy.value = false
   notice.done(
@@ -83,7 +92,9 @@ async function save() {
 }
 
 function cancel() {
-  if (props.id) return returnTo(router, `/papers/${props.id}`)
+  if (props.id) {
+    return returnTo(router, `/papers/${props.id}`)
+  }
   return goBack(router, '/papers')
 }
 </script>

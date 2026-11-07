@@ -91,10 +91,15 @@ func (s *Service) work(ctx context.Context, id int64, fresh bool) {
 // fill looks an edition up and fills its blanks, asking each source again when fresh and
 // otherwise taking what it said last time, where it said anything. Nothing the owner typed or
 // an import brought is overwritten; a plain "paperback" may become mass market or trade, which
-// only says more. It fails only when no source could be asked, so the queue tries again later.
+// only says more. A fresh lookup is one the owner asked for, so what the sources proposed is
+// kept, and what they give otherwise is offered as the book's own "look up again" offers it.
+// It fails only when no source could be asked, so the queue tries again later.
 func (s *Service) fill(ctx context.Context, id int64, fresh bool) error {
-	_, err := s.enrich(ctx, id, fresh)
-	return err
+	res, err := s.enrich(ctx, id, fresh)
+	if err != nil || res == nil || !fresh {
+		return err
+	}
+	return s.keepProposal(ctx, id, &res.Proposal)
 }
 
 // lookupFields are the details of a book a source can give, by their names in BookInput.
@@ -102,33 +107,6 @@ func (s *Service) fill(ctx context.Context, id int64, fresh bool) error {
 var lookupFields = []string{"title", "subtitle", "contributors", "series", "seriesNumber", "lccn", "publisher",
 	"publishPlace", "published", "editionStatement", "format", "pages", "heightMm", "widthMm", "thicknessMm",
 	"language", "ddc", "lcc", "description"}
-
-// Suggestions are what a lookup the owner asked for offers to change: the book with every
-// suggested change made, and which fields those are. The book is as it was saved.
-type Suggestions struct {
-	Book      *Book     `json:"book"`
-	Fields    []string  `json:"fields" enum:"title,subtitle,contributors,series,seriesNumber,lccn,publisher,publishPlace,published,editionStatement,format,pages,heightMm,widthMm,thicknessMm,language,ddc,lcc,description"`
-	Suggested BookInput `json:"suggested"`
-}
-
-// Refresh is the owner's "look up again": every source is asked afresh, not answered from what
-// it said before, the blanks are filled as Enrich fills them, and each detail the sources now
-// give otherwise comes back as a suggestion to take or leave.
-func (s *Service) Refresh(ctx context.Context, id int64) (*Suggestions, error) {
-	res, err := s.enrich(ctx, id, true)
-	if err != nil {
-		return nil, err
-	}
-	book, err := s.Get(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	out := &Suggestions{Book: book, Fields: []string{}, Suggested: book.Input()}
-	if res != nil {
-		out.Fields = differences(&out.Suggested, &res.Proposal)
-	}
-	return out, nil
-}
 
 // enrich is Enrich, with what the sources said; nil for a book without an ISBN. fresh asks
 // each source again rather than taking its answer from the cache.
@@ -280,8 +258,10 @@ func fillBlanks(in *BookInput, p *lookup.Proposal) {
 
 // differences changes every field the proposal gives otherwise than the input and returns
 // those fields, in the form's order. Blanks are filled before, so each one replaces something
-// and is the owner's to take or leave. Spacing is no difference, and nor is a length within a
-// centimetre: the Library of Congress measures in whole centimetres, rounded up.
+// and is the owner's to take or leave. The same words are no difference, whatever their case,
+// spacing, or punctuation ("Lanham, Md." is "Lanham, Md"); nor is a date the book has more
+// exactly than the source, nor a length within a centimetre: the Library of Congress measures
+// in whole centimetres, rounded up.
 func differences(in *BookInput, p *lookup.Proposal) []string {
 	fields := []string{}
 	took := func(field string) {
@@ -289,7 +269,7 @@ func differences(in *BookInput, p *lookup.Proposal) []string {
 		fields = append(fields, field)
 	}
 	str := func(field string, dst *string, v string) {
-		if v != "" && *dst != "" && strings.Join(strings.Fields(*dst), " ") != strings.Join(strings.Fields(v), " ") {
+		if v != "" && *dst != "" && !slices.Equal(keyWords(*dst), keyWords(v)) {
 			*dst = v
 			took(field)
 		}
@@ -302,9 +282,14 @@ func differences(in *BookInput, p *lookup.Proposal) []string {
 	}
 	str("title", &in.Title, p.Title)
 	str("subtitle", &in.Subtitle, p.Subtitle)
-	// People only when a source names someone the book lacks: one that names fewer (no
-	// translator, say) knows less, not better.
-	if len(in.Contributors) > 0 && slices.ContainsFunc(p.Contributors, func(c lookup.Contributor) bool { return !slices.Contains(in.Contributors, c) }) {
+	// People only when a source names someone the book lacks, by their name's words and their
+	// role: one that names fewer (no translator, say) knows less, not better.
+	named := func(c lookup.Contributor) bool {
+		return slices.ContainsFunc(in.Contributors, func(h lookup.Contributor) bool {
+			return h.Role == c.Role && slices.Equal(keyWords(h.Name), keyWords(c.Name))
+		})
+	}
+	if len(in.Contributors) > 0 && slices.ContainsFunc(p.Contributors, func(c lookup.Contributor) bool { return !named(c) }) {
 		in.Contributors = p.Contributors
 		took("contributors")
 	}
@@ -323,7 +308,9 @@ func differences(in *BookInput, p *lookup.Proposal) []string {
 	str("lccn", &in.LCCN, p.LCCN)
 	str("publisher", &in.Publisher, p.Publisher)
 	str("publishPlace", &in.PublishPlace, p.PublishPlace)
-	str("published", &in.Published, p.Published)
+	if !strings.HasPrefix(in.Published, p.Published) {
+		str("published", &in.Published, p.Published)
+	}
 	str("editionStatement", &in.EditionStatement, p.EditionStatement)
 	str("format", &in.Format, p.Format)
 	num("pages", &in.Pages, p.Pages, 1)

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { faBook } from '@fortawesome/pro-regular-svg-icons'
+import { faBook } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import type { Cover } from '@/api/client'
 import { coverSrcset, coverURL } from '@/app/format'
 

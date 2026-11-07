@@ -2,7 +2,7 @@
 import { ref, useId, useTemplateRef } from 'vue'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
-import { faFileImport } from '@fortawesome/pro-regular-svg-icons'
+import { faFileImport } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import { api, formData, type ImportReport, type NotOwned } from '@/api/client'
 import { useNotice } from '@/app/problem'
 import { useQueue } from '@/app/queue'
@@ -31,20 +31,27 @@ async function chosen(e: Event) {
   const el = e.target as HTMLInputElement
   const file = el.files?.[0]
   el.value = ''
-  if (!file) return
+  if (!file) {
+    return
+  }
   busy.value = true
   const { data, error } = await api.POST('/imports', {
     params: { query: { notOwned: notOwned.value } },
     ...formData(file),
   })
   busy.value = false
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   report.value = data
   reported.value = notOwned.value
 }
 
 function added(r: ImportReport): string {
-  if (!r.documents) return `${r.added} of ${r.rows} books added.`
+  if (!r.documents) {
+    return `${r.added} of ${r.rows} books added.`
+  }
   return `${count(r.added, 'book')} and ${count(r.documents, 'paper')} added, of ${r.rows} references.`
 }
 </script>

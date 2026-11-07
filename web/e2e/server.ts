@@ -53,7 +53,9 @@ export default async function setup(): Promise<() => Promise<void>> {
   const server = spawn(bin, [], { env, stdio: 'ignore' })
   for (let i = 0; i < 100; i++) {
     try {
-      if ((await fetch(`${origin}/healthz`)).ok) break
+      if ((await fetch(`${origin}/healthz`)).ok) {
+        break
+      }
     } catch {
       // Not listening yet.
     }

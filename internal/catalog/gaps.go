@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"homelibrary/internal/db"
 )
@@ -21,39 +22,28 @@ type BookGaps struct {
 	Missing []string `json:"missing" enum:"cover,ddc,heightMm,thicknessMm,pages,format,publisher,published,description"`
 }
 
-// GapCount is how many books lack one detail.
-type GapCount struct {
-	Field string `json:"field" enum:"cover,ddc,heightMm,thicknessMm,pages,format,publisher,published,description"`
-	Books int64  `json:"books"`
-}
-
-// Gaps lists every book in the house that lacks a detail, with what it lacks, and how many
-// books lack each.
-func (s *Service) Gaps(ctx context.Context) ([]BookGaps, []GapCount, error) {
+// Gaps lists every book in the house that lacks a detail, with what it lacks; with ids, only
+// those books, as the change feed names them.
+func (s *Service) Gaps(ctx context.Context, ids []int64) ([]BookGaps, error) {
 	rows, err := s.read().ListBookGaps(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("gaps: %w", err)
+		return nil, fmt.Errorf("gaps: %w", err)
 	}
-	counts := map[string]int64{}
 	out := []BookGaps{}
 	for _, r := range rows {
+		if len(ids) > 0 && !slices.Contains(ids, r.ID) {
+			continue
+		}
 		missing := lacks(r)
 		if len(missing) == 0 {
 			continue
-		}
-		for _, f := range missing {
-			counts[f]++
 		}
 		out = append(out, BookGaps{
 			BookID: r.ID, Title: r.Title, Authors: r.Authors, ISBN13: r.Isbn13.String,
 			Cover: s.cover(r.Cover), Missing: missing,
 		})
 	}
-	totals := make([]GapCount, 0, len(GapFields))
-	for _, f := range GapFields {
-		totals = append(totals, GapCount{Field: f, Books: counts[f]})
-	}
-	return out, totals, nil
+	return out, nil
 }
 
 func lacks(r *db.ListBookGapsRow) []string {

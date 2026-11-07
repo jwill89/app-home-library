@@ -7,44 +7,96 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+# The shared workflows (shared-tooling, at the release the shared/ submodule holds; the docs
+# job fails if the two ever differ), and the one check only this repo has.
 jobs:
-  build:
+  # Lint, type-check, format, tests with their coverage floor (vite.config.ts), the audits
+  # (any advisory in what ships, a high one in the tooling), and the build, which the Go
+  # binary embeds.
+  web:
+    uses: jwill89/shared-tooling/.github/workflows/web.yml@v2.1.7
+    with:
+      dir: web
+      fontawesome: true
+      scripts: lint typecheck format:check test:coverage audit:all build
+      artifact-path: web/dist
+    secrets:
+      FONTAWESOME_TOKEN: ${{ secrets.FONTAWESOME_NPM_TOKEN }}
+
+  # The Go packages embed web/dist, so they wait for the frontend's build. The tests run
+  # under the race detector: the background lookup runs beside the requests.
+  go:
+    needs: web
+    uses: jwill89/shared-tooling/.github/workflows/go.yml@v2.1.7
+    with:
+      download-artifact: web-dist
+      download-path: web/dist
+      # A little under what the tests reached when it was set (2026-11-07: 57.4%); raise it
+      # as tests land, never lower it. sqlc's output is left out of the count; the
+      # hand-written files beside it in internal/db still count.
+      coverage-floor: 57
+      coverage-exclude: |
+        /internal/db/(db|models)\.go$
+        /internal/db/[^/]+\.sql\.go$
+      build: GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o dist/homelibrary-linux-amd64 ./cmd/homelibrary
+
+  # The whole app in the runner's Chrome (web/playwright.config.ts): the server built from
+  # this tree with the front end embedded, on an empty library of its own, and every main
+  # page through axe at WCAG 2.2 AA. The web job's install comes back from its cache, so the
+  # Font Awesome kit is not fetched again; the front end is built here for the server to embed.
+  e2e:
+    needs: [web, go]
+    uses: jwill89/shared-tooling/.github/workflows/e2e.yml@v2.1.7
+    with:
+      dir: web
+      go-version-file: go.mod
+      fontawesome: true
+      setup: npm --prefix web run build
+    secrets:
+      FONTAWESOME_TOKEN: ${{ secrets.FONTAWESOME_NPM_TOKEN }}
+
+  scripts:
+    uses: jwill89/shared-tooling/.github/workflows/pwsh.yml@v2.1.7
+
+  docs:
+    uses: jwill89/shared-tooling/.github/workflows/docs.yml@v2.1.7
+
+  # The code generated from the schema and the API document is what the generators make
+  # now: sqlc's, the OpenAPI document, and the TypeScript client.
+  generated:
+    needs: web
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          submodules: true
+          persist-credentials: false
 
       - uses: actions/setup-node@v7
         with:
           node-version-file: web/.nvmrc
-          cache: npm
-          cache-dependency-path: web/package-lock.json
 
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
+      # The web job's node_modules, by the same key, so the Font Awesome kit isn't fetched
+      # again; the web job always saves it first.
       - name: Frontend dependencies
-        working-directory: web
-        env:
-          FONTAWESOME_TOKEN: ${{ secrets.FONTAWESOME_TOKEN }}
-        run: |
-          test -n "$FONTAWESOME_TOKEN" || { echo "::error::The FONTAWESOME_TOKEN repository secret is not set (docs/ops.md)."; exit 1; }
-          echo "//npm.fontawesome.com/:_authToken=${FONTAWESOME_TOKEN}" >> ~/.npmrc
-          npm ci --prefer-offline
+        uses: actions/cache/restore@v6
+        with:
+          path: web/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('web/package-lock.json', 'web/.nvmrc', 'shared/lint/web/*.js', 'shared/lint/web/*.json', 'shared/test/a11y/*.js', 'shared/test/a11y/*.json') }}
+          fail-on-cache-miss: true
 
-      # The Go packages embed web/dist, so the frontend builds before any Go command runs.
-      - name: Frontend
-        working-directory: web
-        run: |
-          npm run lint
-          npm run typecheck
-          npm run format:check
-          npm test
-          npm audit --omit=dev --audit-level=low
-          npm audit --audit-level=high
-          npm run build
+      # The Go packages embed web/dist.
+      - uses: actions/download-artifact@v8
+        with:
+          name: web-dist
+          path: web/dist
 
       - name: Generated code is current
         run: |
@@ -54,39 +106,23 @@ jobs:
           cd web && npx -y openapi-typescript@7.13.0 src/api/openapi.json -o src/api/schema.d.ts && npx prettier --write src/api/schema.d.ts src/api/openapi.json && cd ..
           git diff --exit-code -- internal/db web/src/api
 
-      - run: go vet ./...
-
-      # Built from source with the pinned toolchain: a prebuilt linter binary cannot read
-      # export data from a newer Go than it was compiled with.
-      - uses: golangci/golangci-lint-action@v9
+  # The release: a green push to main whose web/package.json version has no release yet is
+  # tagged v<version> at that commit, with its CHANGELOG.md section as the notes
+  # (.github/scripts/release.sh). Every other push is a no-op. `task deploy` ships the tag.
+  release:
+    name: Tag + release (on version bump)
+    needs: [web, go, e2e, scripts, docs, generated]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
         with:
-          version: v2.15.0
-          install-mode: goinstall
+          fetch-depth: 0 # the existing tags, to see what's already released
+          persist-credentials: false
 
-      - name: govulncheck
-        run: go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
-
-      # Under the race detector: the background lookup runs beside the requests.
-      - run: go test -race ./...
-
-      # The whole app in the runner's Chrome, against a server of its own.
-      - name: End-to-end
-        working-directory: web
-        run: npx playwright test
-
-      - name: Scripts
-        shell: pwsh
-        run: |
-          Install-PSResource PSScriptAnalyzer -Version 1.25.0 -Scope CurrentUser -TrustRepository -Quiet
-          foreach ($f in 'scripts/deploy.ps1', 'scripts/deploy.config.example.ps1', 'scripts/pull-backup.ps1') {
-            $r = Invoke-ScriptAnalyzer -Path $f -Settings PSScriptAnalyzerSettings.psd1
-            $r | Format-Table -AutoSize
-            if ($r) { exit 1 }
-          }
-
-      - name: Linux binary
+      - name: Tag + release on version bump
         env:
-          GOOS: linux
-          GOARCH: amd64
-          CGO_ENABLED: '0'
-        run: go build -o dist/homelibrary-linux-amd64 ./cmd/homelibrary
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .github/scripts/release.sh

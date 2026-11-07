@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { faCircleExclamation } from '@fortawesome/pro-regular-svg-icons'
+import { faCircleExclamation } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import { lateLabel } from '@/app/loans'
 
 // A loan past its due date: the words say it, the color and the mark repeat it.

@@ -1,7 +1,12 @@
+# golangci-lint for every Go module: the standard set (errcheck, govet, ineffassign,
+# staticcheck, unused) and the linters below. Each one off in a place is off below with
+# its reason, or at the line with a nolint that says why.
+#
+# This is the template in shared-tooling/lint/go. A project's .golangci.yml is generated
+# from it by `go run -C shared/lint/go .`, which fills in the module name and merges
+# the project's own .golangci.local.yml on top. Edit that file, not the generated one.
 version: "2"
 
-# The standard set (errcheck, govet, ineffassign, staticcheck, unused) and these. Each one
-# off in a place is off below with its reason, or at the line with a nolint that says why.
 linters:
   enable:
     - bodyclose # a response body left open leaks the connection
@@ -26,7 +31,7 @@ linters:
     - unparam
     - usestdlibvars
     - wastedassign
-    # Not contextcheck: work that outlives a request (a lookup, a cover download) is handed
+    # Not contextcheck: work that outlives a request (a Discord post, a lookup) is handed
     # a fresh context on purpose, and every one of those would need excusing.
     # Not sqlclosecheck: rows are closed by hand where the close's error is kept.
   settings:
@@ -38,7 +43,7 @@ linters:
       # Its own default rules, less the two below.
       enable-default-rules: true
       rules:
-        # Exported names get a doc comment only when the name does not already say it (CLAUDE.md).
+        # Exported names get a doc comment only when the name does not already say it.
         - name: exported
           disabled: true
         - name: package-comments
@@ -51,14 +56,14 @@ linters:
         - (net/http.ResponseWriter).Write
         - github.com/danielgtaylor/huma/v2.WriteErr
   exclusions:
-    # A Go file ships inside one of the frontend's npm packages; it is not this module's.
-    paths:
-      - web/node_modules
     rules:
       # Tests read every body through a helper and talk to their own servers, and a test's
       # helper keeps a parameter its callers happen to agree on, for reading at the call.
       - path: _test\.go
         linters: [bodyclose, noctx, gosec, unparam]
+    # A Go file ships inside one of the frontend's npm packages; it is not this module's.
+    paths:
+      - web/node_modules
 
 formatters:
   enable:
@@ -66,7 +71,7 @@ formatters:
     - goimports
   settings:
     goimports:
-      # The module's own packages are a group of their own, after everything else. Its name
-      # has no dot, which goimports would otherwise read as the standard library.
+      # The module's own packages are a group of their own, after everything else. A name
+      # with no dot would otherwise be read as the standard library.
       local-prefixes:
         - homelibrary

@@ -1,5 +1,6 @@
 {
   "name": "home-library-web",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -13,12 +14,13 @@
     "format": "prettier --write src e2e/*.ts playwright.config.ts",
     "format:check": "prettier --check src e2e/*.ts playwright.config.ts",
     "test": "vitest run",
-    "e2e": "playwright test"
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "audit:all": "npm audit --omit=dev --audit-level=low && npm audit --audit-level=high"
   },
   "dependencies": {
+    "@awesome.me/kit-4f2bd9b614": "^1.0.2",
     "@fortawesome/fontawesome-svg-core": "^7.3.1",
-    "@fortawesome/pro-regular-svg-icons": "^7.0.0",
-    "@fortawesome/pro-solid-svg-icons": "^7.0.0",
     "@fortawesome/vue-fontawesome": "^3.3.3",
     "@primeuix/themes": "^1.2.5",
     "@simplewebauthn/browser": "^14.0.0",
@@ -32,22 +34,16 @@
     "zxing-wasm": "3.1.6"
   },
   "devDependencies": {
+    "@jwill89/lint-web": "file:../shared/lint/web",
+    "@jwill89/test-a11y": "file:../shared/test/a11y",
     "@playwright/test": "1.64.1",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "26.6.5",
     "@vitejs/plugin-vue": "6.0.10",
-    "@vue/eslint-config-prettier": "10.2.0",
-    "@vue/eslint-config-typescript": "14.9.0",
-    "@vue/tsconfig": "0.9.1",
-    "eslint": "10.13.0",
-    "eslint-plugin-vue": "10.11.1",
-    "eslint-plugin-vuejs-accessibility": "2.6.3",
-    "happy-dom": "^21.0.4",
-    "postcss-html": "2.0.0",
+    "@vitest/coverage-v8": "^5.1.0",
+    "eslint": "10.14.0",
     "prettier": "3.9.10",
-    "stylelint": "17.16.0",
-    "stylelint-config-recommended-vue": "2.0.0",
-    "stylelint-config-standard": "40.0.0",
+    "stylelint": "18.0.0",
     "tailwindcss": "^4.3.3",
     "typescript": "6.0.3",
     "vite": "8.3.5",

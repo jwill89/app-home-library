@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, useId } from 'vue'
 import InputText from 'primevue/inputtext'
-import { faXmark } from '@fortawesome/pro-regular-svg-icons'
+import { faXmark } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 
 // A list of names typed one at a time (Enter or a comma adds one), with the names already
 // in use offered as the owner types.
@@ -14,9 +14,13 @@ const listId = useId()
 function add() {
   const v = draft.value.trim().replace(/,$/, '').trim()
   draft.value = ''
-  if (!v) return
+  if (!v) {
+    return
+  }
   const list = model.value ?? []
-  if (!list.some((x) => x.toLowerCase() === v.toLowerCase())) model.value = [...list, v]
+  if (!list.some((x) => x.toLowerCase() === v.toLowerCase())) {
+    model.value = [...list, v]
+  }
 }
 
 function remove(i: number) {

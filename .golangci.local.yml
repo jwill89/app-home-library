@@ -1,0 +1,5 @@
+linters:
+  exclusions:
+    # A Go file ships inside one of the frontend's npm packages; it is not this module's.
+    paths:
+      - web/node_modules

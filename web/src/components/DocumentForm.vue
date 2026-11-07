@@ -4,7 +4,7 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
-import { faFileImport, faMagnifyingGlass } from '@fortawesome/pro-regular-svg-icons'
+import { faFileImport, faMagnifyingGlass } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import { api, type Course, type DocumentFill, type DocumentInput } from '@/api/client'
 import { containerLabel, courseLabel, documentKinds, paperDetailLabel } from '@/app/format'
 import { messageOf } from '@/app/problem'
@@ -72,7 +72,9 @@ async function fillFromExport(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
   input.value = ''
-  if (!file) return
+  if (!file) {
+    return
+  }
   problem.value = ''
   found.value = ''
   reading.value = true

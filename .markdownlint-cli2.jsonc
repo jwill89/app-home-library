@@ -1,0 +1,16 @@
+// markdownlint for the docs (`task shared:lint:md`, and CI): the shared config from
+// shared-tooling's lint/markdown. The VS Code markdownlint extension reads this file too.
+{
+  "config": { "extends": "shared/lint/markdown/markdownlint.jsonc" },
+  "globs": ["**/*.md"],
+  // A failed end-to-end run leaves Playwright's error-context.md files in web/test-results.
+  "ignores": [
+    "**/node_modules/**",
+    "shared/**",
+    "web/dist/**",
+    "dist/**",
+    "devdata/**",
+    "web/test-results/**",
+    "web/playwright-report/**"
+  ]
+}

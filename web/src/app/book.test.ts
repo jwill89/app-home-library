@@ -18,9 +18,9 @@ describe('prepare', () => {
       ],
     }
     const out = prepare(start, edited)
-    expect(out.sources?.title).toBe('owner')
-    expect(out.sources?.ddc).toBe('loc')
-    expect(out.sources?.contributors).toBe('owner')
+    expect(out.sources.title).toBe('owner')
+    expect(out.sources.ddc).toBe('loc')
+    expect(out.sources.contributors).toBe('owner')
     expect(out.contributors).toHaveLength(1)
   })
 })

@@ -15,7 +15,9 @@ const notice = useNotice()
 
 async function choose(v: ReadStatus) {
   const { error } = await library.setStatus(props.book.id, v)
-  if (error) notice.failed(error)
+  if (error) {
+    notice.failed(error)
+  }
 }
 </script>
 

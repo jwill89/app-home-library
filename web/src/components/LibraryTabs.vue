@@ -6,7 +6,7 @@ import {
   faFileLines,
   faGift,
   faLayerGroup,
-} from '@fortawesome/pro-regular-svg-icons'
+} from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import type { Sees } from '@/api/client'
 import { useSession } from '@/app/session'
 

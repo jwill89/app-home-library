@@ -26,8 +26,8 @@ describe('perspective', () => {
     const m = projection(quad)
     const corners = [project(m, 0, 0), project(m, 1, 0), project(m, 1, 1), project(m, 0, 1)]
     corners.forEach((p, i) => {
-      expect(p.x).toBeCloseTo(quad[i].x, 6)
-      expect(p.y).toBeCloseTo(quad[i].y, 6)
+      expect(p.x).toBeCloseTo(quad[i]!.x, 6)
+      expect(p.y).toBeCloseTo(quad[i]!.y, 6)
     })
   })
 

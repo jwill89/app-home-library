@@ -48,17 +48,23 @@ export async function detectCover(photo: HTMLCanvasElement): Promise<Quad | null
   small.width = Math.max(1, Math.round(photo.width * fit))
   small.height = Math.max(1, Math.round(photo.height * fit))
   const ctx = small.getContext('2d')
-  if (!ctx) return null
+  if (!ctx) {
+    return null
+  }
   ctx.drawImage(photo, 0, 0, small.width, small.height)
   const image = ctx.getImageData(0, 0, small.width, small.height)
   const id = ++next
   const points = await new Promise<Point[] | null>((resolve) => {
     waiting.set(id, resolve)
     setTimeout(() => {
-      if (waiting.delete(id)) resolve(null)
+      if (waiting.delete(id)) {
+        resolve(null)
+      }
     }, WAIT)
     detector().postMessage({ id, image })
   })
-  if (points?.length !== 4) return null
+  if (points?.length !== 4) {
+    return null
+  }
   return orderCorners(points.map((p) => ({ x: p.x / fit, y: p.y / fit })))
 }

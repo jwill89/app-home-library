@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import Button from 'primevue/button'
-import { faCalendarPlus, faCopy } from '@fortawesome/pro-regular-svg-icons'
+import { faCalendarPlus, faCopy } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import { api, type CalendarLink } from '@/api/client'
 import { copyText } from '@/app/clipboard'
 import { useConfirmAction } from '@/app/confirm'
@@ -19,14 +19,20 @@ const made = ref('')
 
 async function load() {
   const { data, error } = await api.GET('/calendar-link')
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   link.value = data
 }
 onMounted(load)
 
 async function make() {
   const { data, error } = await api.POST('/calendar-link')
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   made.value = `${location.origin}/calendar/${data.token}.ics`
   await load()
 }
@@ -54,7 +60,10 @@ function turnOff() {
     },
     async () => {
       const { error } = await api.DELETE('/calendar-link')
-      if (error) return notice.failed(error)
+      if (error) {
+        notice.failed(error)
+        return
+      }
       made.value = ''
       await load()
     },
@@ -62,8 +71,11 @@ function turnOff() {
 }
 
 async function copy() {
-  if (await copyText(made.value)) notice.done('Link copied')
-  else notice.failed(new Error('The link could not be copied. Select it and copy it by hand.'))
+  if (await copyText(made.value)) {
+    notice.done('Link copied')
+  } else {
+    notice.failed(new Error('The link could not be copied. Select it and copy it by hand.'))
+  }
 }
 </script>
 

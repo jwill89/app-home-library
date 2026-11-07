@@ -1,26 +1,24 @@
-# Weekly dependency updates, grouped so a quiet week is one pull request per ecosystem.
-# The Font Awesome Pro packages come from a private registry: FONTAWESOME_TOKEN must also
-# exist as a Dependabot secret (Settings, Secrets and variables, Dependabot), since
-# Dependabot cannot read Actions secrets.
+# Weekly dependency updates, from shared-tooling's repo/dependabot.example.yml: weekly on
+# Monday, one pull request per ecosystem for minors and patches together, and majors one by
+# one (they can need code changes). The shared/ submodule moves only with
+# `task shared:update`, so it has no block here.
+#
+# Dependabot can't read Actions secrets: FONTAWESOME_NPM_TOKEN (the Font Awesome kit's
+# registry) exists again as a Dependabot secret (Settings, Secrets and variables,
+# Dependabot).
 version: 2
+
 registries:
+  # web/.npmrc names this registry for its scopes; Dependabot adds the token. Give it no
+  # `scope:`: with one, Dependabot writes its own .npmrc in place of the committed one,
+  # which loses install-links=true, so the lockfile records lint/web and test/a11y as links
+  # and npm ci fails (TarotGen.io, 2026-11-07).
   fontawesome:
     type: npm-registry
     url: https://npm.fontawesome.com
-    token: ${{ secrets.FONTAWESOME_TOKEN }}
+    token: ${{ secrets.FONTAWESOME_NPM_TOKEN }}
+
 updates:
-  - package-ecosystem: gomod
-    directory: /
-    schedule:
-      interval: weekly
-      day: monday
-    groups:
-      go:
-        patterns: ["*"]
-    ignore:
-      # Moved by hand: the scs repository's store tags (sqlite3store/v1.4.1) read to
-      # Dependabot as releases of this module, and the weekly run fails on them.
-      - dependency-name: github.com/alexedwards/scs/sqlite3store
   - package-ecosystem: npm
     directory: /web
     registries:
@@ -30,17 +28,51 @@ updates:
       day: monday
     groups:
       npm-minor:
-        patterns: ["*"]
+        patterns: ['*']
         update-types: [minor, patch]
     ignore:
-      # Held as in Kindred Nights: TypeScript at 6.0 until vue-tsc supports 7.1, and
-      # PrimeVue at 4 with its themes at 1, since PrimeVue 5 needs a license key.
+      # Held on purpose: TypeScript stays on 6.x until vue-tsc supports TypeScript 7.1.
       - dependency-name: typescript
-        update-types: ["version-update:semver-major"]
+        update-types: ['version-update:semver-major']
+      # vue-tsc 3.3.14 turns a `//` in a static attribute (placeholder="https://") into
+      # broken virtual code, which stops it checking the rest of that template
+      # (vuejs/language-tools#6322). Each Vue project pins vue-tsc at 3.3.13 and skips
+      # only 3.3.14, so the fix comes through; drop this once it has.
+      - dependency-name: vue-tsc
+        versions: ['3.3.14']
+      # PrimeVue at 4 with its themes at 1, since PrimeVue 5 needs a licence key and the
+      # component kit replaces PrimeVue (standards/packages.md).
       - dependency-name: primevue
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "@primeuix/themes"
-        update-types: ["version-update:semver-major"]
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@primeuix/themes'
+        update-types: ['version-update:semver-major']
+      # The tools shared-tooling's lint/web owns move to a new major once, in
+      # shared-tooling, with the plugins and configs that must match, and reach here with
+      # `task shared:update`. Minors and patches still come here.
+      - dependency-name: eslint
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'eslint-*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: prettier
+        update-types: ['version-update:semver-major']
+      - dependency-name: stylelint
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'stylelint-*'
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      go:
+        patterns: ['*']
+    ignore:
+      # Moved by hand: the scs repository's store tags (sqlite3store/v1.4.1) read to
+      # Dependabot as releases of this module, and the weekly run fails on them.
+      - dependency-name: github.com/alexedwards/scs/sqlite3store
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

@@ -127,7 +127,7 @@ func TestGaps(t *testing.T) {
 	if _, err := s.Create(ctx, BookInput{Title: "Wanted", ReadStatus: "unread"}, nil, ""); err != nil {
 		t.Fatal(err)
 	}
-	books, counts, err := s.Gaps(ctx)
+	books, err := s.Gaps(ctx, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,10 +135,12 @@ func TestGaps(t *testing.T) {
 	if len(books) != 2 || books[0].Title != "Thin" || slices.Contains(books[0].Missing, "pages") || !slices.Contains(books[0].Missing, "ddc") {
 		t.Errorf("books %+v", books)
 	}
-	for _, c := range counts {
-		if c.Field == "cover" && c.Books != 2 || c.Field == "pages" && c.Books != 0 {
-			t.Errorf("count %+v", c)
-		}
+	if !slices.Equal(books[1].Missing, []string{"cover"}) {
+		t.Errorf("the whole book lacks %v", books[1].Missing)
+	}
+	// Asked about one book, as the change feed names it, the list says nothing of the rest.
+	if books, err = s.Gaps(ctx, []int64{thin, 9999}); err != nil || len(books) != 1 || books[0].BookID != thin {
+		t.Errorf("only the thin book: %+v, err %v", books, err)
 	}
 	n, err := s.QueueLookups(ctx, []int64{thin, 9999})
 	if err != nil || n != 1 {

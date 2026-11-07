@@ -7,7 +7,7 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
-import { faBookArrowRight } from '@fortawesome/pro-regular-svg-icons'
+import { faBookArrowRight } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import { api, type Borrower, type BorrowerInput, type Loan } from '@/api/client'
 import { useConfirmAction } from '@/app/confirm'
 import { useFeed } from '@/app/feed'
@@ -32,8 +32,14 @@ const loaded = ref(false)
 
 async function load() {
   const [l, b] = await Promise.all([api.GET('/loans'), api.GET('/borrowers')])
-  if (l.error) return notice.failed(l.error)
-  if (b.error) return notice.failed(b.error)
+  if (l.error) {
+    notice.failed(l.error)
+    return
+  }
+  if (b.error) {
+    notice.failed(b.error)
+    return
+  }
   loans.value = l.data.loans ?? []
   borrowers.value = b.data.borrowers ?? []
   loaded.value = true
@@ -57,10 +63,16 @@ const out = computed(() =>
 )
 const overdue = computed(() => out.value.filter((l) => l.late > 0).length)
 const summary = computed(() => {
-  if (!loaded.value) return ''
-  if (!out.value.length) return 'Every copy is on the shelf'
+  if (!loaded.value) {
+    return ''
+  }
+  if (!out.value.length) {
+    return 'Every copy is on the shelf'
+  }
   const parts = [`${out.value.length} out`]
-  if (overdue.value) parts.push(`${overdue.value} overdue`)
+  if (overdue.value) {
+    parts.push(`${overdue.value} overdue`)
+  }
   return parts.join(' · ')
 })
 
@@ -91,7 +103,9 @@ async function saved() {
 
 const returnLoan = useReturnLoan()
 async function returned(l: Loan) {
-  if (await returnLoan(l)) await load()
+  if (await returnLoan(l)) {
+    await load()
+  }
 }
 
 function removeLoan(l: Loan) {
@@ -104,7 +118,10 @@ function removeLoan(l: Loan) {
     },
     async () => {
       const { error } = await api.DELETE('/loans/{id}', { params: { path: { id: l.id } } })
-      if (error) return notice.failed(error)
+      if (error) {
+        notice.failed(error)
+        return
+      }
       await load()
     },
   )
@@ -117,21 +134,27 @@ function editBorrower(b: Borrower) {
   borrowerOpen.value = true
 }
 async function saveBorrower() {
-  if (!borrower.value) return
+  if (!borrower.value) {
+    return
+  }
   const { id: bid, input } = borrower.value
   const { error } = await api.PUT('/borrowers/{id}', { params: { path: { id: bid } }, body: input })
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   borrowerOpen.value = false
   await load()
 }
 
 function removeBorrower(b: Borrower) {
   if (b.out > 0) {
-    return notice.failed(
+    notice.failed(
       new Error(
         `${b.name} still has ${b.out === 1 ? 'a copy' : `${b.out} copies`}. Mark it returned first.`,
       ),
     )
+    return
   }
   const past = b.loans === 1 ? 'their one past loan' : `their ${b.loans} past loans`
   ask(
@@ -143,8 +166,13 @@ function removeBorrower(b: Borrower) {
     },
     async () => {
       const { error } = await api.DELETE('/borrowers/{id}', { params: { path: { id: b.id } } })
-      if (error) return notice.failed(error)
-      if (who.value === b.id) who.value = ALL
+      if (error) {
+        notice.failed(error)
+        return
+      }
+      if (who.value === b.id) {
+        who.value = ALL
+      }
       await load()
     },
   )

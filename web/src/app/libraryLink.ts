@@ -23,10 +23,13 @@ export function librarySearchLink(base: string, words: string): string {
   } catch {
     return ''
   }
-  if (u.protocol !== 'https:') return ''
+  if (u.protocol !== 'https:') {
+    return ''
+  }
   const ebsco = u.hostname === 'research.ebsco.com' && /^\/c\/([a-z0-9]+)/i.exec(u.pathname)
-  if (ebsco)
+  if (ebsco) {
     return `https://research.ebsco.com/c/${ebsco[1]}/search/results?q=${encodeURIComponent(words)}`
+  }
   const raw = base.trim()
   return raw.includes('{query}') ? raw.replace('{query}', encodeURIComponent(words)) : ''
 }
@@ -37,10 +40,7 @@ export function librarySearchLink(base: string, words: string): string {
  * A DOI alone finds nothing in EBSCO's databases.
  */
 export function workWords(title: string, authors: readonly string[] = []): string {
-  const main = title
-    .split(/[:;,([.]/)[0]
-    .replace(/["“”]/g, '')
-    .trim()
+  const main = (title.split(/[:;,([.]/)[0] ?? '').replace(/["“”]/g, '').trim()
   const first = parseName(authors[0] ?? '')
   // A body is searched by its whole name; a person by the surname alone, past a suffix.
   const surname = first.whole ?? first.family.split(/[\s,]+/)[0] ?? ''

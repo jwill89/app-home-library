@@ -49,6 +49,8 @@ export function lateLabel(days: number): string {
 /** Where a copy is, for its owner: lent to Ana on Oct 1, 2026, due back Oct 22, 2026. */
 export function loanLine(l: Loan): string {
   const parts = [`Lent to ${l.borrower} on ${calendarDate(l.lentOn)}`]
-  if (l.dueOn) parts.push(`due back ${calendarDate(l.dueOn)}`)
+  if (l.dueOn) {
+    parts.push(`due back ${calendarDate(l.dueOn)}`)
+  }
   return parts.join(', ')
 }

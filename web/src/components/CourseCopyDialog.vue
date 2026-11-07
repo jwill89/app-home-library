@@ -4,7 +4,7 @@ import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
-import { faPlus } from '@fortawesome/pro-regular-svg-icons'
+import { faPlus } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import { api, type Book, type Course, type CourseDetail } from '@/api/client'
 import { copyLabel, courseLabel } from '@/app/format'
 import { useNotice } from '@/app/problem'
@@ -29,13 +29,20 @@ const busy = ref(false)
 const making = ref(false)
 
 watch(open, async (v) => {
-  if (!v) return
+  if (!v) {
+    return
+  }
   course.value = props.courseId ?? 0
   copyId.value = props.book?.copies?.[0]?.id ?? 0
   required.value = true
-  if (props.courseId) return
+  if (props.courseId) {
+    return
+  }
   const { data, error } = await api.GET('/courses')
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   courses.value = data.courses ?? []
   course.value = courses.value[0]?.id ?? 0
 })
@@ -65,7 +72,10 @@ async function save() {
     body: { required: required.value },
   })
   busy.value = false
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   open.value = false
   emit('saved', data)
 }

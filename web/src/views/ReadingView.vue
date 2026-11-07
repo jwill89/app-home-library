@@ -23,9 +23,14 @@ const id = useId()
 
 const stats = ref<ReadingStats | null>(null)
 onMounted(async () => {
-  if (!listLoaded.value) void library.load()
+  if (!listLoaded.value) {
+    void library.load()
+  }
   const { data, error } = await api.GET('/reading')
-  if (error) return notice.failed(error)
+  if (error) {
+    notice.failed(error)
+    return
+  }
   stats.value = data
   year.value = data.years?.[0]?.year ?? ''
 })

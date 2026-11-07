@@ -524,3 +524,61 @@ func TestChangeStream(t *testing.T) {
 		}
 	}
 }
+
+// What the sources propose waits for the owner: listed, offered book by book, and declined a
+// detail at a time. A visitor sees none of it.
+func TestSuggestedChanges(t *testing.T) {
+	a := newApp(t)
+	me := owner(t, a)
+	ctx := context.Background()
+	id, err := a.catalog.Create(ctx, catalog.BookInput{Title: "Blood Song (Raven's Shadow, #1)", Publisher: "Ace", Pages: 591, ReadStatus: "unread"},
+		&catalog.CopyInput{PriceCents: -1}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	type list struct {
+		Books []catalog.SuggestedBook `json:"books"`
+	}
+	if got := decode[list](t, me.expect(http.MethodGet, "/api/v1/suggestions", "", http.StatusOK)); len(got.Books) != 0 {
+		t.Fatalf("offered before any lookup: %+v", got.Books)
+	}
+	// As a lookup the owner asked for would keep it.
+	proposal := `{"title":"Blood Song","publisher":"Ace Books","pages":624,"sources":{"title":"openlibrary","publisher":"loc","pages":"openlibrary"}}`
+	if err := db.New(a.db.Write).KeepProposal(ctx, db.KeepProposalParams{EditionID: id, Proposal: proposal}); err != nil {
+		t.Fatal(err)
+	}
+	got := decode[list](t, me.expect(http.MethodGet, "/api/v1/suggestions", "", http.StatusOK))
+	if len(got.Books) != 1 || got.Books[0].BookID != id || !slices.Equal(got.Books[0].Fields, []string{"title", "publisher", "pages"}) {
+		t.Fatalf("list %+v", got.Books)
+	}
+	// Asked about the books the change feed named, the list says only those.
+	if got := decode[list](t, me.expect(http.MethodGet, "/api/v1/suggestions?ids="+strconv.FormatInt(id, 10), "", http.StatusOK)); len(got.Books) != 1 {
+		t.Errorf("by id: %+v", got.Books)
+	}
+	if got := decode[list](t, me.expect(http.MethodGet, "/api/v1/suggestions?ids=9999", "", http.StatusOK)); len(got.Books) != 0 {
+		t.Errorf("another book: %+v", got.Books)
+	}
+	book := "/api/v1/books/" + strconv.FormatInt(id, 10)
+	if sg := decode[catalog.Suggestions](t, me.expect(http.MethodGet, book+"/suggestions", "", http.StatusOK)); sg.Suggested.Pages != 624 || sg.Suggested.Sources["pages"] != "openlibrary" {
+		t.Errorf("suggested %+v", sg.Suggested)
+	}
+
+	me.expect(http.MethodPost, book+"/declined-suggestions", `{"fields":["title","pages"]}`, http.StatusNoContent)
+	me.expect(http.MethodPost, book+"/declined-suggestions", `{"fields":["category"]}`, http.StatusUnprocessableEntity)
+	me.expect(http.MethodPost, book+"/declined-suggestions", `{"fields":[]}`, http.StatusUnprocessableEntity)
+	me.expect(http.MethodPost, "/api/v1/books/9999/declined-suggestions", `{"fields":["title"]}`, http.StatusNotFound)
+	sg := decode[catalog.Suggestions](t, me.expect(http.MethodGet, book+"/suggestions", "", http.StatusOK))
+	if !slices.Equal(sg.Fields, []string{"publisher"}) || sg.Suggested.Title != "Blood Song (Raven's Shadow, #1)" || sg.Suggested.Pages != 591 {
+		t.Errorf("after declining: fields %v, title %q, pages %d", sg.Fields, sg.Suggested.Title, sg.Suggested.Pages)
+	}
+
+	_, token, err := auth.NewShare(ctx, a.db, "Friend", time.Time{}, scope("all", true, "none"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	visitor := &client{t: t, a: a}
+	visitor.expect(http.MethodGet, "/s/"+token, "", http.StatusSeeOther)
+	visitor.expect(http.MethodGet, "/api/v1/suggestions", "", http.StatusForbidden)
+	visitor.expect(http.MethodGet, book+"/suggestions", "", http.StatusForbidden)
+	visitor.expect(http.MethodPost, book+"/declined-suggestions", `{"fields":["publisher"]}`, http.StatusForbidden)
+}

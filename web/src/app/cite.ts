@@ -49,15 +49,21 @@ const bodies =
 /** A name as written, "Ana María Ruiz" or "Ruiz, Ana María", taken apart. */
 export function parseName(raw: string): Name {
   const name = raw.trim()
-  if (bodies.test(name)) return { family: name, given: '', whole: name }
+  if (bodies.test(name)) {
+    return { family: name, given: '', whole: name }
+  }
   if (name.includes(',')) {
     const [family = '', ...rest] = name.split(',')
     const given = rest.join(',').trim()
-    if (!suffixes.has(given.toLowerCase())) return { family: family.trim(), given }
+    if (!suffixes.has(given.toLowerCase())) {
+      return { family: family.trim(), given }
+    }
   }
   const words = name.split(/\s+/).filter(Boolean)
   let last = words.pop() ?? ''
-  if (suffixes.has(last.toLowerCase()) && words.length > 1) last = `${words.pop()} ${last}`
+  if (suffixes.has(last.toLowerCase()) && words.length > 1) {
+    last = `${words.pop()} ${last}`
+  }
   return { family: last, given: words.join(' ') }
 }
 
@@ -74,25 +80,38 @@ const apaName = (n: Name) => n.whole ?? (n.given ? `${n.family}, ${initials(n.gi
 
 function apaAuthors(names: Name[]): string {
   const list = names.map(apaName)
-  if (list.length > 20) return `${list.slice(0, 19).join(', ')}, … ${list[list.length - 1]}`
-  if (list.length <= 1) return list.join('')
+  if (list.length > 20) {
+    return `${list.slice(0, 19).join(', ')}, … ${list[list.length - 1]}`
+  }
+  if (list.length <= 1) {
+    return list.join('')
+  }
   return `${list.slice(0, -1).join(', ')}, & ${list[list.length - 1]}`
 }
 
 function mlaAuthors(names: Name[]): string {
   const [first, second] = names
-  if (!first) return ''
-  if (names.length >= 3) return `${inverted(first)}, et al.`
+  if (!first) {
+    return ''
+  }
+  if (names.length >= 3) {
+    return `${inverted(first)}, et al.`
+  }
   return second ? `${inverted(first)}, and ${natural(second)}` : inverted(first)
 }
 
 function chicagoAuthors(names: Name[]): string {
   const [first, ...rest] = names
-  if (!first) return ''
-  if (names.length > 10)
+  if (!first) {
+    return ''
+  }
+  if (names.length > 10) {
     return `${[first, ...rest.slice(0, 6)].map((n, i) => (i ? natural(n) : inverted(n))).join(', ')}, et al.`
+  }
   const parts = [inverted(first), ...rest.map(natural)]
-  if (parts.length === 1) return parts.join('')
+  if (parts.length === 1) {
+    return parts.join('')
+  }
   return `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`
 }
 
@@ -105,7 +124,7 @@ const apaEditors = (eds: Name[]) =>
 
 /** MLA's and Chicago's "edited by Huw Price and Richard Corry"; MLA cuts three or more short. */
 const editedBy = (eds: Name[], short: boolean) =>
-  `edited by ${short && eds.length >= 3 ? `${natural(eds[0])} et al.` : listed(eds.map(natural))}`
+  `edited by ${short && eds.length >= 3 && eds[0] ? `${natural(eds[0])} et al.` : listed(eds.map(natural))}`
 
 const ended = (s: string) => /[.?!]$/.test(s.trim())
 /** Ends a sentence once: no full stop after a question mark or one already there. */
@@ -115,7 +134,9 @@ const range = (p?: string) => (p ? p.replace(/\s*[-–]+\s*/g, '–') : '')
 const link = (w: CiteWork) => (w.doi ? `https://doi.org/${w.doi}` : (w.url ?? ''))
 const edition = (e?: string) => {
   const t = (e ?? '').trim()
-  if (!t || /^(1st|first)\b/i.test(t)) return ''
+  if (!t || /^(1st|first)\b/i.test(t)) {
+    return ''
+  }
   return /\bed\.$/i.test(t) ? t : `${t.replace(/\s*edition$/i, '')} ed.`
 }
 
@@ -125,9 +146,13 @@ type Part = string | Piece | false | undefined | null | 0
 function pieces(...parts: (Part | Part[])[]): Piece[] {
   const out: Piece[] = []
   for (const p of parts.flat()) {
-    if (!p) continue
+    if (!p) {
+      continue
+    }
     const piece = typeof p === 'string' ? { text: p } : p
-    if (piece.text) out.push(piece)
+    if (piece.text) {
+      out.push(piece)
+    }
   }
   return out
 }

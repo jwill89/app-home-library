@@ -15,6 +15,7 @@ const pages = [
   '/shelves',
   '/labels',
   '/gaps',
+  '/suggestions',
   '/import',
   '/settings',
 ]

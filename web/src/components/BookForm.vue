@@ -7,7 +7,7 @@ import Rating from 'primevue/rating'
 import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
 import Textarea from 'primevue/textarea'
-import { faPlus, faXmark } from '@fortawesome/pro-regular-svg-icons'
+import { faPlus, faXmark } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import type { BookInput, Choices } from '@/api/client'
 import { categories, formats, readStatuses, roles, sourceLabel } from '@/app/format'
 import FormField from './FormField.vue'
@@ -31,7 +31,7 @@ const category = computed({
 })
 
 function from(field: string): string {
-  const s = book.value.sources?.[field]
+  const s = book.value.sources[field]
   return s && s !== 'owner' ? `From ${sourceLabel(s)}` : ''
 }
 

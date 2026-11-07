@@ -67,6 +67,7 @@ func New(mux *http.ServeMux, d Deps) huma.API {
 	h.registerSeries()
 	h.registerReading()
 	h.registerGaps()
+	h.registerSuggestions()
 	h.registerCalendar()
 	h.registerChanges()
 	return api

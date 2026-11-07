@@ -11,9 +11,13 @@ import (
 
 type gapsOutput struct {
 	Body struct {
-		Books  []catalog.BookGaps `json:"books"`
-		Counts []catalog.GapCount `json:"counts"`
+		Books []catalog.BookGaps `json:"books"`
 	}
+}
+
+// changedIDs is a list's ?ids=: only the books the change feed named, each asked about again.
+type changedIDs struct {
+	IDs []int64 `query:"ids" maxItems:"500" doc:"Only these books, as the change feed names them; one not among the answer is no longer listed"`
 }
 
 type queuedOutput struct {
@@ -24,13 +28,13 @@ type queuedOutput struct {
 
 func (h *handlers) registerGaps() {
 	huma.Register(h.api, h.op("list-gaps", http.MethodGet, "/gaps", "The books that lack a detail, with what each lacks"),
-		func(ctx context.Context, _ *struct{}) (*gapsOutput, error) {
-			books, counts, err := h.Catalog.Gaps(ctx)
+		func(ctx context.Context, in *changedIDs) (*gapsOutput, error) {
+			books, err := h.Catalog.Gaps(ctx, in.IDs)
 			if err != nil {
 				return nil, h.fail(err)
 			}
 			out := &gapsOutput{}
-			out.Body.Books, out.Body.Counts = books, counts
+			out.Body.Books = books
 			return out, nil
 		})
 

@@ -79,15 +79,19 @@ export function bookFromProposal(p: Proposal): BookInput {
     lcc: p.lcc,
     subjects: p.subjects ?? [],
     description: p.description,
-    sources: { ...(p.sources ?? {}) },
+    sources: { ...p.sources },
   }
 }
 
 /** The pages above a book's: the library, or the wishlist for one wanted, and its series. */
 export function bookTrail(b: { series: string; seriesId: number; wantedOn?: string }): Crumb[] {
-  if (b.wantedOn) return [{ label: 'Wishlist', to: '/wishlist' }]
+  if (b.wantedOn) {
+    return [{ label: 'Wishlist', to: '/wishlist' }]
+  }
   const trail: Crumb[] = [{ label: 'Library', to: '/' }]
-  if (b.seriesId) trail.push({ label: b.series, to: `/series/${b.seriesId}` })
+  if (b.seriesId) {
+    trail.push({ label: b.series, to: `/series/${b.seriesId}` })
+  }
   return trail
 }
 
@@ -122,7 +126,7 @@ export function bookToInput(b: Book): BookInput {
     lcc: b.lcc,
     subjects: [...(b.subjects ?? [])],
     description: b.description,
-    sources: { ...(b.sources ?? {}) },
+    sources: { ...b.sources },
   }
 }
 
@@ -150,8 +154,10 @@ const lookupFields = [
   'description',
 ] as const satisfies readonly LookupField[]
 // A field the server adds and the list above lacks is a type error here.
-const everyLookupField: Record<Exclude<LookupField, (typeof lookupFields)[number]>, never> = {}
-void everyLookupField
+type Listed<T extends true> = T
+export type EveryLookupFieldListed = Listed<
+  [Exclude<LookupField, (typeof lookupFields)[number]>] extends [never] ? true : false
+>
 
 // The fields a source is recorded for: those, and the two a lookup only adds to.
 const tracked = [...lookupFields, 'category', 'subjects'] as const
@@ -164,11 +170,13 @@ export function prepare(start: BookInput, edited: BookInput): BookInput {
   const out: BookInput = {
     ...edited,
     contributors: (edited.contributors ?? []).filter((c) => c.name.trim() !== ''),
-    sources: { ...(edited.sources ?? {}) },
+    sources: { ...edited.sources },
   }
-  const sources = out.sources ?? {}
+  const sources = out.sources
   for (const field of tracked) {
-    if (JSON.stringify(start[field]) !== JSON.stringify(edited[field])) sources[field] = 'owner'
+    if (JSON.stringify(start[field]) !== JSON.stringify(edited[field])) {
+      sources[field] = 'owner'
+    }
   }
   out.sources = sources
   return out

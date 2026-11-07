@@ -92,6 +92,12 @@ type CourseCopy struct {
 	Required int64
 }
 
+type DeclinedSuggestion struct {
+	EditionID int64
+	Field     string
+	Value     string
+}
+
 type Document struct {
 	ID        int64
 	Kind      string
@@ -258,6 +264,11 @@ type Lookup struct {
 	Source    string
 	FetchedAt string
 	Body      []byte
+}
+
+type LookupProposal struct {
+	EditionID int64
+	Proposal  string
 }
 
 type Passkey struct {
