@@ -1,0 +1,15 @@
+{
+  "changelists": [
+    {
+      "name": "Default",
+      "files": [
+        ".github/workflows/ci.yml",
+        "Taskfile.yml",
+        "shared",
+        "web/package-lock.json",
+        "web/osv-scanner.toml"
+      ]
+    }
+  ],
+  "active": "Default"
+}

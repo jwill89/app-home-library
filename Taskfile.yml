@@ -156,8 +156,15 @@ tasks:
     desc: Everything CI checks, in its order
     cmds:
       - task: lint
+      - task: shared:vuln
       - task: test:coverage
       - task: test:e2e
+
+  push:
+    desc: Take the in-range updates Dependabot would open, scan for advisories, run task check, then push (-- -Yes, -SkipUpdates, -SkipCheck)
+    interactive: true
+    cmds:
+      - task: shared:push
 
   deploy:
     desc: Deploy the tagged commit to the droplet (pass flags after --)
