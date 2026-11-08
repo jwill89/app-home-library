@@ -58,6 +58,9 @@ tasks:
 
   build:web:
     dir: web
+    # lint and test:coverage both need it and run at once in check; once makes the second
+    # wait for the first's build instead of emptying web/dist under it.
+    run: once
     cmds:
       - npm run build
     sources:

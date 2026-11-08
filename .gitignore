@@ -12,8 +12,9 @@ devdata/
 /dist/
 web/dist/
 web/node_modules/
-# The end-to-end tests' signed-in session and their reports
+# The end-to-end tests' signed-in session, their server's log and their reports
 web/e2e/.state.json
+web/e2e/.server.log
 web/test-results/
 web/playwright-report/
 # The front end's coverage report (npm run test:coverage)
