@@ -37,7 +37,7 @@
     "@jwill89/lint-web": "file:../shared/lint/web",
     "@jwill89/test-a11y": "file:../shared/test/a11y",
     "@playwright/test": "1.64.1",
-    "@tailwindcss/vite": "^4.3.3",
+    "@tailwindcss/vite": "^4.3.5",
     "@types/node": "26.6.5",
     "@vitejs/plugin-vue": "6.0.10",
     "@vitest/coverage-v8": "^5.1.0",
