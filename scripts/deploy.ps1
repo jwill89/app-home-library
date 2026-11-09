@@ -3,14 +3,20 @@
 
 <#
 .SYNOPSIS
-Deploy the tagged commit to the droplet and bring a copy of the library home.
+Deploy the newest release to the droplet and bring a copy of the library home.
 
 .DESCRIPTION
 Built on shared-tooling's SharedDeploy module (shared/deploy/pwsh), the shape every
 deploy follows: one archive, one held SSH connection, one remote run.
 
-Builds the static Linux binary and packs it into one archive with the systemd units and the
-Apache vhost from deploy/, opens one SSH connection and keeps it for the run, and uploads the
+The release is the newest tag CI made on main (the script fetches the tags first). Commits
+after it, a shared-tooling update or work not yet released, are not part of it, and neither is
+anything uncommitted: the release is checked out into a folder of its own, with npm ci from its
+lockfile, and built there. The host records the release each deploy leaves running; when that
+is already this release, nothing is done (-Force deploys it again).
+
+Opens one SSH connection and keeps it for the run, then builds the static Linux binary and packs
+it into one archive with the systemd units and the Apache vhost from deploy/, and uploads the
 archive. In one remote run it checks the archive and that Apache takes the vhost before
 anything stops, then stops the service and the text service, snapshots the database
 (compressed), installs the binary and whichever units and vhost differ, starts both, and waits
@@ -33,10 +39,9 @@ Settings resolve from the parameter, then $env:DEPLOY_*, then the git-ignored
 scripts/deploy.config.ps1. A run is one SSH connection (plus one only if it drops and
 reconnects), which stays under the host's `ufw limit ssh`.
 
-Requires a clean tree at the commit CI tagged with web/package.json's version (the script
-fetches the tags first), PuTTY's plink 0.85 or later, and the key loaded in Pageant.
--Preview ships the working tree as it is, stamped preview-<time>, so a build reaches a phone
-to be tried before it is committed.
+Requires PuTTY's plink 0.85 or later and the key loaded in Pageant. -Preview ships the working
+tree as it is, stamped preview-<time>, so a build reaches a phone to be tried before it is
+committed; -SkipBuild, with it alone, reuses the last dist/homelibrary-linux-amd64.
 #>
 [CmdletBinding()]
 param(
@@ -45,7 +50,8 @@ param(
     [string]$KeyPath,
     [switch]$SkipBuild,
     [switch]$NoDbPull,
-    [switch]$Preview
+    [switch]$Preview,
+    [switch]$Force
 )
 
 $ErrorActionPreference = 'Stop'
@@ -68,7 +74,8 @@ $remoteDb = "$remoteDir/data/homelibrary.sqlite"
 $snapshotPrefix = "$remoteDir/backups/homelibrary-pre-"
 $pullFolder = "$remoteDir/backups/pull-deploy"
 $localDb = Join-Path $root 'devdata/homelibrary.sqlite'
-$binary = Join-Path $root 'dist/homelibrary-linux-amd64'
+# What the host records as running, for the next deploy to compare with.
+$record = 'homelibrary'
 
 $settings = Resolve-DeploySetting -ConfigPath (Join-Path $PSScriptRoot 'deploy.config.ps1') `
     -Value @{ VpsHost = $VpsHost; VpsUser = $VpsUser; KeyPath = $KeyPath } `
@@ -77,36 +84,10 @@ $settings = Resolve-DeploySetting -ConfigPath (Join-Path $PSScriptRoot 'deploy.c
 if ($Preview) {
     $version = 'preview-' + (Get-Date -Format 'yyyyMMdd-HHmm')
 } else {
-    Assert-CleanWorkingTree
-    # CI tags a release once main is green (the release job), so its tag is fetched before
-    # HEAD is checked; the tag must be the version web/package.json names.
-    git -C $root fetch --tags --quiet
-    if ($LASTEXITCODE -ne 0) { Write-Warning 'Could not fetch tags; checking against the local ones.' }
-    $version = Get-ReleaseTag -Path $root
-    $expected = 'v' + (Get-Content -LiteralPath (Join-Path $root 'web\package.json') -Raw | ConvertFrom-Json).version
-    if ($version -ne $expected) {
-        throw "HEAD is tagged $version, but web/package.json says $expected."
-    }
+    if ($SkipBuild) { throw 'A release is always built from its tag; -SkipBuild goes with -Preview only.' }
+    $release = Get-DeployRelease -Path $root
+    $version = $release.Tag
 }
-
-if ($SkipBuild) {
-    Write-Step 'Skipping the build (-SkipBuild); using dist/homelibrary-linux-amd64'
-} else {
-    if ($Preview) { task build:linux VERSION=$version } else { task build:linux }
-    if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
-}
-if (-not (Test-Path $binary)) { throw "Binary not found: $binary" }
-
-# The built page names its entry script, which the smoke check looks for and loads.
-$entryScript = [regex]::Match((Get-Content -LiteralPath (Join-Path $root 'web/dist/index.html') -Raw), 'src="(/assets/[^"]+\.js)"').Groups[1].Value
-if (-not $entryScript) { throw 'web/dist/index.html names no entry script under /assets; build the front end first.' }
-
-$archive = Compress-DeployArchive -Content ([ordered]@{
-        'homelibrary'              = $binary
-        'homelibrary.service'      = Join-Path $root 'deploy/homelibrary.service'
-        'homelibrary-text.service' = Join-Path $root 'deploy/homelibrary-text.service'
-        'apache-vhost.conf'        = Join-Path $root 'deploy/apache-vhost.conf'
-    })
 
 # The binary and its directory are root's, so the service runs the one and cannot change it;
 # the data and the backups are the service's, and nobody else's to read.
@@ -124,7 +105,48 @@ $restore = {
 }
 
 $connection = $settings | Open-DeployConnection
+$tree = $null
+$archive = $null
 try {
+    # A preview builds the working tree; a release, its tag checked out on its own.
+    $build = $root
+    if (-not $Preview) {
+        $live = Get-DeployedRelease -Name $record
+        if ($live -eq $version -and -not $Force) {
+            Write-Ok "$version is already running on the host; nothing to deploy. (A version pushed since goes out once CI tags it; -Force deploys this one again.)"
+            return
+        }
+        $after = if ($release.Since) { "; the $($release.Since) commit(s) on main after it are not part of it" } else { '' }
+        Write-Step "Releasing $version (the host runs $(if ($live) { $live } else { 'a release not recorded' }))$after"
+        $tree = New-ReleaseTree -Path $root -Tag $version -Npm 'web'
+        $build = $tree
+    }
+    $binary = Join-Path $build 'dist/homelibrary-linux-amd64'
+    if ($SkipBuild) {
+        Write-Step 'Skipping the build (-SkipBuild); using dist/homelibrary-linux-amd64'
+    } else {
+        # A release's version is its tag, which the build reads with git describe.
+        Push-Location -LiteralPath $build
+        try {
+            if ($Preview) { task build:linux VERSION=$version } else { task build:linux }
+            if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
+        } finally {
+            Pop-Location
+        }
+    }
+    if (-not (Test-Path $binary)) { throw "Binary not found: $binary" }
+
+    # The built page names its entry script, which the smoke check looks for and loads.
+    $entryScript = [regex]::Match((Get-Content -LiteralPath (Join-Path $build 'web/dist/index.html') -Raw), 'src="(/assets/[^"]+\.js)"').Groups[1].Value
+    if (-not $entryScript) { throw 'web/dist/index.html names no entry script under /assets; build the front end first.' }
+
+    $archive = Compress-DeployArchive -Content ([ordered]@{
+            'homelibrary'              = $binary
+            'homelibrary.service'      = Join-Path $build 'deploy/homelibrary.service'
+            'homelibrary-text.service' = Join-Path $build 'deploy/homelibrary-text.service'
+            'apache-vhost.conf'        = Join-Path $build 'deploy/apache-vhost.conf'
+        })
+
     Write-Step "Deploying $version to $($connection.Target)"
     # Nothing stops until the upload is complete and checked.
     $upload = Invoke-Upload -Path $archive.Path -Destination 'homelibrary-deploy.tgz' -Activity "Uploading Home Library $version" -FileCount $archive.FileCount
@@ -152,6 +174,8 @@ try {
         @{ Url = "$site/?deploy=$token"; Contains = $entryScript }
         @{ Url = "$site$entryScript" }
     )
+    # Only a deploy that stayed is recorded; a preview's stamp makes the next release go out.
+    Set-DeployedRelease -Name $record -Release $version
 
     # The nightly backup: 09:30 UTC, half an hour before Kindred Nights' on the same droplet,
     # `homelibrary backup` as the service user, with the service's hardening. One writable path
@@ -195,6 +219,7 @@ tar -czf '__OUT__/files.tgz' -C '__DIR__/data' media documents
     }
 } finally {
     Close-DeployConnection
-    Remove-Item -LiteralPath $archive.Path -ErrorAction SilentlyContinue
+    if ($archive) { Remove-Item -LiteralPath $archive.Path -ErrorAction SilentlyContinue }
+    if ($tree) { Remove-ReleaseTree -Path $tree -Repository $root }
 }
 Write-Host "`n[OK] Deployed $version" -ForegroundColor Green

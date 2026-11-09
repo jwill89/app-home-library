@@ -170,6 +170,6 @@ tasks:
       - task: shared:push
 
   deploy:
-    desc: Deploy the tagged commit to the droplet (pass flags after --)
+    desc: Deploy the newest release to the droplet (pass flags after --)
     cmds:
       - pwsh -NoProfile -File scripts/deploy.ps1 {{.CLI_ARGS}}
