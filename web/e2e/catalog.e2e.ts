@@ -288,3 +288,38 @@ test('the library shows a change made elsewhere without being reloaded', async (
   await addBook(request, { title: 'Added Elsewhere' })
   await expect(page.getByRole('row', { name: /Added Elsewhere/ })).toBeVisible()
 })
+
+// The cover detection's worker, as built, in a browser: it loads OpenCV and finds the cover.
+// opencv-js 5 changed how its module loads, and every detection failed in silence until the
+// worker waited on the module as 5 has it (2026-11-09); the owner placed corners by hand.
+test('a photo of a cover: its edges are found and the corners put on them', async ({
+  page,
+  request,
+}) => {
+  const id = await addBook(request, { title: 'Edges Found' })
+  await page.goto(`/books/${id}`)
+  // A light cover on a dark table, drawn in the page and chosen as the image.
+  const png = await page.evaluate(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 800
+    canvas.height = 600
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      throw new Error('no 2d canvas')
+    }
+    ctx.fillStyle = '#232323'
+    ctx.fillRect(0, 0, 800, 600)
+    ctx.fillStyle = '#d2d2d2'
+    ctx.fillRect(160, 100, 480, 400)
+    return canvas.toDataURL('image/png').split(',')[1] ?? ''
+  })
+  await page.getByLabel('Choose an image of the cover').setInputFiles({
+    name: 'cover.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(png, 'base64'),
+  })
+  // The first search loads OpenCV, several megabytes, so it is given the time a phone would be.
+  await expect(page.getByText('The corners are on the cover that was found.')).toBeVisible({
+    timeout: 30_000,
+  })
+})

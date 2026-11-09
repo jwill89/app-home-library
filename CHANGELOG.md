@@ -4,6 +4,13 @@ What changes in Home Library, release by release. The format is [Keep a Changelo
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-11-09
+
+### Changed
+
+- The cover detection runs on OpenCV 5.0 (`@techstark/opencv-js` 5.0.0-release.1), the first OpenCV release since 4.12. The package now hands its module over as a promise, so the detection worker waits on that; taken as it was, every photo would have come back with no edges found and the corners left to place by hand, with nothing to say why. The detection itself moved to `web/src/app/outline.ts`, where a test runs it on the real OpenCV, and an end-to-end test chooses a cover photo in the browser and waits for its corners to be found. The first detection on a device downloads about 230 KB more, compressed.
+- Dependencies, within their ranges: Vue 3.5.45, Vite 8.3.7 and Tailwind CSS 4.3.5 on the frontend; the SQLite driver (`modernc.org/sqlite` 1.62.0) and `golang.org/x/image` 0.48.0 on the server.
+
 ## [1.1.1] - 2026-11-07
 
 ### Fixed
