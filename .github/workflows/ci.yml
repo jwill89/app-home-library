@@ -17,7 +17,7 @@ jobs:
   # (any advisory in what ships, a high one in the tooling), and the build, which the Go
   # binary embeds.
   web:
-    uses: jwill89/shared-tooling/.github/workflows/web.yml@v2.3.1
+    uses: jwill89/shared-tooling/.github/workflows/web.yml@v2.3.2
     with:
       dir: web
       fontawesome: true
@@ -30,7 +30,7 @@ jobs:
   # under the race detector: the background lookup runs beside the requests.
   go:
     needs: web
-    uses: jwill89/shared-tooling/.github/workflows/go.yml@v2.3.1
+    uses: jwill89/shared-tooling/.github/workflows/go.yml@v2.3.2
     with:
       download-artifact: web-dist
       download-path: web/dist
@@ -49,7 +49,7 @@ jobs:
   # Font Awesome kit is not fetched again; the front end is built here for the server to embed.
   e2e:
     needs: [web, go]
-    uses: jwill89/shared-tooling/.github/workflows/e2e.yml@v2.3.1
+    uses: jwill89/shared-tooling/.github/workflows/e2e.yml@v2.3.2
     with:
       dir: web
       go-version-file: go.mod
@@ -59,15 +59,15 @@ jobs:
       FONTAWESOME_TOKEN: ${{ secrets.FONTAWESOME_NPM_TOKEN }}
 
   scripts:
-    uses: jwill89/shared-tooling/.github/workflows/pwsh.yml@v2.3.1
+    uses: jwill89/shared-tooling/.github/workflows/pwsh.yml@v2.3.2
 
   docs:
-    uses: jwill89/shared-tooling/.github/workflows/docs.yml@v2.3.1
+    uses: jwill89/shared-tooling/.github/workflows/docs.yml@v2.3.2
 
   # OSV-Scanner over every lockfile. An osv-scanner.toml beside a lockfile passes over the
   # advisories that reach only lint, test or build tooling (standards/packages.md).
   osv:
-    uses: jwill89/shared-tooling/.github/workflows/osv.yml@v2.3.1
+    uses: jwill89/shared-tooling/.github/workflows/osv.yml@v2.3.2
     permissions:
       contents: read
       actions: read
