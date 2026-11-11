@@ -32,7 +32,7 @@ func (g *Google) volumes(ctx context.Context, v url.Values) ([]byte, error) {
 
 // FetchISBN returns the raw answer for one ISBN: the whole record of the volume that carries
 // it, as a search's answer of one. A search's answer leaves out the measurements, which the
-// whole record has for most books (10 of 12 the other sources had no height for, 2026-11-05).
+// whole record has for most books.
 func (g *Google) FetchISBN(ctx context.Context, isbn string) ([]byte, error) {
 	body, err := g.volumes(ctx, url.Values{"q": {"isbn:" + isbn}, "maxResults": {"3"}})
 	if err != nil || body == nil {
@@ -126,7 +126,7 @@ func ParseGoogle(body []byte, isbn string) (*Record, error) {
 		}
 		// No covers: Google's image host answers the droplet's address with a "Sorry" page
 		// (403) while serving the same image to a home connection, so a Google cover could be
-		// shown but never kept (docs/decisions.md, 2026-11-04).
+		// shown but never kept.
 		return r, nil
 	}
 	return nil, nil

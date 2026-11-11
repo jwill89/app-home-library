@@ -1,7 +1,7 @@
 -- +goose NO TRANSACTION
 -- +goose Up
 
--- A book review is a kind of paper (2026-11-05). SQLite cannot change a CHECK in place, so the
+-- A book review is a kind of paper. SQLite cannot change a CHECK in place, so the
 -- table is made again with the kind allowed, by SQLite's own steps: foreign keys off for the
 -- move, since dropping the old table would otherwise delete every paper's files with it (they
 -- cascade), and the move in a transaction of its own. A transaction cannot turn foreign keys

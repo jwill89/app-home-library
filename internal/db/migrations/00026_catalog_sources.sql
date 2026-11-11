@@ -1,7 +1,7 @@
 -- +goose Up
 
--- HathiTrust and Harvard Library join the lookup for class numbers and heights the Library of
--- Congress lacks (2026-11-05), so the books without a Dewey number, an LC number, or a height
+-- HathiTrust and Harvard Library are lookup sources for class numbers and heights the Library
+-- of Congress lacks, so the books without a Dewey number, an LC number, or a height
 -- go back in the background lookup's queue. It fills blanks only, and the other sources answer
 -- from what they said before.
 INSERT INTO enrichment (edition_id, status)

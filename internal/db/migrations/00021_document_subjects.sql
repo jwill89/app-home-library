@@ -1,7 +1,7 @@
 -- +goose Up
 
 -- Documents take subjects, as books do, filled from a DOI by OpenAlex and Crossref or typed
--- (2026-11-05), and the search finds them. An FTS5 table takes no new column, so the index is
+--, and the search finds them. An FTS5 table takes no new column, so the index is
 -- made again and filled from the documents and their files, as the catalog indexes one.
 ALTER TABLE documents ADD COLUMN subjects TEXT NOT NULL DEFAULT '[]';
 

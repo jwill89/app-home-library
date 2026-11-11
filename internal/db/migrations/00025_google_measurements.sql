@@ -1,9 +1,9 @@
 -- +goose Up
 
--- Google's lookup now reads a volume's whole record, which has the height, width, and
--- thickness its search answer leaves out (2026-11-05). Its kept answers are the search's, so
--- they go, and the books lacking a measurement go back in the background lookup's queue,
--- which fills blanks only: a measurement the owner typed or a source gave stands.
+-- Google's lookup reads a volume's whole record, which has the height, width, and thickness
+-- its search answer leaves out. Its kept answers are the search's, so they go, and the books
+-- lacking a measurement go back in the background lookup's queue, which fills blanks only: a
+-- measurement the owner typed or a source gave stands.
 DELETE FROM lookups WHERE source = 'google';
 
 INSERT INTO enrichment (edition_id, status)

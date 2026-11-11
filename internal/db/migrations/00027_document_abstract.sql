@@ -1,6 +1,6 @@
 -- +goose Up
 
--- A document has an abstract of its own (2026-11-05). The EndNote import and a library's
+-- A document has an abstract of its own. The EndNote import and a library's
 -- exported citation put one in the notes, as "Abstract: …", alone or after the notes the
 -- record had, a blank line between; it moves out of them.
 ALTER TABLE documents ADD COLUMN abstract TEXT NOT NULL DEFAULT '';

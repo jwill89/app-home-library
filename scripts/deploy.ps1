@@ -6,11 +6,11 @@
 Deploy the newest release to the droplet and bring a copy of the library home.
 
 .DESCRIPTION
-Built on shared-tooling's SharedDeploy module (shared/deploy/pwsh), the shape every
-deploy follows: one archive, one held SSH connection, one remote run.
+Built on the SharedDeploy module (shared/deploy/pwsh): one archive, one held SSH
+connection, one remote run.
 
 The release is the newest tag CI made on main (the script fetches the tags first). Commits
-after it, a shared-tooling update or work not yet released, are not part of it, and neither is
+after it, an update of shared/ or work not yet released, are not part of it, and neither is
 anything uncommitted: the release is checked out into a folder of its own, with npm ci from its
 lockfile, and built there. The host records the release each deploy leaves running; when that
 is already this release, nothing is done (-Force deploys it again).
@@ -26,7 +26,7 @@ migrated it before it fell over.
 
 Then the site is fetched through Cloudflare: /healthz must name this version, and / this
 build's entry script, which must load. A failure there rolls back the same way. Then the
-nightly backup's timer is checked (shared-tooling's Install-BackupTimer: where the droplet's
+nightly backup's timer is checked (the module's Install-BackupTimer: where the droplet's
 units differ from the ones it writes, the new ones go in and `homelibrary backup` runs once,
 the old ones coming back if it fails).
 
@@ -177,10 +177,10 @@ try {
     # Only a deploy that stayed is recorded; a preview's stamp makes the next release go out.
     Set-DeployedRelease -Name $record -Release $version
 
-    # The nightly backup: 09:30 UTC, half an hour before Kindred Nights' on the same droplet,
-    # `homelibrary backup` as the service user, with the service's hardening. One writable path
-    # over both the data and the backups, not one each: each would be its own mount, and the
-    # files' snapshot is hard links, which cannot cross mounts.
+    # The nightly backup: 09:30 UTC, staggered from the other sites' backups on the same
+    # droplet, `homelibrary backup` as the service user, with the service's hardening. One
+    # writable path over both the data and the backups, not one each: each would be its own
+    # mount, and the files' snapshot is hard links, which cannot cross mounts.
     Write-Step 'Checking the nightly backup...'
     try {
         Install-BackupTimer -Name 'homelibrary' -Command "$remoteDir/homelibrary backup" -Owner $serviceUser `

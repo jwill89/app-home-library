@@ -2,7 +2,7 @@
 
 -- An edition's author line is found for that edition alone, through the contributors'
 -- primary key: grouped over every contributor, one loan's or one course's books built the
--- line for the whole library first (2026-11-05). An edition with no author has an empty line.
+-- line for the whole library first. An edition with no author has an empty line.
 DROP VIEW edition_authors;
 CREATE VIEW edition_authors AS
 SELECT

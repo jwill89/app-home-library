@@ -57,7 +57,8 @@ export const router = createRouter({
           component: () => import('@/views/DocumentEditView.vue'),
           meta: { title: 'Add a paper' },
         },
-        // Links and bookmarks from before documents were called papers (2026-11-05).
+        // Addresses under /documents redirect to /papers, for the links and bookmarks that
+        // still use them.
         {
           path: 'documents/:rest(.*)*',
           redirect: (to) => {

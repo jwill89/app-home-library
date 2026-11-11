@@ -1,6 +1,6 @@
 -- +goose Up
 
--- What changed, for the change feed (2026-11-05): a row a change, written by triggers in the
+-- What changed, for the change feed: a row a change, written by triggers in the
 -- transaction that makes it, so a write from any process is in it, the web server's, the text
 -- service's, or an import run by hand, and none can be forgotten. The web server reads it and
 -- streams each change to the owner's open pages, which fetch what they show again. The ids

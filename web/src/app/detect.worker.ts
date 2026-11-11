@@ -4,10 +4,10 @@
 import cvModule from '@techstark/opencv-js'
 import { findOutline, type CV } from './outline'
 
-// opencv-js 5 exports a promise of the module, where 4.12 exported the module itself with a
-// `then` of its own. Its types still describe the module, so the type check cannot tell; the
-// end-to-end test of a cover photo can (2026-11-09). A runtime that cannot start rejects the
-// promise, saying why, and the unhandled rejection below tells every request waiting.
+// opencv-js 5 exports a promise of the module. Its types describe the module itself, so the
+// type check cannot tell; the end-to-end test of a cover photo can. A runtime that cannot
+// start rejects the promise, saying why, and the unhandled rejection below tells every
+// request waiting.
 const opencv = Promise.resolve(cvModule as unknown as Promise<CV>)
 
 interface Request {

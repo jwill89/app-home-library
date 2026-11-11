@@ -290,8 +290,8 @@ test('the library shows a change made elsewhere without being reloaded', async (
 })
 
 // The cover detection's worker, as built, in a browser: it loads OpenCV and finds the cover.
-// opencv-js 5 changed how its module loads, and every detection failed in silence until the
-// worker waited on the module as 5 has it (2026-11-09); the owner placed corners by hand.
+// opencv-js 5 exports its module as a promise, and a worker that does not wait on it fails
+// every detection in silence, leaving the owner to place the corners by hand.
 test('a photo of a cover: its edges are found and the corners put on them', async ({
   page,
   request,

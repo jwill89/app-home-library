@@ -1,6 +1,6 @@
 -- +goose Up
 
--- An EndNote export brings articles and chapters as documents (2026-11-05). Each keeps the record
+-- An EndNote export brings articles and chapters as documents. Each keeps the record
 -- it came from, as an imported book's copy does, so the same file imported twice adds nothing.
 CREATE TABLE document_import_refs (
     source TEXT NOT NULL,

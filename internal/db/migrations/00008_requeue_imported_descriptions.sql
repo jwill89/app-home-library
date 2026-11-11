@@ -1,8 +1,8 @@
 -- +goose Up
 
 -- The Bookshelf export wrote markup as &&L and &&R, and cut descriptions off at 1500
--- characters. The background lookup now cleans the one and replaces the other with a source's
--- whole description, so the books that have either go back in its queue (2026-11-04).
+-- characters. The background lookup cleans the one and replaces the other with a source's
+-- whole description, so the books that have either go back in its queue.
 INSERT INTO enrichment (edition_id, status)
 SELECT id, 'pending' FROM editions
 WHERE description LIKE '%&&L%'

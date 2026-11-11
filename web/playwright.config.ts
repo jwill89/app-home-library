@@ -1,9 +1,9 @@
 import { defineConfig } from '@playwright/test'
 import { playwrightDefaults } from '../shared/test/e2e/playwright.js'
 
-// End-to-end tests in a real browser against the real server (see e2e/server.ts), on
-// shared-tooling's Playwright settings: one worker in order (the tests share one library and
-// some depend on what another added), a trace kept on failure, and the browser already
+// End-to-end tests in a real browser against the real server (see e2e/server.ts), on the
+// shared Playwright settings: one worker in order (the tests share one library and some
+// depend on what another added), a trace kept on failure, and the browser already
 // installed (Edge locally on Windows, the runner's Chrome in CI).
 export default defineConfig({
   ...playwrightDefaults,

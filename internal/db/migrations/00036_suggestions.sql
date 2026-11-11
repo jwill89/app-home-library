@@ -1,7 +1,7 @@
 -- +goose Up
 
 -- What the sources proposed for an edition the last time the owner had it looked up, each
--- source asked again, and the details the owner declined (2026-11-05). What a lookup offers to
+-- source asked again, and the details the owner declined. What a lookup offers to
 -- change is worked out from these and the book as it is when read: a detail the owner has
 -- since taken or typed is no longer offered, and a declined value is not offered again while
 -- the sources still give it.

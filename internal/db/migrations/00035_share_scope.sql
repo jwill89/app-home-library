@@ -1,6 +1,6 @@
 -- +goose Up
 
--- What each share link shows (2026-11-05). Its books: every one, some (those of the categories
+-- What each share link shows. Its books: every one, some (those of the categories
 -- chosen, and the books chosen one by one), or none, with the wanted ones among them or not.
 -- Its papers: every one, some (a course's, and the papers chosen), or none. A paper's own
 -- "shared" switch, which every link followed alike, becomes each link's choice of papers.

@@ -22,8 +22,8 @@ interface Projection {
   h: number
 }
 
-// Heckbert's closed form for the square-to-quadrilateral mapping (Fundamentals of Texture
-// Mapping and Image Warping, 1989), with (0,0), (1,0), (1,1), (0,1) going to the corners in order.
+// The closed form for the square-to-quadrilateral projective mapping, with (0,0), (1,0),
+// (1,1), (0,1) going to the corners in order.
 export function projection([p0, p1, p2, p3]: Quad): Projection {
   const sx = p0.x - p1.x + p2.x - p3.x
   const sy = p0.y - p1.y + p2.y - p3.y

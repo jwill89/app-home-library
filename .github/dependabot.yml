@@ -1,10 +1,9 @@
-# Weekly dependency updates, from shared-tooling's repo/dependabot.example.yml: weekly on
-# Monday, one pull request per ecosystem for minors and patches together, and majors one by
-# one (they can need code changes). The shared/ submodule moves only with
-# `task shared:update`, so it has no block here.
+# Weekly dependency updates, on Monday: one pull request per ecosystem for minors and
+# patches together, and majors one by one (they can need code changes). The shared/
+# submodule moves only with `task shared:update`, so it has no block here.
 #
-# Dependabot can't read Actions secrets: FONTAWESOME_NPM_TOKEN (the Font Awesome kit's
-# registry) exists again as a Dependabot secret (Settings, Secrets and variables,
+# Dependabot can't read Actions secrets, so FONTAWESOME_NPM_TOKEN (the Font Awesome kit's
+# registry) is also kept as a Dependabot secret (Settings, Secrets and variables,
 # Dependabot).
 version: 2
 
@@ -12,7 +11,7 @@ registries:
   # web/.npmrc names this registry for its scopes; Dependabot adds the token. Give it no
   # `scope:`: with one, Dependabot writes its own .npmrc in place of the committed one,
   # which loses install-links=true, so the lockfile records lint/web and test/a11y as links
-  # and npm ci fails (TarotGen.io, 2026-11-07).
+  # and npm ci fails.
   fontawesome:
     type: npm-registry
     url: https://npm.fontawesome.com
@@ -35,19 +34,18 @@ updates:
       - dependency-name: typescript
         update-types: ['version-update:semver-major']
       # vue-tsc 3.3.14 turns a `//` in a static attribute (placeholder="https://") into
-      # broken virtual code, which stops it checking the rest of that template
-      # (vuejs/language-tools#6322). Each Vue project pins vue-tsc at 3.3.13 and skips
-      # only 3.3.14, so the fix comes through; drop this once it has.
+      # broken virtual code, which stops it checking the rest of that template. vue-tsc
+      # is pinned at 3.3.13 and only 3.3.14 is skipped, so the fix comes through; drop this
+      # once it has.
       - dependency-name: vue-tsc
         versions: ['3.3.14']
-      # PrimeVue at 4 with its themes at 1, since PrimeVue 5 needs a licence key and the
-      # component kit replaces PrimeVue (standards/packages.md).
+      # PrimeVue stays at 4 with its themes at 1, since PrimeVue 5 needs a licence key.
       - dependency-name: primevue
         update-types: ['version-update:semver-major']
       - dependency-name: '@primeuix/themes'
         update-types: ['version-update:semver-major']
-      # The tools shared-tooling's lint/web owns move to a new major once, in
-      # shared-tooling, with the plugins and configs that must match, and reach here with
+      # The lint tools the shared/ submodule owns move to a new major once, in the
+      # submodule, with the plugins and configs that must match, and reach here with
       # `task shared:update`. Minors and patches still come here.
       - dependency-name: eslint
         update-types: ['version-update:semver-major']

@@ -1,5 +1,5 @@
 # Installed at /etc/systemd/system/homelibrary.service by every deploy (scripts/deploy.ps1),
-# which puts the one before back if the new build does not come up; see docs/ops.md.
+# which puts the one before back if the new build does not come up.
 
 [Unit]
 Description=Home Library

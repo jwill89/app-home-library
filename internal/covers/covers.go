@@ -1,7 +1,6 @@
 // Package covers turns a cover image, fetched from a source or photographed by the owner,
 // into JPEG renditions stored on disk under a random name. JPEG through the standard
-// library, not WebP: the pure-Go WebP encoder crashed on a cover 333 pixels wide
-// (docs/decisions.md, 2026-11-04).
+// library, not WebP: the pure-Go WebP encoder crashed on a cover 333 pixels wide.
 package covers
 
 import (

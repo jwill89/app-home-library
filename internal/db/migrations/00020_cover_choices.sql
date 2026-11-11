@@ -1,8 +1,8 @@
 -- +goose Up
 
--- A lookup's covers now say which source each came from (2026-11-05), for the cover chooser to
--- name. The lookups kept in the scan queue take the new shape; Open Library and Hardcover are
--- the only sources a lookup offers covers from.
+-- A lookup's covers say which source each came from, for the cover chooser to name. The
+-- lookups kept in the scan queue take that shape; Open Library and Hardcover are the only
+-- sources a lookup offers covers from.
 UPDATE scans SET proposal = json_set(proposal, '$.covers', json((
     SELECT json_group_array(json_object(
         'url', c.value,

@@ -33,8 +33,8 @@ type Options struct {
 }
 
 // Snapshot names carry their day, which is what the pruning reads: a database file, and a
-// directory of the files beside it. Database snapshots from before they were compressed
-// (2026-11-07) end in the plain suffix until a run compresses them.
+// directory of the files beside it. Database snapshots made before they were compressed end
+// in the plain suffix until a run compresses them.
 const (
 	prefix      = "homelibrary-"
 	plain       = ".sqlite"

@@ -1,7 +1,7 @@
 # Installed at /etc/systemd/system/homelibrary-text.service by every deploy
-# (scripts/deploy.ps1); see docs/ops.md. The text service reads the words in documents' files
-# with pdftotext and Tesseract (apt install poppler-utils tesseract-ocr). It is apart from the
-# web server so a long scan never slows a page.
+# (scripts/deploy.ps1). The text service reads the words in documents' files with pdftotext
+# and Tesseract (apt install poppler-utils tesseract-ocr). It is apart from the web server
+# so a long scan never slows a page.
 
 [Unit]
 Description=Home Library text service

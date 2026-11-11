@@ -75,7 +75,7 @@ Read PLAN.md before changing anything structural. It holds the product decisions
 
 Each line is what the project does today where the standards rule it otherwise. The owner decides whether each moves or stays; one that stays gives its reason here.
 
-- Units and vhost: the deploy installs `deploy/`'s systemd units and Apache vhost where they differ (`Install-ServiceBinary -Unit -Vhost`), so the droplet runs what the repository says (decided 2026-11-05, docs/decisions.md). The standards keep both on the host, changed there by hand, with the repo holding templates (deploy-and-ops.md).
+- Units and vhost: the deploy ships `deploy/`'s systemd units and Apache vhost, but their host values (server names, certificate path, port, paths, service user) are written into the templates, not placeholders filled from the git-ignored deploy config (deploy-and-ops.md).
 - Ownership: the binary and `/opt/homelibrary` are root's, so the service runs the binary and cannot change it; the data and the backups are the service's. The standards have the code owned by the service's own user, read-only to it under `ProtectSystem=strict`.
 - Backups: the nightly backup compresses the database, but the covers' and documents' files in each day's `files-YYYY-MM-DD/` stay as hard links to the live files. They take no room until the library lets a file go, and photographs and PDFs barely compress; a compressed copy would hold every file twice.
 - Icons: each component imports the definitions it uses and passes them to `:icon`, so there is no register in `src/fontawesome.ts` and no test of one; a missing icon fails the type check instead (components.md asks for the register and its test).
@@ -85,6 +85,7 @@ Each line is what the project does today where the standards rule it otherwise. 
 - Opening the database: `homelibrary serve` and `homelibrary migrate` create the file and its folder when it is missing (`db.Open`); only the commands that go through `existingDB`, such as `backup`, refuse a missing file.
 - Schema: there is no committed schema file, and no schema test that fails when the migrations build anything else.
 - Queries: the files in `internal/db/queries` use `SELECT *` and `RETURNING *` on 30 lines, where a query names exactly the columns it needs.
+- Sign-in: the passkey ceremonies, sign-out and the dev session are plain `net/http` handlers under `/auth/*`, outside the API and its spec, and the front end calls them by hand. They are to be operations under `/api/v1/auth/*`, in the spec and through the typed client (plans/sign-in-on-huma.md).
 - Sessions: scs's SQLite store keeps each session token as it is, so the database, its backups and the pulled dev copy hold live sign-ins; only a hash is to be kept. The cookie is `hl_session`, not `__Host-` prefixed.
 - Server timeouts: the `http.Server` sets `ReadHeaderTimeout` only, without `ReadTimeout` and `IdleTimeout`.
 - Log level: it is read once from `HL_LOG_LEVEL` at start, not held in a `slog.LevelVar`, so Debug cannot be turned on while the service runs.

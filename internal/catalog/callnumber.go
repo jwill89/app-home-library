@@ -123,8 +123,8 @@ func volume(n string) string {
 
 // shelfOrder is where a copy stands among the others: by section, class, and Cutter, then an
 // author's series kept together in volume order, then by title. It is worked out once a copy,
-// since a sort or a layout compares each copy many times, and each comparison had parsed both
-// call numbers again.
+// since a sort or a layout compares each copy many times, and parsing both call numbers on
+// every comparison would repeat that work.
 type shelfOrder struct {
 	section       string
 	class, number line

@@ -2,7 +2,7 @@
 
 -- The search index's row is the document's own id, so rewriting one document's entry finds
 -- it by rowid. Keyed by a column of its own, which FTS5 cannot index, every save scanned the
--- text of every document to find the row to replace (2026-11-05).
+-- text of every document to find the row to replace.
 DROP TABLE document_search;
 
 CREATE VIRTUAL TABLE document_search USING fts5 (

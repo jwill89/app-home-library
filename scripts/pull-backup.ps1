@@ -10,15 +10,15 @@ Every morning the droplet snapshots the library beside itself: the database, com
 the covers and documents' files as they stood. This copies the newest snapshot home, into a
 folder named for its day under -Destination (homelibrary.sqlite.gz and files.tgz), and keeps
 the newest -Keep of those folders, so the library has a copy off the droplet. A destination
-inside OneDrive carries the copy on to the cloud. Task Scheduler runs it daily (see
-docs/ops.md). A day already copied is left as it is, so running it again costs nothing; a
-day the droplet made again (its size or time changed) is copied again.
+inside OneDrive carries the copy on to the cloud. Task Scheduler runs it daily. A day
+already copied is left as it is, so running it again costs nothing; a day the droplet made
+again (its size or time changed) is copied again.
 
 Each run adds a line to pull-backup.log in -Destination, so a failed night shows. A newest
 backup more than a day old is logged as stale and the run ends with exit code 1, so Task
 Scheduler shows it too: the droplet's nightly backup has stopped.
 
-Built on shared-tooling's SharedDeploy module (shared/deploy/pwsh): one held SSH connection,
+Built on the SharedDeploy module (shared/deploy/pwsh): one held SSH connection,
 and each download checked against the droplet's SHA-256. Settings resolve like deploy.ps1's:
 the parameter, then $env:DEPLOY_*, then the git-ignored scripts/deploy.config.ps1. Requires
 PuTTY's plink 0.85 or later and a key that needs no typing (no passphrase, or Pageant

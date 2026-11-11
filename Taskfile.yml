@@ -2,7 +2,7 @@ version: '3'
 
 dotenv: ['.env']
 
-# The tasks every repo shares, from the shared-tooling submodule (shared:lint:scripts,
+# The tasks every repo shares, from the shared/ submodule (shared:lint:scripts,
 # shared:golangci:check, shared:update and the rest).
 includes:
   shared: ./shared/repo/Taskfile.yml
@@ -159,7 +159,7 @@ tasks:
     desc: Everything CI checks, in its order
     cmds:
       # The steps that don't depend on each other run at once, each line prefixed with
-      # its task (standards/testing.md); the ones that need them follow, in order.
+      # its task; the ones that need them follow, in order.
       - task --parallel --output prefixed lint shared:vuln test:coverage
       - task: test:e2e
 

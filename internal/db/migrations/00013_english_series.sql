@@ -1,8 +1,8 @@
 -- +goose Up
 
 -- Open Library named two manga series in Japanese, which split The Ideal Sponger Life's
--- volumes three ways and put a Japanese name before High School Prodigies (2026-11-05). Their
--- books join the English-named series; a lookup now keeps the English half of such a name.
+-- volumes three ways and put a Japanese name before High School Prodigies. Their books join
+-- the English-named series; a lookup keeps the English half of such a name.
 UPDATE works SET series_id = (SELECT id FROM series WHERE name = 'The Ideal Sponger Life')
 WHERE series_id IN (
     SELECT id FROM series

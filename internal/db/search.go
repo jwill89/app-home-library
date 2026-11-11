@@ -8,8 +8,8 @@ import (
 // The full-text index's statements are written here by hand, with the backup's VACUUM INTO the
 // only SQL outside sqlc: its SQLite parser knows neither an FTS5 table's rowid nor that the
 // table's own name is a column, which MATCH, snippet, and rank all need. A document's row in
-// the index is its own id (migration 00030), so one document's entry is found without
-// scanning the others' text.
+// the index is its own id, so one document's entry is found without scanning the others'
+// text.
 
 // IndexDocumentParams is what the index holds of a document.
 type IndexDocumentParams struct {

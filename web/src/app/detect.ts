@@ -32,7 +32,7 @@ function detector(): Worker {
       },
     )
     // A worker that cannot start answers every question with nothing, and the owner places
-    // the corners by hand as before.
+    // the corners by hand.
     worker.addEventListener('error', () => {
       waiting.forEach((answer) => answer(null))
       waiting.clear()

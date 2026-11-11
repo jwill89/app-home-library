@@ -1,10 +1,9 @@
 import shared, { vueConventions, tsStylistic } from '@jwill89/lint-web'
 
-// The shared front-end rules (shared-tooling's lint/web): the Vue style guide in full,
-// typescript-eslint's strict and stylistic type-aware rules, accessibility in the
-// templates, and the conventions every front end holds. Below them, what only this app
-// needs. A rule is turned off here with its reason, or at the one line it does not fit
-// with the reason beside it.
+// The shared front-end rules: the Vue style guide in full, typescript-eslint's strict and
+// stylistic type-aware rules, accessibility in the templates, and the conventions every
+// front end holds. Below them, what only this app needs. A rule is turned off here with
+// its reason, or at the one line it does not fit with the reason beside it.
 export default [
   {
     ignores: [
