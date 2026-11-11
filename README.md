@@ -19,4 +19,4 @@ task dev     # Vite on :5173, the server on :8130
 task check   # what CI runs: lint, the tests with their coverage floors, the end-to-end suite
 ```
 
-Go 1.27, Node 26, Task, sqlc, PowerShell 7 with PSScriptAnalyzer. A fresh clone runs `git submodule update --init` first, for the shared tooling in `shared/`. Copy `.env.example` to `.env`. [AGENTS.md](AGENTS.md) is the guide to working on it, and [shared/standards/README.md](shared/standards/README.md) the standards it follows.
+Go 1.27.4, Node 26, Task, sqlc, PowerShell 7 with PSScriptAnalyzer. A fresh clone runs `git submodule update --init` first, for the shared tooling in `shared/`. Copy `.env.example` to `.env`. [AGENTS.md](AGENTS.md) is the guide to working on it, and [shared/standards/README.md](shared/standards/README.md) the standards it follows.

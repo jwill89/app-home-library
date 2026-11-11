@@ -16,6 +16,7 @@ What changes in Home Library, release by release. The format is [Keep a Changelo
 
 ### Security
 
+- The server is built with Go 1.27.4, which fixes a way it could crash while reading a request.
 - The server's debug log keeps a short hash of a share or calendar link's token in place of the token.
 
 ## [1.1.2] - 2026-11-09
