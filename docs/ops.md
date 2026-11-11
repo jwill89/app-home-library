@@ -12,13 +12,13 @@ How the droplet is set up for Home Library, how a release goes out, where things
 | Documents' files | `/opt/homelibrary/data/documents/` (served only through the API) |
 | Backups and deploy snapshots | `/opt/homelibrary/backups/` (0750, every file 0600) |
 | Secrets and settings | `/etc/homelibrary/homelibrary.env` (root-owned, 0600) |
-| Service unit | `/etc/systemd/system/homelibrary.service` (copy of `deploy/homelibrary.service`) |
-| Text service | `/etc/systemd/system/homelibrary-text.service` (copy of `deploy/homelibrary-text.service`): reads the words in documents' files |
+| Service unit | `/etc/systemd/system/homelibrary.service` (from `deploy/homelibrary.service`) |
+| Text service | `/etc/systemd/system/homelibrary-text.service` (from `deploy/homelibrary-text.service`): reads the words in documents' files |
 | Backup timer | `/etc/systemd/system/homelibrary-backup.{service,timer}` |
-| Apache | `/etc/apache2/sites-available/homelibrary.conf` (copy of `deploy/apache-vhost.conf`) |
-
-The units and the vhost are the repository's: every deploy installs them where they differ, so a change to one is made in `deploy/` and shipped, never on the droplet by hand.
+| Apache | `/etc/apache2/sites-available/homelibrary.conf` (from `deploy/apache-vhost.conf`), the site's one vhost file, both ports |
 | Logs | journald: `journalctl -u homelibrary` |
+
+The units and the vhost are the repository's: templates in `deploy/`, filled from the settings in the git-ignored `scripts/deploy.config.ps1` (the service, its user and folder, the site's names, the certificate and the port), and installed by every deploy where they differ. The deploy enables the vhost and retires any other enabled site serving its names. A change to one is made in `deploy/` and shipped, never on the droplet by hand.
 
 The service runs as the unprivileged `homelibrary` user on `127.0.0.1:8130`, writing nothing outside `data/`, in at most 768 MB. Apache terminates TLS for **books.jamescwill.com** and **books.mathdad.me** (one VirtualHost, the second name a `ServerAlias`) with the existing `jamescwill.com` certificate, and proxies both to the service with the name preserved. Cloudflare fronts both names, and the vhost takes the visitor's address from `CF-Connecting-IP` with the list Kindred Nights keeps in `/etc/apache2/cloudflare-ips.txt`. The owner's pages hold one request open each, the change feed (`/api/v1/changes`, Server-Sent Events), which the app pings every 25 seconds inside Apache's 120-second proxy timeout and Cloudflare's 100; Apache does not compress `text/event-stream`, so nothing holds the events back. Requests for share links (`/s/`) and the calendar (`/calendar/`) are not logged, their addresses being their passwords, and `/healthz` answers only on the droplet itself. Ports already taken on the droplet: 8080 (Senpan), 8090 (Family Card Game), 8100 (Kindred Nights), 8120 (Conlang Translator).
 
@@ -26,13 +26,7 @@ The service runs as the unprivileged `homelibrary` user on `127.0.0.1:8130`, wri
 
 DNS: an A record for each of `books.jamescwill.com` and `books.mathdad.me` pointing at the droplet (done 2026-11-04).
 
-From this machine, copy the units and the vhost up:
-
-```powershell
-pscp -i <key.ppk> deploy/homelibrary.service deploy/homelibrary-text.service deploy/apache-vhost.conf root@<host>:/tmp/
-```
-
-Then once on the droplet as root. Idempotent.
+Fill in `scripts/deploy.config.ps1` from `scripts/deploy.config.example.ps1` on this machine. Then once on the droplet as root. Idempotent.
 
 ```bash
 id homelibrary >/dev/null 2>&1 || useradd --system --home /opt/homelibrary --shell /usr/sbin/nologin homelibrary
@@ -53,17 +47,13 @@ HL_HARDCOVER_TOKEN=
 EOF
 chmod 600 /etc/homelibrary/homelibrary.env
 apt-get install -y sqlite3 poppler-utils tesseract-ocr tesseract-ocr-eng   # the deploy's snapshots; the text service's programs
-install -m 644 /tmp/homelibrary.service /tmp/homelibrary-text.service /etc/systemd/system/
-systemctl daemon-reload && systemctl enable homelibrary homelibrary-text
-install -m 644 /tmp/apache-vhost.conf /etc/apache2/sites-available/homelibrary.conf
-a2enmod proxy proxy_http headers rewrite ssl remoteip
-a2ensite homelibrary && apachectl configtest && systemctl reload apache2
+a2enmod proxy proxy_http headers rewrite ssl remoteip && systemctl reload apache2
 certbot certificates | grep -A3 'jamescwill.com'   # both books.* names must be listed
 ```
 
 Put the Google Books key in `HL_GOOGLE_BOOKS_KEY` with an editor. It is restricted in Google Cloud to the Books API and the droplet's address, so it works from the droplet and nowhere else; local development runs without it, or with a second key restricted to the home address.
 
-The first `task deploy` installs the binary, starts both services, and installs the nightly backup's timer (see Backups). Every deploy after it stops both, and starts the text service again on the new binary once the web service answers.
+The first `task deploy` installs the binary and the units, enabling and starting both services, installs and enables the vhost, and installs the nightly backup's timer (see Backups). Every deploy after it stops both, and starts the text service again on the new binary once the web service answers.
 
 The text service (`homelibrary read-text`, unit `homelibrary-text`) reads the words in documents' files, one at a time, with `pdftotext` and Tesseract. The tools run at idle CPU and disk priority (`chrt`, `ionice`), and the service is capped at 80% of a CPU and 1 GB, with no network at all. The service itself keeps a normal priority: it holds the database's write lock while it saves what the tools read, and at idle priority a busy droplet could keep it there for seconds. `journalctl -u homelibrary-text` shows what it could not read; a file it fails on three times is left for the owner to type.
 
@@ -77,13 +67,22 @@ systemd-run --uid=homelibrary --pipe --wait -p EnvironmentFile=/etc/homelibrary/
 
 It prints a code good for 30 minutes and the two `/setup` addresses. Open either on the phone, type the code, and the phone makes its passkey. After that, **Settings → Set up another device or address** makes a 15-minute code from inside the app for the next device or the other name. The command also works when every passkey is lost.
 
+## Upgrading to 1.2.1
+
+The first deploy on shared-tooling 2.8.0, which fills the units and the vhost from the deploy config. The droplet already runs `homelibrary.conf` with both ports, enabled, with a disabled `homelibrary.conf.old` beside it, and no other site serves the two names. In order:
+
+1. On this machine, add the new settings to `scripts/deploy.config.ps1`, each from what the droplet runs now: `$DeployServiceName` and `$DeployServiceUser` (the service and its user), `$DeployRemoteOptDir` (the binary's folder), `$DeployServerName` and `$DeployServerAlias` (the vhost's two names), `$DeployCertName` (the certificate's folder under `/etc/letsencrypt/live`) and `$DeployAppPort` (the port in `HL_ADDR`). The env file and the site's address keep their defaults. Do it as soon as this change is on this machine: the daily backup pull reads `$DeployRemoteOptDir` too.
+2. Raise the version, commit and push. When every CI job passes, the `release` job tags `v1.2.1`; a deploy ships that tag.
+3. `task deploy`. The units, filled in, differ from the live ones only in their comments, and go in with the binary. The vhost goes in as `homelibrary.conf`, the previous one kept as `homelibrary.conf.old` in place of the old copy there; it is already enabled and alone on its names, so no site is retired and Apache reloads once the rest has passed. The health check asks the app on the configured port, so a port that does not match `HL_ADDR` fails here and everything goes back.
+4. Check the site as after every release: both names load and sign in.
+
 ## Releasing
 
 1.0.0 was the first commit (2026-11-05). A build can reach the droplet to be tried before it is committed with `task deploy -- -Preview`: the same build, swap, health check, rollback, and pull, without the clean-and-tagged check, stamped `preview-<date-time>` (the version `/healthz` reports). A release:
 
 1. `task check` passes. Raise the version in `web/package.json` (and its lockfile) and move the Unreleased entries in `CHANGELOG.md` under it, in one commit.
 2. Push to `main`. Once every CI job passes, the `release` job tags the commit `v<version>` and makes the GitHub Release from that version's CHANGELOG section; a version already released is skipped, so an ordinary push makes no tag. Nothing is tagged by hand.
-3. `task deploy`. The script fetches the tags, refuses a dirty tree or a HEAD without the tag `web/package.json` names, and builds the Linux binary. It runs on shared-tooling's SharedDeploy module over one held SSH connection (`Get-Help .\scripts\deploy.ps1 -Full` gives the whole run), and uploads the binary in one archive with the units and the vhost. On the droplet it checks the archive and that `apachectl configtest` takes the vhost before anything stops, then stops both services, snapshots the database (compressed, to `/opt/homelibrary/backups/homelibrary-pre-<time>.sqlite.gz`, the newest three kept), installs the binary and whichever units and vhost changed, starts both, and waits up to 30 seconds for `/healthz` to answer. If it does not, the previous binary, units and vhost go back, with the database snapshot taken a moment before the swap. Then it fetches the site through Cloudflare: `/healthz` must name the new version, and `/` its entry script, or everything goes back the same way. Then it checks the nightly backup's timer, and last it pulls the live database, the covers, and the documents' files into `devdata/`, and removes that copy from the droplet. `-- -NoDbPull` skips the pull.
+3. `task deploy`. The script fetches the tags, refuses a dirty tree or a HEAD without the tag `web/package.json` names, and builds the Linux binary. It runs on shared-tooling's SharedDeploy module over one held SSH connection (`Get-Help .\scripts\deploy.ps1 -Full` gives the whole run), and uploads the binary in one archive with the units and the vhost, filled from the deploy config. On the droplet it checks the archive, and tries the vhost on a copy of Apache's config with any other enabled site serving its names retired, before anything stops. Then it stops both services, snapshots the database (compressed, to `/opt/homelibrary/backups/homelibrary-pre-<time>.sqlite.gz`, the newest three kept), installs the binary and whichever units and vhost changed (the previous vhost kept as `homelibrary.conf.old`), retires those sites, starts both, and waits up to 30 seconds for `/healthz` on the app's port to answer. If it does not, the previous binary, units, vhost and sites go back, with the database snapshot taken a moment before the swap. Then it fetches the site through Cloudflare: `/healthz` must name the new version, and `/` its entry script, or everything goes back the same way. Then it checks the nightly backup's timer, and last it pulls the live database, the covers, and the documents' files into `devdata/`, and removes that copy from the droplet. `-- -NoDbPull` skips the pull.
 
 ## Backups
 

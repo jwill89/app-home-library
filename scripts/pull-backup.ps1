@@ -20,7 +20,8 @@ Scheduler shows it too: the droplet's nightly backup has stopped.
 
 Built on the SharedDeploy module (shared/deploy/pwsh): one held SSH connection,
 and each download checked against the droplet's SHA-256. Settings resolve like deploy.ps1's:
-the parameter, then $env:DEPLOY_*, then the git-ignored scripts/deploy.config.ps1. Requires
+the parameter, then $env:DEPLOY_*, then the git-ignored scripts/deploy.config.ps1: VpsHost,
+VpsUser, KeyPath, and RemoteOptDir, the app's folder, whose backups/ it reads. Requires
 PuTTY's plink 0.85 or later and a key that needs no typing (no passphrase, or Pageant
 running).
 #>
@@ -30,20 +31,23 @@ param(
     [ValidateRange(1, 365)][int]$Keep = 14,
     [string]$VpsHost,
     [string]$VpsUser,
-    [string]$KeyPath
+    [string]$KeyPath,
+    [string]$RemoteOptDir
 )
 
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 Import-Module (Join-Path $PSScriptRoot '..\shared\deploy\pwsh\SharedDeploy.psd1') -Force
 
-$remote = '/opt/homelibrary/backups'
+$settings = Resolve-DeploySetting -ConfigPath (Join-Path $PSScriptRoot 'deploy.config.ps1') `
+    -Value @{ VpsHost = $VpsHost; VpsUser = $VpsUser; KeyPath = $KeyPath; RemoteOptDir = $RemoteOptDir } `
+    -Required VpsHost, VpsUser, KeyPath, RemoteOptDir
+# The backups sit in the app's folder on the host, which goes into a shell command.
+$remoteDir = "$($settings.RemoteOptDir)".TrimEnd('/')
+if ($remoteDir -notmatch '^/[A-Za-z0-9._/-]+$' -or $remoteDir -match '(^|/)\.\.?(/|$)') { throw "RemoteOptDir must be an absolute path of plain names, not '$remoteDir'." }
+$remote = "$remoteDir/backups"
 $outbox = "$remote/pull-daily"
 $files = 'homelibrary.sqlite.gz', 'files.tgz'
-
-$settings = Resolve-DeploySetting -ConfigPath (Join-Path $PSScriptRoot 'deploy.config.ps1') `
-    -Value @{ VpsHost = $VpsHost; VpsUser = $VpsUser; KeyPath = $KeyPath } `
-    -Required VpsHost, VpsUser, KeyPath
 
 New-Item -ItemType Directory -Force $Destination | Out-Null
 $log = Join-Path $Destination 'pull-backup.log'

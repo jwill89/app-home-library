@@ -15,14 +15,18 @@ anything uncommitted: the release is checked out into a folder of its own, with 
 lockfile, and built there. The host records the release each deploy leaves running; when that
 is already this release, nothing is done (-Force deploys it again).
 
-Opens one SSH connection and keeps it for the run, then builds the static Linux binary and packs
-it into one archive with the systemd units and the Apache vhost from deploy/, and uploads the
-archive. In one remote run it checks the archive and that Apache takes the vhost before
-anything stops, then stops the service and the text service, snapshots the database
-(compressed), installs the binary and whichever units and vhost differ, starts both, and waits
-up to 30 seconds for /healthz. A build that does not answer goes back: the binary, units and
-vhost before it, and the database as the snapshot left it, since the new build may have
-migrated it before it fell over.
+Opens one SSH connection and keeps it for the run, then builds the static Linux binary. The
+two systemd units and the Apache vhost are templates in deploy/: the settings fill in what is
+the host's (the service, its user and folders, the site's names, its certificate and the app's
+port), and they go into one archive with the binary. In one remote run it checks the archive
+and that Apache takes the vhost before anything stops, then stops the service and the text
+service, snapshots the database (compressed), installs the binary and whichever units differ,
+starts both, and waits up to 30 seconds for /healthz on the app's port. The vhost is the one
+file /etc/apache2/sites-available/<service>.conf holding both ports: it goes in where it
+differs and is enabled where it isn't, and any other enabled site serving the same names is
+retired, all tried on a copy of Apache's config first. A build that does not answer goes back:
+the binary, units, vhost and retired sites before it, and the database as the snapshot left it,
+since the new build may have migrated it before it fell over.
 
 Then the site is fetched through Cloudflare: /healthz must name this version, and / this
 build's entry script, which must load. A failure there rolls back the same way. Then the
@@ -36,18 +40,85 @@ with -NoDbPull); neither stays on the droplet. Both include the owner's own phot
 scans, which exist nowhere else, so every release leaves a copy of them on this machine.
 
 Settings resolve from the parameter, then $env:DEPLOY_*, then the git-ignored
-scripts/deploy.config.ps1. A run is one SSH connection (plus one only if it drops and
-reconnects), which stays under the host's `ufw limit ssh`.
+scripts/deploy.config.ps1 (copy scripts/deploy.config.example.ps1 and fill it in). A run is one
+SSH connection (plus one only if it drops and reconnects), which stays under the host's
+`ufw limit ssh`.
 
 Requires PuTTY's plink 0.85 or later and the key loaded in Pageant. -Preview ships the working
 tree as it is, stamped preview-<time>, so a build reaches a phone to be tried before it is
 committed; -SkipBuild, with it alone, reuses the last dist/homelibrary-linux-amd64.
+
+.PARAMETER VpsHost
+The droplet's address or name.
+
+.PARAMETER VpsUser
+The SSH user.
+
+.PARAMETER KeyPath
+The PuTTY .ppk key.
+
+.PARAMETER ServiceName
+The web server's systemd service. The text service is the same name with -text, and the vhost
+file is named after it.
+
+.PARAMETER ServiceUser
+The account both services run as. The service's name when omitted.
+
+.PARAMETER RemoteOptDir
+The folder on the host that holds the binary, with data/ and backups/ inside it.
+
+.PARAMETER EnvFile
+The services' env file on the host. /etc/<service>/<service>.env when omitted.
+
+.PARAMETER ServerName
+The site's main host name, the vhost's ServerName.
+
+.PARAMETER ServerAlias
+The site's other host names, space-separated, the vhost's ServerAlias. None when omitted.
+
+.PARAMETER CertName
+The certificate's folder under /etc/letsencrypt/live, which must cover every name.
+
+.PARAMETER AppPort
+The loopback port the web server listens on (HL_ADDR in the env file), which Apache proxies
+to and the health check asks.
+
+.PARAMETER SiteUrl
+The site's address as visitors reach it, for the smoke check. https:// and the ServerName
+when omitted.
+
+.PARAMETER SkipBuild
+Reuse the last built binary. Goes with -Preview only: a release is always built from its tag.
+
+.PARAMETER NoDbPull
+Leave the live database, covers and documents on the droplet; bring no copy home.
+
+.PARAMETER Preview
+Ship the working tree as it is, stamped preview-<time>, instead of the newest release.
+
+.PARAMETER Force
+Deploy even when the host already runs this release.
+
+.EXAMPLE
+task deploy                      # the newest release
+
+.EXAMPLE
+task deploy -- -Preview          # the working tree, to try a build before committing it
 #>
 [CmdletBinding()]
 param(
     [string]$VpsHost,
     [string]$VpsUser,
     [string]$KeyPath,
+    [string]$ServiceName,
+    [string]$ServiceUser,
+    [string]$RemoteOptDir,
+    [string]$EnvFile,
+    [string]$ServerName,
+    [string]$ServerAlias,
+    [string]$CertName,
+    [string]$AppPort,
+    [string]$SiteUrl,
     [switch]$SkipBuild,
     [switch]$NoDbPull,
     [switch]$Preview,
@@ -62,24 +133,56 @@ trap { Close-DeployConnection; Write-Host "`nERROR: $($_.Exception.Message)" -Fo
 $root = Split-Path -Path $PSScriptRoot -Parent
 Set-Location $root
 
-$remoteDir = '/opt/homelibrary'
-$envFile = '/etc/homelibrary/homelibrary.env'
-$serviceUser = 'homelibrary'
+$given = @{
+    VpsHost      = $VpsHost
+    VpsUser      = $VpsUser
+    KeyPath      = $KeyPath
+    ServiceName  = $ServiceName
+    ServiceUser  = $ServiceUser
+    RemoteOptDir = $RemoteOptDir
+    EnvFile      = $EnvFile
+    ServerName   = $ServerName
+    ServerAlias  = $ServerAlias
+    CertName     = $CertName
+    AppPort      = $AppPort
+    SiteUrl      = $SiteUrl
+}
+$settings = Resolve-DeploySetting -ConfigPath (Join-Path $PSScriptRoot 'deploy.config.ps1') -Value $given `
+    -Required VpsHost, VpsUser, KeyPath, ServiceName, RemoteOptDir, ServerName, CertName, AppPort
+
+# Each value goes into a unit, the vhost or a shell command, so each is held to its plain form.
+$service = [string]$settings.ServiceName
+if ($service -notmatch '^[a-z][a-z0-9-]*$') { throw "ServiceName must be a plain service name, not '$service'." }
+$serviceUser = if ($settings.ServiceUser) { [string]$settings.ServiceUser } else { $service }
+if ($serviceUser -notmatch '^[a-z_][a-z0-9_-]*$' -or $serviceUser -eq 'root') {
+    throw "ServiceUser must be the service's own unprivileged account, not '$serviceUser'."
+}
+$remoteDir = "$($settings.RemoteOptDir)".TrimEnd('/')
+$envFile = if ($settings.EnvFile) { [string]$settings.EnvFile } else { "/etc/$service/$service.env" }
+foreach ($path in $remoteDir, $envFile) {
+    if ($path -notmatch '^/[A-Za-z0-9._/-]+$' -or $path -match '(^|/)\.\.?(/|$)') { throw "'$path' must be an absolute path of plain names." }
+}
+$serverName = "$($settings.ServerName)".ToLowerInvariant()
+$serverAlias = "$($settings.ServerAlias)".Trim().ToLowerInvariant() -replace '\s+', ' '
+foreach ($name in @($serverName) + @($serverAlias -split ' ' | Where-Object { $_ })) {
+    if ($name -notmatch '^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$') { throw "ServerName and ServerAlias must be plain host names, not '$name'." }
+}
+if ($settings.CertName -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]*$') { throw 'CertName must be a folder name of letters, digits and . _ - only, not a path.' }
+if ($settings.AppPort -notmatch '^[0-9]+$' -or [int]$settings.AppPort -lt 1024 -or [int]$settings.AppPort -gt 65535) {
+    throw "AppPort must be a port from 1024 to 65535, not '$($settings.AppPort)'."
+}
+$site = if ($settings.SiteUrl) { "$($settings.SiteUrl)".TrimEnd('/') } else { "https://$serverName" }
+
 # The text service writes the database too: neither the new build's migration nor a
 # rollback's restore runs under it, so the two stop, start and go back together.
-$services = 'homelibrary', 'homelibrary-text'
-$units = 'homelibrary.service', 'homelibrary-text.service'
-$vhostPath = '/etc/apache2/sites-available/homelibrary.conf'
+$services = $service, "$service-text"
+$units = "$service.service", "$service-text.service"
 $remoteDb = "$remoteDir/data/homelibrary.sqlite"
 $snapshotPrefix = "$remoteDir/backups/homelibrary-pre-"
 $pullFolder = "$remoteDir/backups/pull-deploy"
 $localDb = Join-Path $root 'devdata/homelibrary.sqlite'
 # What the host records as running, for the next deploy to compare with.
 $record = 'homelibrary'
-
-$settings = Resolve-DeploySetting -ConfigPath (Join-Path $PSScriptRoot 'deploy.config.ps1') `
-    -Value @{ VpsHost = $VpsHost; VpsUser = $VpsUser; KeyPath = $KeyPath } `
-    -Required VpsHost, VpsUser, KeyPath
 
 if ($Preview) {
     $version = 'preview-' + (Get-Date -Format 'yyyyMMdd-HHmm')
@@ -101,8 +204,11 @@ install -d -o '__USER__' -g '__USER__' -m 750 '__DIR__/data/documents'
 
 $restore = {
     Restore-ServiceBinary -ServiceName $services -Binary "$remoteDir/homelibrary" -Owner 'root' -Unit $units `
-        -VhostPath $vhostPath -Database $remoteDb -SnapshotPrefix $snapshotPrefix -SnapshotSuffix '.sqlite'
+        -Database $remoteDb -SnapshotPrefix $snapshotPrefix -SnapshotSuffix '.sqlite'
 }
+
+# The units and the vhost are rendered here, from the release's templates and these settings.
+$rendered = Join-Path ([IO.Path]::GetTempPath()) "homelibrary-deploy-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
 
 $connection = $settings | Open-DeployConnection
 $tree = $null
@@ -140,12 +246,34 @@ try {
     $entryScript = [regex]::Match((Get-Content -LiteralPath (Join-Path $build 'web/dist/index.html') -Raw), 'src="(/assets/[^"]+\.js)"').Groups[1].Value
     if (-not $entryScript) { throw 'web/dist/index.html names no entry script under /assets; build the front end first.' }
 
-    $archive = Compress-DeployArchive -Content ([ordered]@{
-            'homelibrary'              = $binary
-            'homelibrary.service'      = Join-Path $build 'deploy/homelibrary.service'
-            'homelibrary-text.service' = Join-Path $build 'deploy/homelibrary-text.service'
-            'apache-vhost.conf'        = Join-Path $build 'deploy/apache-vhost.conf'
-        })
+    $null = New-Item -ItemType Directory -Path $rendered
+    $values = @{
+        SERVICE      = $service
+        USER         = $serviceUser
+        DIR          = $remoteDir
+        ENV_FILE     = $envFile
+        SERVER_NAME  = $serverName
+        SERVER_ALIAS = $serverAlias
+        CERT         = $settings.CertName
+        APP_PORT     = $settings.AppPort
+    }
+    $templates = [ordered]@{
+        "$service.service"      = 'homelibrary.service'
+        "$service-text.service" = 'homelibrary-text.service'
+        'apache-vhost.conf'     = 'apache-vhost.conf'
+    }
+    foreach ($name in $templates.Keys) {
+        $text = Get-Content -LiteralPath (Join-Path $build "deploy/$($templates[$name])") -Raw
+        # A site with one name has no ServerAlias line: Apache refuses one with nothing on it.
+        if (-not $serverAlias) { $text = $text -replace '(?m)^[ \t]*ServerAlias[ \t]+__SERVER_ALIAS__[ \t]*\r?\n', '' }
+        $text = Format-RemoteScript -Template $text -Value $values
+        if ($text -match '__[A-Z_]+__') { throw "deploy/$($templates[$name]) has a placeholder the settings do not fill: $($Matches[0])" }
+        [IO.File]::WriteAllText((Join-Path $rendered $name), $text, [Text.UTF8Encoding]::new($false))
+    }
+
+    $content = [ordered]@{ 'homelibrary' = $binary }
+    foreach ($name in $templates.Keys) { $content[$name] = Join-Path $rendered $name }
+    $archive = Compress-DeployArchive -Content $content
 
     Write-Step "Deploying $version to $($connection.Target)"
     # Nothing stops until the upload is complete and checked.
@@ -155,17 +283,13 @@ try {
     Invoke-DeployBundle -Archive 'homelibrary-deploy.tgz' -Sha256 $archive.Sha256 -ExpectedFileCount $archive.FileCount -Step @(
         $layout
         Install-ServiceBinary -AsStep -ServiceName $services -Binary "$remoteDir/homelibrary" -Owner 'root' `
-            -Unit $units -Vhost 'apache-vhost.conf' -VhostPath $vhostPath -Umask '077' `
+            -Unit $units -Vhost 'apache-vhost.conf' -Umask '077' `
             -Database $remoteDb -SnapshotPrefix $snapshotPrefix -SnapshotSuffix '.sqlite' -RestoreDatabaseOnRollback `
-            -EnvFile $envFile -HealthUrl 'http://{HL_ADDR}/healthz' -HealthDefault @{ HL_ADDR = '127.0.0.1:8130' } `
-            -HealthTimeoutSeconds 30
+            -HealthUrl "http://127.0.0.1:$($settings.AppPort)/healthz" -HealthTimeoutSeconds 30
     )
     Write-Ok "Deployed $version"
 
-    # The site as visitors reach it, through Cloudflare and Apache: the first of its origins.
-    $origins = "$(@(Invoke-Remote -Script "sed -n 's/^HL_ORIGINS=//p' '$envFile'") | Select-Object -First 1)"
-    $site = ($origins -split ',')[0].Trim().TrimEnd('/')
-    if ($site -notmatch '^https?://') { throw "The host names no site address (HL_ORIGINS in $envFile), so the site could not be checked. $version is running." }
+    # The site as visitors reach it, through Cloudflare and Apache.
     Write-Step "Checking $site..."
     # A fresh token on each address, so no answer Cloudflare kept from before can pass.
     $token = [guid]::NewGuid().ToString('N').Substring(0, 12)
@@ -183,7 +307,7 @@ try {
     # mount, and the files' snapshot is hard links, which cannot cross mounts.
     Write-Step 'Checking the nightly backup...'
     try {
-        Install-BackupTimer -Name 'homelibrary' -Command "$remoteDir/homelibrary backup" -Owner $serviceUser `
+        Install-BackupTimer -Name $service -Command "$remoteDir/homelibrary backup" -Owner $serviceUser `
             -EnvironmentFile $envFile -WorkingDirectory $remoteDir -ReadWritePath $remoteDir `
             -OnCalendar '*-*-* 09:30:00 UTC' -RandomizedDelay '10min' -Description 'Home Library nightly backup'
     } catch {
@@ -220,6 +344,7 @@ tar -czf '__OUT__/files.tgz' -C '__DIR__/data' media documents
 } finally {
     Close-DeployConnection
     if ($archive) { Remove-Item -LiteralPath $archive.Path -ErrorAction SilentlyContinue }
+    Remove-Item -LiteralPath $rendered -Recurse -Force -ErrorAction SilentlyContinue
     if ($tree) { Remove-ReleaseTree -Path $tree -Repository $root }
 }
 Write-Host "`n[OK] Deployed $version" -ForegroundColor Green

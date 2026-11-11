@@ -1,21 +1,21 @@
-# Installed at /etc/systemd/system/homelibrary-text.service by every deploy
-# (scripts/deploy.ps1). The text service reads the words in documents' files with pdftotext
-# and Tesseract (apt install poppler-utils tesseract-ocr). It is apart from the web server
-# so a long scan never slows a page.
+# Installed at /etc/systemd/system/<service>-text.service by every deploy
+# (scripts/deploy.ps1), filled in as the web server's unit is. The text service reads the words
+# in documents' files with pdftotext and Tesseract (apt install poppler-utils tesseract-ocr). It
+# is apart from the web server so a long scan never slows a page.
 
 [Unit]
 Description=Home Library text service
-After=homelibrary.service
+After=__SERVICE__.service
 # Never given up on, thirty seconds between tries.
 StartLimitIntervalSec=0
 
 [Service]
 Type=simple
-User=homelibrary
-Group=homelibrary
-WorkingDirectory=/opt/homelibrary
-EnvironmentFile=-/etc/homelibrary/homelibrary.env
-ExecStart=/opt/homelibrary/homelibrary read-text
+User=__USER__
+Group=__USER__
+WorkingDirectory=__DIR__
+EnvironmentFile=-__ENV_FILE__
+ExecStart=__DIR__/homelibrary read-text
 Restart=on-failure
 RestartSec=30
 TimeoutStopSec=15
@@ -30,7 +30,7 @@ MemoryMax=1G
 # Hardening, as the web server's, and more: it needs no network at all.
 NoNewPrivileges=yes
 ProtectSystem=strict
-ReadWritePaths=/opt/homelibrary/data
+ReadWritePaths=__DIR__/data
 ProtectHome=yes
 PrivateTmp=yes
 PrivateDevices=yes
@@ -53,7 +53,7 @@ UMask=0077
 
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=homelibrary-text
+SyslogIdentifier=__SERVICE__-text
 
 [Install]
 WantedBy=multi-user.target

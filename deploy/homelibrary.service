@@ -1,5 +1,7 @@
-# Installed at /etc/systemd/system/homelibrary.service by every deploy (scripts/deploy.ps1),
-# which puts the one before back if the new build does not come up.
+# Installed at /etc/systemd/system/<service>.service by every deploy (scripts/deploy.ps1),
+# which puts the one before back if the new build does not come up. The words between double
+# underscores (the service, its user, its folder and its env file) are filled in from the
+# untracked deploy config.
 
 [Unit]
 Description=Home Library
@@ -10,11 +12,11 @@ StartLimitIntervalSec=0
 
 [Service]
 Type=simple
-User=homelibrary
-Group=homelibrary
-WorkingDirectory=/opt/homelibrary
-EnvironmentFile=-/etc/homelibrary/homelibrary.env
-ExecStart=/opt/homelibrary/homelibrary serve
+User=__USER__
+Group=__USER__
+WorkingDirectory=__DIR__
+EnvironmentFile=-__ENV_FILE__
+ExecStart=__DIR__/homelibrary serve
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=15
@@ -27,7 +29,7 @@ MemoryMax=768M
 # covers, and the documents' files, never the binary beside them.
 NoNewPrivileges=yes
 ProtectSystem=strict
-ReadWritePaths=/opt/homelibrary/data
+ReadWritePaths=__DIR__/data
 ProtectHome=yes
 PrivateTmp=yes
 PrivateDevices=yes
@@ -48,11 +50,11 @@ SystemCallArchitectures=native
 MemoryDenyWriteExecute=yes
 CapabilityBoundingSet=
 UMask=0077
-LogsDirectory=homelibrary
+LogsDirectory=__SERVICE__
 
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=homelibrary
+SyslogIdentifier=__SERVICE__
 
 [Install]
 WantedBy=multi-user.target

@@ -11,7 +11,7 @@ Read PLAN.md before changing anything structural. It holds the product decisions
 - `cmd/homelibrary`: the one binary and its subcommands: `serve`, `read-text` (the text service), `migrate`, `backup`, `setup-code`, `import`, `openapi`, `dev-session` and `version`.
 - `internal/`: packages by domain. Handlers in `internal/server` and `internal/api` stay thin; the rules live in `internal/catalog` and `internal/lookup`, and sign-in's in `internal/auth`. `internal/db` is sqlc's output beside the hand-written open, search and migration code, with the queries in `internal/db/queries` and the goose migrations in `internal/db/migrations`.
 - `web/`: the Vue app, embedded in the binary by `web/embed.go`, with its unit tests beside the code (`src/**/*.test.ts`) and its end-to-end suite in `web/e2e`.
-- `deploy/`: the systemd units and the Apache vhost the deploy installs where they differ. The nightly backup's units are written by the deploy itself (shared-tooling's `Install-BackupTimer`).
+- `deploy/`: the templates of the systemd units and the Apache vhost, which the deploy fills from the git-ignored deploy config and installs where they differ. The nightly backup's units are written by the deploy itself (shared-tooling's `Install-BackupTimer`).
 - `scripts/`: `deploy.ps1` (`task deploy`; `Get-Help .\scripts\deploy.ps1 -Full` gives its whole run) and `pull-backup.ps1`, the daily copy of the droplet's backup to this machine, both on shared-tooling's SharedDeploy module.
 - `docs/ops.md`: the host, releasing, the deploy, the backups and how to restore them. `docs/decisions.md`: a dated line for each decision. `CHANGELOG.md`: what each release changes, its section the release's notes.
 - The app's one version is `web/package.json`'s. A push to `main` that raises it is tagged `v<version>` by CI's `release` job once every other job passes (`.github/scripts/release.sh`), and the binary reports that tag (`/healthz`, through the build's ldflags).
@@ -76,7 +76,6 @@ Read PLAN.md before changing anything structural. It holds the product decisions
 
 Each line is what the project does today where the standards rule it otherwise. The owner decides whether each moves or stays; one that stays gives its reason here.
 
-- Units and vhost: the deploy ships `deploy/`'s systemd units and Apache vhost, but their host values (server names, certificate path, port, paths, service user) are written into the templates, not placeholders filled from the git-ignored deploy config (deploy-and-ops.md).
 - Ownership: the binary and `/opt/homelibrary` are root's, so the service runs the binary and cannot change it; the data and the backups are the service's. The standards have the code owned by the service's own user, read-only to it under `ProtectSystem=strict`.
 - Backups: the nightly backup compresses the database, but the covers' and documents' files in each day's `files-YYYY-MM-DD/` stay as hard links to the live files. They take no room until the library lets a file go, and photographs and PDFs barely compress; a compressed copy would hold every file twice.
 - Icons: each component imports the definitions it uses and passes them to `:icon`, so there is no register in `src/fontawesome.ts` and no test of one; a missing icon fails the type check instead (components.md asks for the register and its test).
