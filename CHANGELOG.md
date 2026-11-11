@@ -4,11 +4,19 @@ What changes in Home Library, release by release. The format is [Keep a Changelo
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-10
+
 ### Changed
 
+- Signing in, setting up a device with a code, and signing out moved from `/auth/` into the API, under `/api/v1/auth/`, and a new passkey is made under `/api/v1/passkeys`. An installed app left open from an earlier release signs in again once it is reloaded.
+- A passkey's name longer than 60 characters is refused rather than cut short.
 - `task deploy` ships the newest release CI tagged on main, built from a clean checkout of its own, so commits made after the release and uncommitted work never reach the site.
 - Deploying a release that is already running does nothing; `-Force` deploys it again.
 - `-SkipBuild` goes with `-Preview` alone.
+
+### Security
+
+- The server's debug log keeps a short hash of a share or calendar link's token in place of the token.
 
 ## [1.1.2] - 2026-11-09
 
@@ -38,7 +46,8 @@ What changes in Home Library, release by release. The format is [Keep a Changelo
 
 - The first release: the catalog, covers, loans, courses, labels, documents, share links, imports and exports, and the nightly backup.
 
-[Unreleased]: https://github.com/jwill89/Home-Library/compare/v1.1.2...HEAD
+[Unreleased]: https://github.com/jwill89/Home-Library/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/jwill89/Home-Library/compare/v1.1.2...v1.2.0
 [1.1.2]: https://github.com/jwill89/Home-Library/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/jwill89/Home-Library/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/jwill89/Home-Library/compare/v1.0.0...v1.1.0

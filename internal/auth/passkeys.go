@@ -2,12 +2,13 @@ package auth
 
 import (
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
-	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -15,48 +16,54 @@ import (
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
+	"modernc.org/sqlite"
+	sqlite3 "modernc.org/sqlite/lib"
 
 	"homelibrary/internal/db"
 )
 
-// Passkeys serves the sign-in ceremonies under /auth.
+// Passkeys runs the passkey ceremonies on the session the request's context carries. Each
+// ceremony has two steps; its challenge waits in the session between them, for ten minutes at
+// most, and answers once. site is the configured origin the request came on, scheme and host.
 type Passkeys struct {
 	Sessions *scs.SessionManager
 	DB       *db.DB
-	// Origin maps a request's Host to the configured origin; a name not configured is refused.
-	Origin func(host string) (string, bool)
-	Logger *slog.Logger
+	Logger   *slog.Logger
 }
 
-// Register puts the routes on the mux.
-func (p *Passkeys) Register(mux *http.ServeMux) {
-	mux.HandleFunc("POST /auth/setup", p.redeem)
-	mux.HandleFunc("POST /auth/passkey/register/begin", p.registerBegin)
-	mux.HandleFunc("POST /auth/passkey/register/finish", p.registerFinish)
-	mux.HandleFunc("POST /auth/passkey/login/begin", p.loginBegin)
-	mux.HandleFunc("POST /auth/passkey/login/finish", p.loginFinish)
-	mux.HandleFunc("POST /auth/logout", p.logout)
-}
+// The ways a ceremony is refused, which the API answers each in its own words.
+var (
+	// ErrNoCeremony is a ceremony's second step with no first step waiting in the session.
+	ErrNoCeremony = errors.New("no passkey ceremony under way")
+	// ErrRefused is an answer to a sign-in that signs no one in.
+	ErrRefused = errors.New("passkey refused")
+	// ErrNotAccepted is a new passkey that does not check out against its challenge.
+	ErrNotAccepted = errors.New("passkey not accepted")
+	// ErrTaken is a new passkey whose credential is already kept.
+	ErrTaken = errors.New("passkey already added")
+	// ErrWrongCode is a setup code that is wrong, used, or expired.
+	ErrWrongCode = errors.New("setup code wrong, used, or expired")
+)
 
 const (
 	keyRegister = "webauthn_register"
 	keyLogin    = "webauthn_login"
 )
 
-// relyingParty is the WebAuthn configuration for the name the request came on.
-func (p *Passkeys) relyingParty(r *http.Request) (*webauthn.WebAuthn, string, error) {
-	origin, ok := p.Origin(r.Host)
-	if !ok {
-		return nil, "", errors.New("not a name this site answers on")
+// relyingParty is the WebAuthn configuration for site: its host is the relying party, and it
+// is the one origin a browser's answer may come from. The challenge holds as long as the
+// session of someone part way in.
+func relyingParty(site string) (*webauthn.WebAuthn, string, error) {
+	u, err := url.Parse(site)
+	if err != nil || u.Hostname() == "" {
+		return nil, "", fmt.Errorf("no site for WebAuthn (%q)", site)
 	}
-	u, err := url.Parse(origin)
-	if err != nil {
-		return nil, "", err
-	}
+	timeout := webauthn.TimeoutConfig{Enforce: true, Timeout: unfinished, TimeoutUVD: unfinished}
 	wa, err := webauthn.New(&webauthn.Config{
 		RPDisplayName: "Home Library",
 		RPID:          u.Hostname(),
-		RPOrigins:     []string{origin},
+		RPOrigins:     []string{site},
+		Timeouts:      webauthn.TimeoutsConfig{Login: timeout, Registration: timeout},
 	})
 	return wa, u.Hostname(), err
 }
@@ -104,17 +111,17 @@ func (p *Passkeys) load(ctx context.Context, userID int64, rpID string) (*owner,
 	return o, nil
 }
 
-func (p *Passkeys) stash(r *http.Request, key string, data *webauthn.SessionData) error {
+func (p *Passkeys) stash(ctx context.Context, key string, data *webauthn.SessionData) error {
 	b, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
-	p.Sessions.Put(r.Context(), key, string(b))
+	p.Sessions.Put(ctx, key, string(b))
 	return nil
 }
 
-func (p *Passkeys) unstash(r *http.Request, key string) (*webauthn.SessionData, bool) {
-	raw := p.Sessions.PopString(r.Context(), key)
+func (p *Passkeys) unstash(ctx context.Context, key string) (*webauthn.SessionData, bool) {
+	raw := p.Sessions.PopString(ctx, key)
 	if raw == "" {
 		return nil, false
 	}
@@ -125,58 +132,45 @@ func (p *Passkeys) unstash(r *http.Request, key string) (*webauthn.SessionData, 
 	return &data, true
 }
 
-// registrant is who may make a passkey now: the signed-in owner, or a device that has just
-// redeemed a setup code.
-func (p *Passkeys) registrant(r *http.Request) int64 {
-	if pr, ok := FromContext(r.Context()); ok && pr.Owner() {
-		return pr.UserID
+// Redeem spends a setup code: the session moves to a fresh token and may make one passkey for
+// the code's user, within ten minutes. The leave ends by its own clock, which nothing renews;
+// a session that was no one's lasts only as long, and the owner's or a visitor's keeps its own.
+func (p *Passkeys) Redeem(ctx context.Context, code string) error {
+	id, err := db.New(p.DB.Write).TakeSetupCode(ctx, db.TakeSetupCodeParams{CodeHash: hashCode(code), ExpiresAt: stamp(time.Now())})
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrWrongCode
 	}
-	return p.Sessions.GetInt64(r.Context(), sessionSetup)
+	if err != nil {
+		return err
+	}
+	if err := p.Sessions.RenewToken(ctx); err != nil {
+		return err
+	}
+	until := time.Now().Add(unfinished)
+	p.Sessions.Put(ctx, sessionSetup, id)
+	p.Sessions.Put(ctx, sessionSetupUntil, until.Unix())
+	if _, ok := FromContext(ctx); !ok {
+		p.Sessions.SetDeadline(ctx, until)
+	}
+	return nil
 }
 
-func (p *Passkeys) redeem(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Code string `json:"code"`
-	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024)).Decode(&body); err != nil || strings.TrimSpace(body.Code) == "" {
-		problem(w, http.StatusBadRequest, "Type the setup code.")
-		return
-	}
-	id, err := db.New(p.DB.Write).TakeSetupCode(r.Context(), db.TakeSetupCodeParams{CodeHash: hashCode(body.Code), ExpiresAt: stamp(time.Now())})
+// BeginRegistration starts making a passkey for the user on site, and answers the options the
+// browser makes it from: a discoverable key, so signing in asks for nothing but the
+// fingerprint, and none the authenticator already holds for this name.
+func (p *Passkeys) BeginRegistration(ctx context.Context, site string, userID int64) (json.RawMessage, error) {
+	wa, rpID, err := relyingParty(site)
 	if err != nil {
-		problem(w, http.StatusUnauthorized, "That code is wrong, used, or expired. Make a new one.")
-		return
+		return nil, err
 	}
-	if err := p.Sessions.RenewToken(r.Context()); err != nil {
-		p.fail(w, "session", err)
-		return
-	}
-	p.Sessions.Put(r.Context(), sessionSetup, id)
-	p.Sessions.SetDeadline(r.Context(), time.Now().Add(unfinished))
-	writeJSON(w, map[string]bool{"ok": true})
-}
-
-func (p *Passkeys) registerBegin(w http.ResponseWriter, r *http.Request) {
-	userID := p.registrant(r)
-	if userID == 0 {
-		problem(w, http.StatusUnauthorized, "Sign in, or redeem a setup code, first.")
-		return
-	}
-	wa, rpID, err := p.relyingParty(r)
+	o, err := p.load(ctx, userID, rpID)
 	if err != nil {
-		problem(w, http.StatusMisdirectedRequest, err.Error())
-		return
-	}
-	o, err := p.load(r.Context(), userID, rpID)
-	if err != nil {
-		p.fail(w, "load passkeys", err)
-		return
+		return nil, err
 	}
 	exclude := make([]protocol.CredentialDescriptor, 0, len(o.creds))
 	for i := range o.creds {
 		exclude = append(exclude, o.creds[i].Descriptor())
 	}
-	// A discoverable key, so signing in asks for nothing but the fingerprint.
 	creation, data, err := wa.BeginRegistration(o,
 		webauthn.WithAuthenticatorSelection(protocol.AuthenticatorSelection{
 			ResidentKey:      protocol.ResidentKeyRequirementRequired,
@@ -185,137 +179,126 @@ func (p *Passkeys) registerBegin(w http.ResponseWriter, r *http.Request) {
 		webauthn.WithExclusions(exclude),
 	)
 	if err != nil {
-		p.fail(w, "begin registration", err)
-		return
+		return nil, err
 	}
-	if err := p.stash(r, keyRegister, data); err != nil {
-		p.fail(w, "session", err)
-		return
+	if err := p.stash(ctx, keyRegister, data); err != nil {
+		return nil, err
 	}
-	writeJSON(w, creation)
+	return json.Marshal(creation.Response)
 }
 
-func (p *Passkeys) registerFinish(w http.ResponseWriter, r *http.Request) {
-	userID := p.registrant(r)
-	data, ok := p.unstash(r, keyRegister)
-	if userID == 0 || !ok {
-		problem(w, http.StatusBadRequest, "No passkey is being made. Start again.")
-		return
+// FinishRegistration keeps the passkey the browser made, under name, or "Passkey" when the
+// name is blank. A device holding a redeemed setup code is signed in by it.
+func (p *Passkeys) FinishRegistration(ctx context.Context, site string, userID int64, name string, credential []byte) (*db.CreatePasskeyRow, error) {
+	data, ok := p.unstash(ctx, keyRegister)
+	if !ok {
+		return nil, ErrNoCeremony
 	}
-	wa, rpID, err := p.relyingParty(r)
+	wa, rpID, err := relyingParty(site)
 	if err != nil {
-		problem(w, http.StatusMisdirectedRequest, err.Error())
-		return
+		return nil, err
 	}
-	o, err := p.load(r.Context(), userID, rpID)
+	o, err := p.load(ctx, userID, rpID)
 	if err != nil {
-		p.fail(w, "load passkeys", err)
-		return
+		return nil, err
 	}
-	cred, err := wa.FinishRegistration(o, *data, r)
+	parsed, err := protocol.ParseCredentialCreationResponseBytes(credential)
 	if err != nil {
-		p.Logger.Warn("passkey registration refused", "err", err)
-		problem(w, http.StatusBadRequest, "The passkey was not accepted. Try again.")
-		return
+		p.Logger.Warn("passkey not accepted", "err", err)
+		return nil, ErrNotAccepted
+	}
+	cred, err := wa.CreateCredential(o, *data, parsed)
+	if err != nil {
+		p.Logger.Warn("passkey not accepted", "err", err)
+		return nil, ErrNotAccepted
 	}
 	raw, err := json.Marshal(cred)
 	if err != nil {
-		p.fail(w, "encode passkey", err)
-		return
+		return nil, err
 	}
-	name := strings.TrimSpace(r.URL.Query().Get("name"))
-	if name == "" {
+	if name = strings.TrimSpace(name); name == "" {
 		name = "Passkey"
 	}
-	if len(name) > 60 {
-		name = name[:60]
+	credentialID := base64.RawURLEncoding.EncodeToString(cred.ID)
+	row, err := db.New(p.DB.Write).CreatePasskey(ctx, db.CreatePasskeyParams{
+		UserID: userID, RpID: rpID, CredentialID: credentialID, Credential: string(raw), Name: name,
+	})
+	var se *sqlite.Error
+	if errors.As(err, &se) && se.Code() == sqlite3.SQLITE_CONSTRAINT_UNIQUE {
+		return nil, ErrTaken
 	}
-	if _, err := db.New(p.DB.Write).CreatePasskey(r.Context(), db.CreatePasskeyParams{
-		UserID: userID, RpID: rpID, CredentialID: base64.RawURLEncoding.EncodeToString(cred.ID), Credential: string(raw), Name: name,
-	}); err != nil {
-		p.fail(w, "save passkey", err)
-		return
+	if err != nil {
+		return nil, err
 	}
-	if pr, ok := FromContext(r.Context()); !ok || !pr.Owner() {
-		if err := SignIn(p.Sessions, r, userID, base64.RawURLEncoding.EncodeToString(cred.ID)); err != nil {
-			p.fail(w, "session", err)
-			return
+	if pr, ok := FromContext(ctx); !ok || !pr.Owner() {
+		if err := SignIn(ctx, p.Sessions, userID, credentialID); err != nil {
+			return nil, err
 		}
 	}
-	writeJSON(w, map[string]bool{"ok": true})
+	return row, nil
 }
 
-func (p *Passkeys) loginBegin(w http.ResponseWriter, r *http.Request) {
-	wa, _, err := p.relyingParty(r)
+// BeginSignIn starts a sign-in on site, and answers the options the browser offers one of its
+// passkeys from. Someone with no session yet keeps this one only while they sign in.
+func (p *Passkeys) BeginSignIn(ctx context.Context, site string) (json.RawMessage, error) {
+	wa, _, err := relyingParty(site)
 	if err != nil {
-		problem(w, http.StatusMisdirectedRequest, err.Error())
-		return
+		return nil, err
 	}
 	assertion, data, err := wa.BeginDiscoverableLogin(webauthn.WithUserVerification(protocol.VerificationPreferred))
 	if err != nil {
-		p.fail(w, "begin login", err)
-		return
+		return nil, err
 	}
-	if err := p.stash(r, keyLogin, data); err != nil {
-		p.fail(w, "session", err)
-		return
+	if err := p.stash(ctx, keyLogin, data); err != nil {
+		return nil, err
 	}
-	// Someone with no session yet keeps this one only while they sign in.
-	if _, ok := FromContext(r.Context()); !ok {
-		p.Sessions.SetDeadline(r.Context(), time.Now().Add(unfinished))
+	if _, ok := FromContext(ctx); !ok {
+		p.Sessions.SetDeadline(ctx, time.Now().Add(unfinished))
 	}
-	writeJSON(w, assertion)
+	return json.Marshal(assertion.Response)
 }
 
-func (p *Passkeys) loginFinish(w http.ResponseWriter, r *http.Request) {
-	data, ok := p.unstash(r, keyLogin)
+// FinishSignIn checks the browser's answer to the sign-in under way and signs in the user whose
+// passkey made it.
+func (p *Passkeys) FinishSignIn(ctx context.Context, site string, credential []byte) (*db.User, error) {
+	data, ok := p.unstash(ctx, keyLogin)
 	if !ok {
-		problem(w, http.StatusBadRequest, "No sign-in is under way. Start again.")
-		return
+		return nil, ErrNoCeremony
 	}
-	wa, rpID, err := p.relyingParty(r)
+	wa, rpID, err := relyingParty(site)
 	if err != nil {
-		problem(w, http.StatusMisdirectedRequest, err.Error())
-		return
+		return nil, err
 	}
+	parsed, err := protocol.ParseCredentialRequestResponseBytes(credential)
+	if err != nil {
+		p.Logger.Warn("passkey sign-in refused", "err", err)
+		return nil, ErrRefused
+	}
+	// The browser names the user by its handle; the user's passkeys on this name are what the
+	// signature is checked against.
 	var who *owner
-	user, cred, err := wa.FinishPasskeyLogin(func(_, handle []byte) (webauthn.User, error) {
+	_, cred, err := wa.ValidatePasskeyLogin(func(_, handle []byte) (webauthn.User, error) {
 		id, ok := handleToID(handle)
 		if !ok {
 			return nil, errors.New("unknown user handle")
 		}
-		o, err := p.load(r.Context(), id, rpID)
+		o, err := p.load(ctx, id, rpID)
 		who = o
 		return o, err
-	}, *data, r)
-	if err != nil || user == nil || who == nil {
+	}, *data, parsed)
+	if err != nil || who == nil {
 		p.Logger.Warn("passkey sign-in refused", "err", err)
-		problem(w, http.StatusUnauthorized, "That passkey did not sign you in. Use one made on this address, or set one up with a code.")
-		return
+		return nil, ErrRefused
 	}
 	// The assertion is spent: its counter is saved even if the client leaves now.
-	ctx := context.WithoutCancel(r.Context())
+	credentialID := base64.RawURLEncoding.EncodeToString(cred.ID)
 	if raw, err := json.Marshal(cred); err == nil {
-		if err := db.New(p.DB.Write).UsePasskey(ctx, db.UsePasskeyParams{Credential: string(raw), CredentialID: base64.RawURLEncoding.EncodeToString(cred.ID)}); err != nil {
+		if err := db.New(p.DB.Write).UsePasskey(context.WithoutCancel(ctx), db.UsePasskeyParams{Credential: string(raw), CredentialID: credentialID}); err != nil {
 			p.Logger.Error("save passkey counter", "err", err)
 		}
 	}
-	if err := SignIn(p.Sessions, r, who.user.ID, base64.RawURLEncoding.EncodeToString(cred.ID)); err != nil {
-		p.fail(w, "session", err)
-		return
+	if err := SignIn(ctx, p.Sessions, who.user.ID, credentialID); err != nil {
+		return nil, err
 	}
-	writeJSON(w, map[string]bool{"ok": true})
-}
-
-func (p *Passkeys) logout(w http.ResponseWriter, r *http.Request) {
-	if err := p.Sessions.Destroy(r.Context()); err != nil {
-		p.fail(w, "session", err)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func (p *Passkeys) fail(w http.ResponseWriter, what string, err error) {
-	p.Logger.Error("auth", "step", what, "err", err)
-	problem(w, http.StatusInternalServerError, "Something went wrong. Try again.")
+	return who.user, nil
 }

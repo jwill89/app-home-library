@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { api, type Sees } from '@/api/client'
-import { useSession } from './session'
+import { afterAnswer, useSession } from './session'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -199,13 +199,10 @@ router.afterEach((to) => {
 // A link revoked or run out while a visitor browses, or a sign-in gone stale: the next answer
 // from the server says so, and the page follows.
 api.use({
-  onResponse({ response }) {
-    const session = useSession()
-    if (response.status !== 401 || session.role === 'none') {
-      return
+  onResponse({ response, schemaPath }) {
+    const to = afterAnswer(useSession(), response.status, schemaPath)
+    if (to) {
+      void router.replace(to)
     }
-    const visitor = session.isVisitor
-    session.forget()
-    void router.replace(visitor ? '/link-ended' : '/sign-in')
   },
 })

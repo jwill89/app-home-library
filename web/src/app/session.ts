@@ -5,24 +5,10 @@ import type {
   PublicKeyCredentialCreationOptionsJSON,
   PublicKeyCredentialRequestOptionsJSON,
 } from '@simplewebauthn/browser'
-import { api, isOffline, type Role, type Sees } from '@/api/client'
+import { api, isOffline, type Me, type Role, type Sees } from '@/api/client'
 import { forgetCatalog } from './offline'
+import { ProblemError } from './problem'
 import { recall, remember } from './remember'
-
-// The passkey ceremonies live under /auth, outside the API: their bodies are WebAuthn's own.
-async function authPost<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(path, {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  })
-  if (!res.ok) {
-    const problem = (await res.json().catch(() => ({}))) as { detail?: string }
-    throw new Error(problem.detail ?? `Sign-in failed (${res.status}).`)
-  }
-  return (res.status === 204 ? undefined : await res.json()) as T
-}
 
 /** A name for a new passkey that says which device made it. */
 export function deviceName(): string {
@@ -44,6 +30,30 @@ export function deviceName(): string {
 
 const everything = (): Sees => ({ books: true, wishlist: true, papers: true })
 
+/** Who a session is, as far as an answer from the server can change it. */
+export interface Asker {
+  role: Role
+  isVisitor: boolean
+  forget: () => void
+}
+
+/**
+ * Follows an answer from the server. A 401 says a sign-in has gone stale or a visitor's link
+ * has ended, so the session is forgotten. A 401 from sign-in's own operations is a sign-in that
+ * failed: it stays with the page that tried it, and the session is left as it was.
+ *
+ * @param schemaPath - the operation's path in the API document, such as `/auth/passkey/finish`
+ * @returns the page that says so, or nothing when the answer changes nothing
+ */
+export function afterAnswer(session: Asker, status: number, schemaPath: string) {
+  if (status !== 401 || schemaPath.startsWith('/auth/') || session.role === 'none') {
+    return undefined
+  }
+  const visitor = session.isVisitor
+  session.forget()
+  return visitor ? '/link-ended' : '/sign-in'
+}
+
 export const useSession = defineStore('session', () => {
   const loaded = ref(false)
   const role = ref<Role>('none')
@@ -56,6 +66,13 @@ export const useSession = defineStore('session', () => {
   const sees = ref<Sees>(everything())
   const home = computed(() => (sees.value.books ? '/' : '/papers'))
 
+  function take(me: Me | undefined) {
+    role.value = me?.role ?? 'none'
+    name.value = me?.name ?? ''
+    sees.value = me?.sees ?? everything()
+    remember('hl.role', role.value)
+  }
+
   async function load() {
     const { data, response } = await api.GET('/me')
     if (isOffline(response)) {
@@ -63,10 +80,7 @@ export const useSession = defineStore('session', () => {
       // judges again once it can be asked.
       role.value = (recall('hl.role') || 'none') as Role
     } else {
-      role.value = data?.role ?? 'none'
-      name.value = data?.name ?? ''
-      sees.value = data?.sees ?? everything()
-      remember('hl.role', role.value)
+      take(data)
     }
     loaded.value = true
   }
@@ -78,31 +92,51 @@ export const useSession = defineStore('session', () => {
     sees.value = everything()
   }
 
+  /** Signs in with a passkey this device offers for this name. */
   async function signIn() {
-    const options = await authPost<{ publicKey: PublicKeyCredentialRequestOptionsJSON }>(
-      '/auth/passkey/login/begin',
-    )
-    const assertion = await startAuthentication({ optionsJSON: options.publicKey })
-    await authPost('/auth/passkey/login/finish', assertion)
-    await load()
+    const begun = await api.POST('/auth/passkey/begin')
+    if (begun.error) {
+      throw new ProblemError(begun.error)
+    }
+    const optionsJSON = begun.data.publicKey as PublicKeyCredentialRequestOptionsJSON
+    const credential = await startAuthentication({ optionsJSON })
+    const { data, error } = await api.POST('/auth/passkey/finish', { body: { credential } })
+    if (error) {
+      throw new ProblemError(error)
+    }
+    take(data)
+    loaded.value = true
   }
 
   /** Makes a passkey on this device and this name, signed in or holding a redeemed code. */
   async function addPasskey(label = deviceName()) {
-    const options = await authPost<{ publicKey: PublicKeyCredentialCreationOptionsJSON }>(
-      '/auth/passkey/register/begin',
-    )
-    const attestation = await startRegistration({ optionsJSON: options.publicKey })
-    await authPost(`/auth/passkey/register/finish?name=${encodeURIComponent(label)}`, attestation)
+    const begun = await api.POST('/passkeys/begin')
+    if (begun.error) {
+      throw new ProblemError(begun.error)
+    }
+    const optionsJSON = begun.data.publicKey as PublicKeyCredentialCreationOptionsJSON
+    const credential = await startRegistration({ optionsJSON })
+    const { error } = await api.POST('/passkeys', { body: { name: label, credential } })
+    if (error) {
+      throw new ProblemError(error)
+    }
+    // A device that made its first passkey with a setup code is signed in by it.
     await load()
   }
 
+  /** Spends a setup code, so this device may make a passkey for the next ten minutes. */
   async function redeem(code: string) {
-    await authPost('/auth/setup', { code })
+    const { error } = await api.POST('/auth/setup', { body: { code } })
+    if (error) {
+      throw new ProblemError(error)
+    }
   }
 
   async function signOut() {
-    await authPost('/auth/logout')
+    const { error } = await api.POST('/auth/logout')
+    if (error) {
+      throw new ProblemError(error)
+    }
     forget()
     remember('hl.role', 'none')
     await forgetCatalog()

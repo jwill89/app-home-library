@@ -1,10 +1,12 @@
-// Package server assembles the HTTP handler: health, sign-in, covers, the API, and the
-// embedded frontend, with logging, a host check, security headers, CSRF protection, rate
-// limits, and sessions around them.
+// Package server assembles the HTTP handler: health, share links, covers, the calendar feed,
+// the API, and the embedded frontend, with logging, a host check, security headers, CSRF
+// protection, rate limits, and sessions around them.
 package server
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -101,12 +103,11 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger) (*App, err
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", a.health)
-	(&auth.Passkeys{Sessions: a.sessions, DB: database, Origin: cfg.Origin, Logger: logger}).Register(mux)
 	(&auth.ShareLinks{Sessions: a.sessions, DB: database, Logger: logger}).Register(mux)
 	mux.Handle("GET /media/{item}/{file}", signedIn(svc.Covers.Handler()))
 	mux.HandleFunc("GET /calendar/{file}", a.calendar)
 	a.feed = events.New(database.Read, database.Write, logger)
-	api.New(mux, api.Deps{DB: database, Catalog: svc, Lookup: svc.Lookup, Feed: a.feed, Logger: logger})
+	api.New(mux, api.Deps{DB: database, Catalog: svc, Lookup: svc.Lookup, Feed: a.feed, Sessions: a.sessions, Logger: logger})
 	mux.Handle("/", web.Handler())
 
 	signIn := ratelimit.New(20, 10)
@@ -148,16 +149,17 @@ func (a *App) health(w http.ResponseWriter, r *http.Request) {
 }
 
 // knownHost answers only on the configured names. Every name-dependent thing (cookies, the
-// passkey's relying party) is built from the configured origin for the name, so a request
-// for any other name is refused before it reaches them. The health check answers on any,
-// since the deploy script asks for it by address.
+// passkey's relying party) is built from the configured origin for the name, which the
+// request carries on from here, so a request for any other name is refused before it reaches
+// them. The health check answers on any, since the deploy script asks for it by address.
 func knownHost(cfg config.Config, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := cfg.Origin(r.Host); !ok && r.URL.Path != "/healthz" {
+		site, ok := cfg.Origin(r.Host)
+		if !ok && r.URL.Path != "/healthz" {
 			http.Error(w, "unknown host", http.StatusMisdirectedRequest)
 			return
 		}
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(w, r.WithContext(api.WithRequest(r.Context(), api.Request{Site: site})))
 	})
 }
 
@@ -173,10 +175,13 @@ func signedIn(next http.Handler) http.Handler {
 	})
 }
 
-// signInKey covers the routes a stranger can try secrets on: passkeys, setup codes, share
-// links, and the calendar link.
+// signInKey covers the routes a stranger can try secrets on: the sign-in operations (passkeys
+// and setup codes), share links, and the calendar link. Signing out risks nothing and is not
+// counted.
 func signInKey(r *http.Request) string {
-	if strings.HasPrefix(r.URL.Path, "/auth/") || strings.HasPrefix(r.URL.Path, "/s/") || strings.HasPrefix(r.URL.Path, "/calendar/") {
+	path := r.URL.Path
+	signIn := strings.HasPrefix(path, api.Prefix+"/auth/") && path != api.Prefix+"/auth/logout"
+	if signIn || strings.HasPrefix(path, "/s/") || strings.HasPrefix(path, "/calendar/") {
 		return ratelimit.ClientKey(r)
 	}
 	return ""
@@ -209,7 +214,7 @@ func securityHeaders(next http.Handler) http.Handler {
 		h.Set("Permissions-Policy", "camera=(self), microphone=(), geolocation=()")
 		// The library is private: no search engine is to list any of it.
 		h.Set("X-Robots-Tag", "noindex, nofollow")
-		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/auth/") {
+		if strings.HasPrefix(r.URL.Path, "/api/") {
 			h.Set("Cache-Control", "no-store")
 		}
 		next.ServeHTTP(w, r)
@@ -240,6 +245,23 @@ func routed(mux *http.ServeMux) http.Handler {
 	})
 }
 
+// secretPaths are the addresses whose last segment is a live secret: a share link's token, and
+// the calendar link's.
+var secretPaths = []string{"/s/", "/calendar/"}
+
+// loggedPath is a path as the log may keep it. A share or calendar link's token is written as
+// the first eight hex digits of its SHA-256, the start of the hash the database keeps, so a
+// link's requests can be told apart and matched to it without the log holding the link.
+func loggedPath(p string) string {
+	for _, prefix := range secretPaths {
+		if token, ok := strings.CutPrefix(p, prefix); ok && token != "" {
+			sum := sha256.Sum256([]byte(strings.TrimSuffix(token, ".ics")))
+			return prefix + "#" + hex.EncodeToString(sum[:4])
+		}
+	}
+	return p
+}
+
 // requestLog names the matched route, not the path, above debug: a path can carry a search.
 func requestLog(logger *slog.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -251,7 +273,7 @@ func requestLog(logger *slog.Logger, next http.Handler) http.Handler {
 		next.ServeHTTP(sw, r.WithContext(ctx))
 		attrs := []any{"id", id, "method", r.Method, "route", route, "status", sw.status, "ms", time.Since(start).Milliseconds()}
 		if logger.Enabled(ctx, slog.LevelDebug) {
-			attrs = append(attrs, "path", r.URL.Path)
+			attrs = append(attrs, "path", loggedPath(r.URL.Path))
 		}
 		logger.Info("request", attrs...)
 	})

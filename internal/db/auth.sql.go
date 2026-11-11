@@ -30,7 +30,7 @@ func (q *Queries) CountUserPasskey(ctx context.Context, arg CountUserPasskeyPara
 const createPasskey = `-- name: CreatePasskey :one
 INSERT INTO passkeys (user_id, rp_id, credential_id, credential, name)
 VALUES (?, ?, ?, ?, ?)
-RETURNING id
+RETURNING id, rp_id, name, created_at, last_used_at
 `
 
 type CreatePasskeyParams struct {
@@ -41,7 +41,16 @@ type CreatePasskeyParams struct {
 	Name         string
 }
 
-func (q *Queries) CreatePasskey(ctx context.Context, arg CreatePasskeyParams) (int64, error) {
+type CreatePasskeyRow struct {
+	ID         int64
+	RpID       string
+	Name       string
+	CreatedAt  string
+	LastUsedAt sql.NullString
+}
+
+// The passkey as the owner's list shows it.
+func (q *Queries) CreatePasskey(ctx context.Context, arg CreatePasskeyParams) (*CreatePasskeyRow, error) {
 	row := q.db.QueryRowContext(ctx, createPasskey,
 		arg.UserID,
 		arg.RpID,
@@ -49,9 +58,15 @@ func (q *Queries) CreatePasskey(ctx context.Context, arg CreatePasskeyParams) (i
 		arg.Credential,
 		arg.Name,
 	)
-	var id int64
-	err := row.Scan(&id)
-	return id, err
+	var i CreatePasskeyRow
+	err := row.Scan(
+		&i.ID,
+		&i.RpID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.LastUsedAt,
+	)
+	return &i, err
 }
 
 const createSetupCode = `-- name: CreateSetupCode :exec

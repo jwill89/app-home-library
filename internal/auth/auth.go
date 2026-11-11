@@ -9,7 +9,6 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -27,6 +26,9 @@ const (
 	sessionUser    = "user_id"
 	sessionPasskey = "passkey"    // the credential the owner signed in with: removing it signs them out
 	sessionSetup   = "setup_user" // a setup code was redeemed: the next passkey made signs in
+	// sessionSetupUntil is when a redeemed code's leave to make a passkey ends, in Unix
+	// seconds: the session's own deadline moves with every sign-in begun, so it can't be that.
+	sessionSetupUntil = "setup_until"
 
 	// devPasskey stands for a passkey in a dev-session's sign-in, honoured only while every
 	// origin the server answers on is this machine.
@@ -152,17 +154,47 @@ func RequireReader(api huma.API) func(huma.Context, func(huma.Context)) {
 	}
 }
 
+// Registrant is who may make a passkey now: the signed-in owner, or a device that redeemed a
+// setup code in the last ten minutes; 0 for anyone else.
+func Registrant(ctx context.Context, sm *scs.SessionManager) int64 {
+	if p, ok := FromContext(ctx); ok && p.Owner() {
+		return p.UserID
+	}
+	if sm.GetInt64(ctx, sessionSetupUntil) < time.Now().Unix() {
+		return 0
+	}
+	return sm.GetInt64(ctx, sessionSetup)
+}
+
+// RequireRegistrant is operation middleware for making a passkey, which only a [Registrant]
+// may do. A visitor by a share link without a code is refused as read-only, so the page they
+// are on is not taken for signed out.
+func RequireRegistrant(api huma.API, sm *scs.SessionManager) func(huma.Context, func(huma.Context)) {
+	return func(ctx huma.Context, next func(huma.Context)) {
+		if Registrant(ctx.Context(), sm) > 0 {
+			next(ctx)
+			return
+		}
+		if _, ok := FromContext(ctx.Context()); ok {
+			huma.WriteErr(api, ctx, http.StatusForbidden, "a shared view is read-only")
+			return
+		}
+		huma.WriteErr(api, ctx, http.StatusUnauthorized, "sign in, or take a setup code, first")
+	}
+}
+
 // SignIn starts a session for the user, on a fresh token so a token from before the sign-in
 // is worth nothing after it, and the whole lifetime. A visitor's link is set aside: the owner
 // is the owner. The passkey used is kept, so removing it signs this device out.
-func SignIn(sm *scs.SessionManager, r *http.Request, userID int64, credentialID string) error {
-	if err := sm.RenewToken(r.Context()); err != nil {
+func SignIn(ctx context.Context, sm *scs.SessionManager, userID int64, credentialID string) error {
+	if err := sm.RenewToken(ctx); err != nil {
 		return err
 	}
-	sm.Remove(r.Context(), sessionSetup)
-	sm.Remove(r.Context(), sessionShare)
-	sm.Put(r.Context(), sessionUser, userID)
-	sm.Put(r.Context(), sessionPasskey, credentialID)
+	sm.Remove(ctx, sessionSetup)
+	sm.Remove(ctx, sessionSetupUntil)
+	sm.Remove(ctx, sessionShare)
+	sm.Put(ctx, sessionUser, userID)
+	sm.Put(ctx, sessionPasskey, credentialID)
 	return nil
 }
 
@@ -242,16 +274,4 @@ func hashCode(code string) string {
 
 func stamp(t time.Time) string {
 	return t.UTC().Format("2006-01-02T15:04:05Z")
-}
-
-func writeJSON(w http.ResponseWriter, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(v) // the client has gone if this fails
-}
-
-// problem answers in the API's error shape, so the frontend reads every failure one way.
-func problem(w http.ResponseWriter, status int, detail string) {
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(map[string]any{"status": status, "title": http.StatusText(status), "detail": detail})
 }

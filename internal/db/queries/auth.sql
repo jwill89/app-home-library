@@ -8,9 +8,10 @@ SELECT * FROM users ORDER BY id LIMIT 1;
 SELECT * FROM users WHERE id = ?;
 
 -- name: CreatePasskey :one
+-- The passkey as the owner's list shows it.
 INSERT INTO passkeys (user_id, rp_id, credential_id, credential, name)
 VALUES (?, ?, ?, ?, ?)
-RETURNING id;
+RETURNING id, rp_id, name, created_at, last_used_at;
 
 -- name: ListPasskeys :many
 SELECT id, rp_id, name, created_at, last_used_at FROM passkeys WHERE user_id = ? ORDER BY id;

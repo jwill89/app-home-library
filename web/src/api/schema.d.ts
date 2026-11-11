@@ -4,6 +4,83 @@
  */
 
 export interface paths {
+  '/auth/logout': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Sign out */
+    post: operations['sign-out']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/auth/passkey/begin': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Start signing in with a passkey
+     * @description Answers the options the browser offers a passkey made on this name from. Each address has ten quick tries at signing in, then one every three seconds (429, with Retry-After).
+     */
+    post: operations['begin-passkey-sign-in']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/auth/passkey/finish': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Sign in with the passkey the browser offered
+     * @description Answers who is now signed in, as get-me does. Each address has ten quick tries at signing in, then one every three seconds (429, with Retry-After).
+     */
+    post: operations['finish-passkey-sign-in']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/auth/setup': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Take a setup code, so this device may make a passkey
+     * @description Spends the code: for the next ten minutes this device may make one passkey on this name (begin-passkey, then add-passkey), which signs it in. Each address has ten quick tries at signing in, then one every three seconds (429, with Retry-After).
+     */
+    post: operations['redeem-setup-code']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/bookcases': {
     parameters: {
       query?: never
@@ -994,7 +1071,31 @@ export interface paths {
     /** The owner's passkeys on every name */
     get: operations['list-passkeys']
     put?: never
-    post?: never
+    /**
+     * Keep the passkey the browser made
+     * @description Finishes begin-passkey. A device that redeemed a setup code is signed in by it.
+     */
+    post: operations['add-passkey']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/passkeys/begin': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Start making a passkey on this name
+     * @description For the owner, or a device that has redeemed a setup code (redeem-setup-code); a visitor by a share link is refused.
+     */
+    post: operations['begin-passkey']
     delete?: never
     options?: never
     head?: never
@@ -1334,6 +1435,12 @@ export interface paths {
 export type webhooks = Record<string, never>
 export interface components {
   schemas: {
+    AddPasskeyInputBody: {
+      /** @description The browser's answer: the PublicKeyCredential's toJSON(). */
+      credential: unknown
+      /** @description What to call it, such as the device it lives on; "Passkey" when left out or blank. */
+      name?: string
+    }
     AddScansInput: {
       /** @enum {string} */
       acquiredAs: 'unknown' | 'new' | 'used'
@@ -2408,6 +2515,14 @@ export interface components {
       /** @description The name the passkey works on */
       site: string
     }
+    PasskeyOptions: {
+      /** @description The WebAuthn options, as PublicKeyCredential.parseCreationOptionsFromJSON (making a passkey) or parseRequestOptionsFromJSON (signing in) takes them. */
+      publicKey: unknown
+    }
+    PasskeySignInInputBody: {
+      /** @description The browser's answer: the PublicKeyCredential's toJSON(). */
+      credential: unknown
+    }
     PasskeysOutputBody: {
       passkeys: components['schemas']['Passkey'][] | null
     }
@@ -2650,6 +2765,10 @@ export interface components {
        * @description How many books changed
        */
       changed: number
+    }
+    SetupCodeInputBody: {
+      /** @description The setup code, as shown where it was made; case, spaces and the hyphen don't matter. */
+      code: string
     }
     SetupCodeOutputBody: {
       code: string
@@ -2920,6 +3039,198 @@ export interface components {
 }
 export type $defs = Record<string, never>
 export interface operations {
+  'sign-out': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+    }
+  }
+  'begin-passkey-sign-in': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['PasskeyOptions']
+        }
+      }
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+    }
+  }
+  'finish-passkey-sign-in': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PasskeySignInInputBody']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['MeOutputBody']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+    }
+  }
+  'redeem-setup-code': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SetupCodeInputBody']
+      }
+    }
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+    }
+  }
   'list-bookcases': {
     parameters: {
       query?: never
@@ -5575,6 +5886,131 @@ export interface operations {
       }
       /** @description Error */
       default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+    }
+  }
+  'add-passkey': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AddPasskeyInputBody']
+      }
+    }
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['Passkey']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+    }
+  }
+  'begin-passkey': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['PasskeyOptions']
+        }
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+      /** @description Internal Server Error */
+      500: {
         headers: {
           [name: string]: unknown
         }

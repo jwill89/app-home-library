@@ -23,6 +23,20 @@ export function messageOf(error: unknown): string {
   return 'Something went wrong. Try again.'
 }
 
+/**
+ * A failed answer as an error, for a step that throws rather than returns: its message is what
+ * to tell the owner, and it keeps the answer's status, so a 401 is still told apart.
+ */
+export class ProblemError extends Error {
+  readonly status: number | undefined
+
+  constructor(problem: ErrorModel) {
+    super(messageOf(problem))
+    this.name = 'ProblemError'
+    this.status = problem.status
+  }
+}
+
 const severity = { good: 'success', info: 'info', bad: 'error' } as const
 
 /** A toast for a failure, one for a success, and one for each scan. */

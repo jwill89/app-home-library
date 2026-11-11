@@ -49,7 +49,9 @@ func isDetectWorker(name string) bool {
 }
 
 // Handler serves built assets and falls back to index.html for app routes. Hashed files
-// under assets/ are immutable; the shell and the service worker are never cached.
+// under assets/ are immutable; the shell and the service worker are never cached. Pages and
+// files are only read: any other method is refused, so a write sent to an address the API
+// doesn't have fails plainly instead of being handed a page.
 func Handler() http.Handler {
 	files, err := fs.Sub(dist, "dist")
 	if err != nil {
@@ -60,6 +62,11 @@ func Handler() http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		name := strings.TrimPrefix(path.Clean(r.URL.Path), "/")
+		if r.Method != http.MethodGet && r.Method != http.MethodHead && !strings.HasPrefix(name, "api/") {
+			w.Header().Set("Allow", "GET, HEAD")
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
 		if info, err := fs.Stat(files, name); err == nil && !info.IsDir() {
 			switch {
 			case strings.HasPrefix(name, "assets/"):

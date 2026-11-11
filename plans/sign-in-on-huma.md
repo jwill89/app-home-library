@@ -1,6 +1,6 @@
 # Plan: sign-in on huma
 
-Written 2026-11-09 against Home Library 1.1.2, on huma v2.40.0, with Senpan's release C (5.0.0, phase 2 being built now) as the reference. A plan only: nothing here is built yet.
+Written 2026-11-09 against Home Library 1.1.2, on huma v2.40.0, with Senpan's release C (5.0.0, phase 2 being built now) as the reference. Home Library's part is built as 1.2.0 (2026-11-10).
 
 ## The decision
 

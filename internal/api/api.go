@@ -3,11 +3,13 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
 
+	"github.com/alexedwards/scs/v2"
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
 
@@ -29,12 +31,37 @@ type Deps struct {
 	Catalog *catalog.Service
 	Lookup  *lookup.Service
 	Feed    *events.Feed
-	Logger  *slog.Logger
+	// Sessions is the session manager whose session every request's context carries (the
+	// server's LoadAndSave), so signing in and out happen on it.
+	Sessions *scs.SessionManager
+	Logger   *slog.Logger
 }
 
 type handlers struct {
 	Deps
-	api huma.API
+	api      huma.API
+	passkeys *auth.Passkeys
+}
+
+// Request is what the server knows of a request that an operation can't read for itself.
+type Request struct {
+	// Site is the configured origin the request came on, scheme and host: the relying party
+	// a passkey belongs to.
+	Site string
+}
+
+type requestKey struct{}
+
+// WithRequest returns ctx carrying r; the server's host check adds it to every request on a
+// name the site answers on.
+func WithRequest(ctx context.Context, r Request) context.Context {
+	return context.WithValue(ctx, requestKey{}, r)
+}
+
+// requestOf is the Request ctx carries, or none.
+func requestOf(ctx context.Context) Request {
+	r, _ := ctx.Value(requestKey{}).(Request)
+	return r
 }
 
 // New registers every operation on the mux and returns the API for its OpenAPI document.
@@ -50,7 +77,8 @@ func New(mux *http.ServeMux, d Deps) huma.API {
 		"session": {Type: "apiKey", In: "cookie", Name: "hl_session"},
 	}
 	api := humago.NewWithPrefix(mux, Prefix, cfg)
-	h := &handlers{Deps: d, api: api}
+	h := &handlers{Deps: d, api: api, passkeys: &auth.Passkeys{Sessions: d.Sessions, DB: d.DB, Logger: d.Logger}}
+	h.registerSignIn()
 	h.registerAccount()
 	h.registerBooks()
 	h.registerCopies()

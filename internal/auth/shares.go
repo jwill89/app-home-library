@@ -257,6 +257,7 @@ func (s *ShareLinks) open(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.Sessions.Remove(r.Context(), sessionSetup)
+	s.Sessions.Remove(r.Context(), sessionSetupUntil)
 	s.Sessions.Put(r.Context(), sessionShare, share.TokenHash)
 	if err := db.New(s.DB.Write).TouchShare(context.WithoutCancel(r.Context()), share.ID); err != nil {
 		s.Logger.Warn("share link last used", "err", err)

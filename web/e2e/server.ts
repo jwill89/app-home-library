@@ -50,6 +50,10 @@ export default async function setup(): Promise<() => Promise<void>> {
   execFileSync(bin, ['migrate'], { env })
   const line = execFileSync(bin, ['dev-session'], { env }).toString().trim().split('\n').pop() ?? ''
   const value = line.replace(/^hl_session=/, '').trim()
+  // A code the sign-in test sets a device up with, made as the owner makes one on the host. The
+  // tests' workers start after this, with the environment it leaves.
+  const made = execFileSync(bin, ['setup-code'], { env }).toString()
+  process.env.E2E_SETUP_CODE = /[A-Z2-9]{4}-[A-Z2-9]{4}/.exec(made)?.[0] ?? ''
   writeFileSync(
     statePath,
     JSON.stringify({

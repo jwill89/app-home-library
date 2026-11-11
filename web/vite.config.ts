@@ -18,7 +18,6 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': api,
-      '/auth': api,
       '/media': api,
       '/s': api,
       '/calendar': api,
