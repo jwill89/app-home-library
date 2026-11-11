@@ -38,8 +38,8 @@ async function setUp() {
 <template>
   <PublicPage title="Set up this device">
     <p class="prose-text text-sm">
-      Type a setup code to make a passkey for <span class="font-mono">{{ here }}</span
-      >. Get one from Settings on a device that is signed in, or on the server with
+      Type a setup code to make a passkey for <span class="font-mono">{{ here }}</span>. Get one
+      from Settings on a device that is signed in, or on the server with
       <span class="font-mono">homelibrary setup-code</span>.
     </p>
     <form class="flex flex-col gap-4" @submit.prevent="setUp">

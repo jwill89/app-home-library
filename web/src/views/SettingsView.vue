@@ -154,8 +154,7 @@ const until = (s: string) =>
         A passkey works on the address it was made on, and the library answers on two, so it takes
         one passkey for each. A password manager that syncs passkeys (1Password, Google Password
         Manager, iCloud Keychain) puts each on all your devices; without one, every device makes its
-        own. This page is on <span class="font-mono">{{ here }}</span
-        >.
+        own. This page is on <span class="font-mono">{{ here }}</span>.
       </p>
       <DataTable :value="passkeys" data-key="id" class="mb-4">
         <template #empty><p class="text-ink-muted">No passkeys.</p></template>
