@@ -53,10 +53,10 @@ What changes in Home Library, release by release. The format is [Keep a Changelo
 
 - The first release: the catalog, covers, loans, courses, labels, documents, share links, imports and exports, and the nightly backup.
 
-[Unreleased]: https://github.com/jwill89/Home-Library/compare/v1.2.1...HEAD
-[1.2.1]: https://github.com/jwill89/Home-Library/compare/v1.2.0...v1.2.1
-[1.2.0]: https://github.com/jwill89/Home-Library/compare/v1.1.2...v1.2.0
-[1.1.2]: https://github.com/jwill89/Home-Library/compare/v1.1.1...v1.1.2
-[1.1.1]: https://github.com/jwill89/Home-Library/compare/v1.1.0...v1.1.1
-[1.1.0]: https://github.com/jwill89/Home-Library/compare/v1.0.0...v1.1.0
-[1.0.0]: https://github.com/jwill89/Home-Library/releases/tag/v1.0.0
+[Unreleased]: https://github.com/jwill89/app-home-library/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/jwill89/app-home-library/compare/v1.2.0...v1.2.1
+[1.2.0]: https://github.com/jwill89/app-home-library/compare/v1.1.2...v1.2.0
+[1.1.2]: https://github.com/jwill89/app-home-library/compare/v1.1.1...v1.1.2
+[1.1.1]: https://github.com/jwill89/app-home-library/compare/v1.1.0...v1.1.1
+[1.1.0]: https://github.com/jwill89/app-home-library/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/jwill89/app-home-library/releases/tag/v1.0.0
