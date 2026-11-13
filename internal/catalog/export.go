@@ -24,6 +24,7 @@ type Export struct {
 	Courses    []CourseDetail `json:"courses"`
 	Documents  []Document     `json:"documents"`
 	Bookcases  []Bookcase     `json:"bookcases"`
+	Areas      []Area         `json:"areas"`
 	Shelving   []ShelvingRule `json:"shelving"`
 }
 
@@ -35,6 +36,9 @@ func (s *Service) Export(ctx context.Context) (*Export, error) {
 		Books: []Book{}, Courses: []CourseDetail{}, Documents: []Document{},
 	}
 	defer func() {
+		if out.Areas == nil {
+			out.Areas = []Area{}
+		}
 		if out.Bookcases == nil {
 			out.Bookcases = []Bookcase{}
 		}
@@ -89,6 +93,9 @@ func (s *Service) Export(ctx context.Context) (*Export, error) {
 			return nil, fmt.Errorf("export document %d: %w", r.ID, err)
 		}
 		out.Documents = append(out.Documents, *d)
+	}
+	if out.Areas, err = s.Areas(ctx); err != nil {
+		return nil, fmt.Errorf("export areas: %w", err)
 	}
 	if out.Bookcases, err = s.Bookcases(ctx); err != nil {
 		return nil, fmt.Errorf("export bookcases: %w", err)

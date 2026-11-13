@@ -73,6 +73,8 @@ func TestValueListsAreTheirEnums(t *testing.T) {
 		{"Categories (as set)", append([]string{""}, Categories...), enum(reflect.TypeFor[BookInput](), "Category")},
 		{"Categories (as shown)", Categories, enum(reflect.TypeFor[Book](), "Category")},
 		{"Categories (as shared)", Categories, enum(reflect.TypeFor[Scope](), "Categories")},
+		{"Categories (an area takes)", Categories, enum(reflect.TypeFor[AreaRules](), "Categories")},
+		{"AreaKeys", AreaKeys, enum(reflect.TypeFor[AreaInput](), "Order")},
 		{"Formats (as set)", append([]string{""}, lookup.Formats...), enum(reflect.TypeFor[BookInput](), "Format")},
 		{"Formats (as shown)", append([]string{""}, lookup.Formats...), enum(reflect.TypeFor[Book](), "Format")},
 		{"Formats (as found)", append([]string{""}, lookup.Formats...), enum(reflect.TypeFor[lookup.Proposal](), "Format")},

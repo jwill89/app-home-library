@@ -32,8 +32,8 @@ func (q *Queries) CreateBookcase(ctx context.Context, name string) (int64, error
 }
 
 const createShelf = `-- name: CreateShelf :one
-INSERT INTO shelves (bookcase_id, position, width_mm, height_mm, depth_mm, oversize, brace_height_mm, brace_width_mm)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO shelves (bookcase_id, position, width_mm, height_mm, depth_mm, brace_height_mm, brace_width_mm)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 RETURNING id
 `
 
@@ -43,7 +43,6 @@ type CreateShelfParams struct {
 	WidthMm       int64
 	HeightMm      int64
 	DepthMm       int64
-	Oversize      int64
 	BraceHeightMm int64
 	BraceWidthMm  int64
 }
@@ -55,7 +54,6 @@ func (q *Queries) CreateShelf(ctx context.Context, arg CreateShelfParams) (int64
 		arg.WidthMm,
 		arg.HeightMm,
 		arg.DepthMm,
-		arg.Oversize,
 		arg.BraceHeightMm,
 		arg.BraceWidthMm,
 	)
@@ -97,7 +95,7 @@ func (q *Queries) GetLayoutSettings(ctx context.Context) (*LayoutSetting, error)
 }
 
 const getShelf = `-- name: GetShelf :one
-SELECT id, bookcase_id, position, width_mm, height_mm, depth_mm, oversize, starts_at, created_at, brace_height_mm, brace_width_mm FROM shelves WHERE id = ?
+SELECT id, bookcase_id, position, width_mm, height_mm, depth_mm, starts_at, created_at, brace_height_mm, brace_width_mm, area_id FROM shelves WHERE id = ?
 `
 
 func (q *Queries) GetShelf(ctx context.Context, id int64) (*Shelf, error) {
@@ -110,11 +108,11 @@ func (q *Queries) GetShelf(ctx context.Context, id int64) (*Shelf, error) {
 		&i.WidthMm,
 		&i.HeightMm,
 		&i.DepthMm,
-		&i.Oversize,
 		&i.StartsAt,
 		&i.CreatedAt,
 		&i.BraceHeightMm,
 		&i.BraceWidthMm,
+		&i.AreaID,
 	)
 	return &i, err
 }
@@ -151,15 +149,50 @@ func (q *Queries) ListBookcases(ctx context.Context) ([]*Bookcase, error) {
 	return items, nil
 }
 
+const listEditionAuthorIDs = `-- name: ListEditionAuthorIDs :many
+SELECT edition_id, person_id FROM edition_contributors WHERE role = 'author'
+`
+
+type ListEditionAuthorIDsRow struct {
+	EditionID int64
+	PersonID  int64
+}
+
+// Who wrote each edition, for the areas that take an author's books.
+func (q *Queries) ListEditionAuthorIDs(ctx context.Context) ([]*ListEditionAuthorIDsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listEditionAuthorIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListEditionAuthorIDsRow{}
+	for rows.Next() {
+		var i ListEditionAuthorIDsRow
+		if err := rows.Scan(&i.EditionID, &i.PersonID); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listShelfCopies = `-- name: ListShelfCopies :many
 SELECT
-    cs.copy_id, cs.edition_id, cs.section, cs.shelving, cs.label_prefix, cs.ddc, cs.title, cs.series, cs.series_number, cs.author_sort, e.format, e.cover,
+    cs.copy_id, cs.edition_id, cs.section, cs.shelving, cs.label_prefix, cs.ddc, cs.title, cs.series, cs.series_number, cs.author_sort, e.format, e.cover, e.publisher, e.subjects, e.lcc, e.published,
+    w.category, CAST(COALESCE(w.series_id, 0) AS INTEGER) AS series_id,
     CAST(COALESCE(e.pages, 0) AS INTEGER) AS pages,
     CAST(COALESCE(e.height_mm, 0) AS INTEGER) AS height_mm,
     CAST(COALESCE(e.thickness_mm, 0) AS INTEGER) AS thickness_mm,
     CAST(EXISTS (SELECT 1 FROM loans l WHERE l.copy_id = cs.copy_id AND l.returned_on = '') AS INTEGER) AS on_loan
 FROM copy_shelving cs
 JOIN editions e ON e.id = cs.edition_id
+JOIN works w ON w.id = e.work_id
 `
 
 type ListShelfCopiesRow struct {
@@ -175,13 +208,19 @@ type ListShelfCopiesRow struct {
 	AuthorSort   string
 	Format       string
 	Cover        string
+	Publisher    string
+	Subjects     string
+	Lcc          string
+	Published    string
+	Category     string
+	SeriesID     int64
 	Pages        int64
 	HeightMm     int64
 	ThicknessMm  int64
 	OnLoan       int64
 }
 
-// Every copy with what places it: its shelving and its size.
+// Every copy with what places it: its shelving, its size, and what an area's rules ask of it.
 func (q *Queries) ListShelfCopies(ctx context.Context) ([]*ListShelfCopiesRow, error) {
 	rows, err := q.db.QueryContext(ctx, listShelfCopies)
 	if err != nil {
@@ -204,6 +243,12 @@ func (q *Queries) ListShelfCopies(ctx context.Context) ([]*ListShelfCopiesRow, e
 			&i.AuthorSort,
 			&i.Format,
 			&i.Cover,
+			&i.Publisher,
+			&i.Subjects,
+			&i.Lcc,
+			&i.Published,
+			&i.Category,
+			&i.SeriesID,
 			&i.Pages,
 			&i.HeightMm,
 			&i.ThicknessMm,
@@ -223,28 +268,32 @@ func (q *Queries) ListShelfCopies(ctx context.Context) ([]*ListShelfCopiesRow, e
 }
 
 const listShelves = `-- name: ListShelves :many
-SELECT s.id, s.bookcase_id, s.position, s.width_mm, s.height_mm, s.depth_mm, s.oversize, s.starts_at, s.created_at, s.brace_height_mm, s.brace_width_mm, b.name AS bookcase, b.position AS bookcase_position
-FROM shelves s JOIN bookcases b ON b.id = s.bookcase_id
+SELECT
+    s.id, s.bookcase_id, s.position, s.width_mm, s.height_mm, s.depth_mm, s.brace_height_mm,
+    s.brace_width_mm, s.starts_at, CAST(COALESCE(s.area_id, 0) AS INTEGER) AS area_id,
+    CAST(COALESCE(a.name, '') AS TEXT) AS area, b.name AS bookcase
+FROM shelves s
+JOIN bookcases b ON b.id = s.bookcase_id
+LEFT JOIN areas a ON a.id = s.area_id
 ORDER BY b.position, b.id, s.position, s.id
 `
 
 type ListShelvesRow struct {
-	ID               int64
-	BookcaseID       int64
-	Position         int64
-	WidthMm          int64
-	HeightMm         int64
-	DepthMm          int64
-	Oversize         int64
-	StartsAt         string
-	CreatedAt        string
-	BraceHeightMm    int64
-	BraceWidthMm     int64
-	Bookcase         string
-	BookcasePosition int64
+	ID            int64
+	BookcaseID    int64
+	Position      int64
+	WidthMm       int64
+	HeightMm      int64
+	DepthMm       int64
+	BraceHeightMm int64
+	BraceWidthMm  int64
+	StartsAt      string
+	AreaID        int64
+	Area          string
+	Bookcase      string
 }
 
-// Every shelf in walking order: bookcase by bookcase, each from the top down.
+// Every shelf in walking order: bookcase by bookcase, each from the top down, with its area.
 func (q *Queries) ListShelves(ctx context.Context) ([]*ListShelvesRow, error) {
 	rows, err := q.db.QueryContext(ctx, listShelves)
 	if err != nil {
@@ -261,13 +310,12 @@ func (q *Queries) ListShelves(ctx context.Context) ([]*ListShelvesRow, error) {
 			&i.WidthMm,
 			&i.HeightMm,
 			&i.DepthMm,
-			&i.Oversize,
-			&i.StartsAt,
-			&i.CreatedAt,
 			&i.BraceHeightMm,
 			&i.BraceWidthMm,
+			&i.StartsAt,
+			&i.AreaID,
+			&i.Area,
 			&i.Bookcase,
-			&i.BookcasePosition,
 		); err != nil {
 			return nil, err
 		}
@@ -372,7 +420,7 @@ func (q *Queries) SetShelfStart(ctx context.Context, arg SetShelfStartParams) er
 
 const updateShelf = `-- name: UpdateShelf :execrows
 UPDATE shelves
-SET width_mm = ?, height_mm = ?, depth_mm = ?, oversize = ?, brace_height_mm = ?, brace_width_mm = ?
+SET width_mm = ?, height_mm = ?, depth_mm = ?, brace_height_mm = ?, brace_width_mm = ?
 WHERE id = ?
 `
 
@@ -380,7 +428,6 @@ type UpdateShelfParams struct {
 	WidthMm       int64
 	HeightMm      int64
 	DepthMm       int64
-	Oversize      int64
 	BraceHeightMm int64
 	BraceWidthMm  int64
 	ID            int64
@@ -391,7 +438,6 @@ func (q *Queries) UpdateShelf(ctx context.Context, arg UpdateShelfParams) (int64
 		arg.WidthMm,
 		arg.HeightMm,
 		arg.DepthMm,
-		arg.Oversize,
 		arg.BraceHeightMm,
 		arg.BraceWidthMm,
 		arg.ID,

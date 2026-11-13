@@ -29,7 +29,7 @@ func (h *handlers) registerShelves() {
 	huma.Register(h.api, h.op("list-bookcases", http.MethodGet, "/bookcases", "The bookcases in walking order, with their shelves"),
 		func(ctx context.Context, _ *struct{}) (*bookcases, error) { return list(ctx) })
 
-	create := h.op("create-bookcase", http.MethodPost, "/bookcases", "Add a bookcase with its shelves, all alike to begin with")
+	create := h.op("create-bookcase", http.MethodPost, "/bookcases", "Add a bookcase with its shelves, from the top down")
 	create.DefaultStatus = http.StatusCreated
 	huma.Register(h.api, create, func(ctx context.Context, in *struct{ Body catalog.NewBookcase }) (*bookcases, error) {
 		if _, err := h.Catalog.CreateBookcase(ctx, in.Body); err != nil {
@@ -86,11 +86,11 @@ func (h *handlers) registerShelves() {
 			return nil, h.fail0(h.Catalog.DeleteShelf(ctx, in.ID))
 		})
 
-	huma.Register(h.api, h.op("get-layout", http.MethodGet, "/layout", "The library on its shelves: the layout in use, or a proposal"),
+	huma.Register(h.api, h.op("get-layout", http.MethodGet, "/layout", "The library on its shelves: the layout in use, a suggestion asked for, or the shelves with nothing on them"),
 		func(ctx context.Context, in *struct {
-			Proposal bool `query:"proposal" doc:"A fresh proposal, even while a layout is in use"`
+			Suggest bool `query:"suggest" doc:"A fresh suggestion, by the areas' rules, even while a layout is in use"`
 		}) (*struct{ Body *catalog.Layout }, error) {
-			l, err := h.Catalog.Layout(ctx, in.Proposal)
+			l, err := h.Catalog.Layout(ctx, in.Suggest)
 			if err != nil {
 				return nil, h.fail(err)
 			}
@@ -106,14 +106,59 @@ func (h *handlers) registerShelves() {
 			return nil, h.fail0(h.Catalog.SetFillPercent(ctx, in.Body.FillPercent))
 		})
 
-	huma.Register(h.api, h.op("use-layout", http.MethodPut, "/layout/in-use", "Put the proposal to use: each shelf keeps where it starts in the order"),
+	huma.Register(h.api, h.op("use-layout", http.MethodPut, "/layout/in-use", "Put a fresh suggestion to use: each shelf keeps where it starts in its area's order"),
 		func(ctx context.Context, _ *struct{}) (*struct{}, error) {
 			return nil, h.fail0(h.Catalog.UseLayout(ctx))
 		})
 
-	huma.Register(h.api, h.op("stop-layout", http.MethodDelete, "/layout/in-use", "Stop using the layout: the planner proposes afresh"),
+	huma.Register(h.api, h.op("stop-layout", http.MethodDelete, "/layout/in-use", "Stop using the layout: no book has a place until another is put to use"),
 		func(ctx context.Context, _ *struct{}) (*struct{}, error) {
 			return nil, h.fail0(h.Catalog.StopLayout(ctx))
+		})
+
+	type areasOutput struct {
+		Body struct {
+			Areas []catalog.Area `json:"areas"`
+		}
+	}
+	areas := func(ctx context.Context) (*areasOutput, error) {
+		list, err := h.Catalog.Areas(ctx)
+		if err != nil {
+			return nil, h.fail(err)
+		}
+		out := &areasOutput{}
+		out.Body.Areas = list
+		return out, nil
+	}
+
+	huma.Register(h.api, h.op("list-areas", http.MethodGet, "/areas", "The areas of shelves, in the order a book tries them, with their rules and shelves"),
+		func(ctx context.Context, _ *struct{}) (*areasOutput, error) { return areas(ctx) })
+
+	createArea := h.op("create-area", http.MethodPost, "/areas", "Add an area of shelves, with the rules for which books it takes and their order")
+	createArea.DefaultStatus = http.StatusCreated
+	huma.Register(h.api, createArea, func(ctx context.Context, in *struct{ Body catalog.AreaInput }) (*areasOutput, error) {
+		if _, err := h.Catalog.CreateArea(ctx, in.Body); err != nil {
+			return nil, h.fail(err)
+		}
+		return areas(ctx)
+	})
+
+	huma.Register(h.api, h.op("update-area", http.MethodPut, "/areas/{id}", "Change an area's name, place in the order, rules, order of books, or shelves"),
+		func(ctx context.Context, in *struct {
+			ID   int64 `path:"id"`
+			Body catalog.AreaInput
+		}) (*areasOutput, error) {
+			if err := h.Catalog.UpdateArea(ctx, in.ID, in.Body); err != nil {
+				return nil, h.fail(err)
+			}
+			return areas(ctx)
+		})
+
+	huma.Register(h.api, h.op("delete-area", http.MethodDelete, "/areas/{id}", "Remove an area; its shelves are left in none"),
+		func(ctx context.Context, in *struct {
+			ID int64 `path:"id"`
+		}) (*struct{}, error) {
+			return nil, h.fail0(h.Catalog.DeleteArea(ctx, in.ID))
 		})
 
 	huma.Register(h.api, h.op("shelf-labels", http.MethodGet, "/layout/labels", "A label for the edge of every shelf with books, as a PDF on the spine-label sheet"),

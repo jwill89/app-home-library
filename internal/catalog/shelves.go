@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"homelibrary/internal/db"
@@ -19,11 +20,11 @@ type Bookcase struct {
 	Shelves  []Shelf `json:"shelves"`
 }
 
-// NewBookcase is a bookcase as it is first measured: its shelves all alike, as most are.
+// NewBookcase is a bookcase as it is first measured: its shelves from the top down, each with
+// its own measurements, since a bottom shelf is often taller than the rest.
 type NewBookcase struct {
-	Name    string `json:"name" minLength:"1" maxLength:"100"`
-	Shelves int64  `json:"shelves" minimum:"1" maximum:"20"`
-	ShelfInput
+	Name    string       `json:"name" minLength:"1" maxLength:"100"`
+	Shelves []ShelfInput `json:"shelves" minItems:"1" maxItems:"20" doc:"From the top down"`
 }
 
 // BookcaseInput renames a bookcase or moves it in the walking order.
@@ -32,16 +33,16 @@ type BookcaseInput struct {
 	Position int64  `json:"position" minimum:"1" doc:"Where it comes in walking order"`
 }
 
-// ShelfPlace is where a copy stands.
+// ShelfPlace is where a copy stands in the layout in use.
 type ShelfPlace struct {
 	ShelfID  int64  `json:"shelfId"`
 	Bookcase string `json:"bookcase"`
 	Position int64  `json:"position" doc:"The shelf, from the top"`
-	Oversize bool   `json:"oversize"`
+	Area     string `json:"area" doc:"The area the shelf is in"`
 	After    string `json:"after" doc:"The title of the book before it on the shelf; empty at the start"`
 	Before   string `json:"before" doc:"The title of the book after it; empty at the end"`
-	InUse    bool   `json:"inUse" doc:"From the layout in use; false is where a proposal would put it"`
-	Placed   bool   `json:"placed" doc:"Whether any shelf has room for it"`
+	InUse    bool   `json:"inUse" doc:"Whether a layout is in use at all; with none, no book has a place"`
+	Placed   bool   `json:"placed" doc:"Whether the layout in use has a place for it"`
 	Shelves  bool   `json:"shelves" doc:"Whether any shelves are set up at all"`
 }
 
@@ -60,13 +61,13 @@ func (in *ShelfInput) check() error {
 }
 
 func shelfParams(id int64, in ShelfInput) db.UpdateShelfParams {
-	return db.UpdateShelfParams{WidthMm: in.WidthMM, HeightMm: in.HeightMM, DepthMm: in.DepthMM, Oversize: boolInt(in.Oversize),
+	return db.UpdateShelfParams{WidthMm: in.WidthMM, HeightMm: in.HeightMM, DepthMm: in.DepthMM,
 		BraceHeightMm: in.BraceHeightMM, BraceWidthMm: in.BraceWidthMM, ID: id}
 }
 
 func newShelf(bookcaseID, position int64, in ShelfInput) db.CreateShelfParams {
 	return db.CreateShelfParams{BookcaseID: bookcaseID, Position: position, WidthMm: in.WidthMM, HeightMm: in.HeightMM, DepthMm: in.DepthMM,
-		Oversize: boolInt(in.Oversize), BraceHeightMm: in.BraceHeightMM, BraceWidthMm: in.BraceWidthMM}
+		BraceHeightMm: in.BraceHeightMM, BraceWidthMm: in.BraceWidthMM}
 }
 
 // Bookcases lists the bookcases in walking order with their shelves.
@@ -94,8 +95,8 @@ func (s *Service) Bookcases(ctx context.Context) ([]Bookcase, error) {
 }
 
 func shelfOf(r *db.ListShelvesRow) Shelf {
-	return Shelf{ID: r.ID, BookcaseID: r.BookcaseID, Bookcase: r.Bookcase, Position: r.Position,
-		ShelfInput: ShelfInput{WidthMM: r.WidthMm, HeightMM: r.HeightMm, DepthMM: r.DepthMm, Oversize: r.Oversize == 1,
+	return Shelf{ID: r.ID, BookcaseID: r.BookcaseID, Bookcase: r.Bookcase, Position: r.Position, AreaID: r.AreaID, Area: r.Area,
+		ShelfInput: ShelfInput{WidthMM: r.WidthMm, HeightMM: r.HeightMm, DepthMM: r.DepthMm,
 			BraceHeightMM: r.BraceHeightMm, BraceWidthMM: r.BraceWidthMm}}
 }
 
@@ -105,8 +106,10 @@ func (s *Service) CreateBookcase(ctx context.Context, in NewBookcase) (int64, er
 	if in.Name == "" {
 		return 0, &FieldError{"name", "a bookcase needs a name, like Living room, left"}
 	}
-	if err := in.check(); err != nil {
-		return 0, err
+	for i := range in.Shelves {
+		if err := in.Shelves[i].check(); err != nil {
+			return 0, nthShelf(i, err)
+		}
 	}
 	var id int64
 	err := s.inTx(ctx, func(q *db.Queries) error {
@@ -114,14 +117,23 @@ func (s *Service) CreateBookcase(ctx context.Context, in NewBookcase) (int64, er
 		if id, err = q.CreateBookcase(ctx, in.Name); err != nil {
 			return fmt.Errorf("create bookcase: %w", err)
 		}
-		for n := range in.Shelves {
-			if _, err := q.CreateShelf(ctx, newShelf(id, n+1, in.ShelfInput)); err != nil {
+		for n, shelf := range in.Shelves {
+			if _, err := q.CreateShelf(ctx, newShelf(id, int64(n+1), shelf)); err != nil {
 				return fmt.Errorf("create shelf: %w", err)
 			}
 		}
 		return nil
 	})
 	return id, err
+}
+
+// nthShelf says which of a new bookcase's shelves a measurement is wrong on, counted from the top.
+func nthShelf(i int, err error) error {
+	var field *FieldError
+	if !errors.As(err, &field) {
+		return err
+	}
+	return &FieldError{fmt.Sprintf("shelves[%d].%s", i, field.Field), fmt.Sprintf("Shelf %d: %s", i+1, field.Message)}
 }
 
 // UpdateBookcase renames a bookcase and puts it at a place in the walk, the others moving up
@@ -198,7 +210,7 @@ func (s *Service) AddShelf(ctx context.Context, bookcaseID int64, in ShelfInput)
 	})
 }
 
-// UpdateShelf changes a shelf's measurements or whether it is for oversize books.
+// UpdateShelf changes a shelf's measurements.
 func (s *Service) UpdateShelf(ctx context.Context, id int64, in ShelfInput) error {
 	if err := in.check(); err != nil {
 		return err
@@ -242,9 +254,10 @@ func (s *Service) DeleteShelf(ctx context.Context, id int64) error {
 	})
 }
 
-// Layout returns the library on its shelves: the layout in use when there is one and a
-// proposal is not asked for, otherwise a fresh proposal.
-func (s *Service) Layout(ctx context.Context, proposal bool) (*Layout, error) {
+// Layout returns the library on its shelves: the layout in use, or a suggestion when one is
+// asked for. With neither, the shelves come back with nothing on them: no book is given a
+// place until the owner asks.
+func (s *Service) Layout(ctx context.Context, suggest bool) (*Layout, error) {
 	q := s.read()
 	settings, err := q.GetLayoutSettings(ctx)
 	if err != nil {
@@ -254,48 +267,80 @@ func (s *Service) Layout(ctx context.Context, proposal bool) (*Layout, error) {
 	if err != nil {
 		return nil, err
 	}
+	areas, err := areasOf(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	out := &Layout{FillPercent: settings.FillPercent, AppliedAt: settings.AppliedAt, Shelves: make([]ShelfPlan, 0, len(rows)),
+		NoArea: []ShelfBook{}, Unplaced: []ShelfBook{}, TooTall: []ShelfBook{}}
+	starts := map[int64]areaKey{}
+	for _, r := range rows {
+		out.Shelves = append(out.Shelves, ShelfPlan{Shelf: shelfOf(r)})
+		if i := slices.IndexFunc(areas, func(a Area) bool { return a.ID == r.AreaID }); i >= 0 {
+			if k, ok := startFrom(r.StartsAt, &areas[i]); ok {
+				starts[r.ID] = k
+			}
+		}
+	}
+	inUse := settings.AppliedAt != "" && len(starts) > 0
+	if !suggest && !inUse {
+		finish(out.Shelves, areas)
+		return out, nil
+	}
 	copies, err := q.ListShelfCopies(ctx)
 	if err != nil {
 		return nil, err
 	}
-	books := shelfBooks(copies)
-	out := &Layout{FillPercent: settings.FillPercent, AppliedAt: settings.AppliedAt, Shelves: make([]ShelfPlan, 0, len(rows))}
-	starts := map[int64]*db.CopyShelving{}
-	for _, r := range rows {
-		out.Shelves = append(out.Shelves, ShelfPlan{Shelf: shelfOf(r)})
-		if k := parseStart(r.StartsAt); k != nil {
-			starts[r.ID] = k
-		}
+	authors, err := editionAuthors(ctx, q)
+	if err != nil {
+		return nil, err
 	}
+	books := shelfBooks(copies, authors)
 	for _, b := range books {
 		if b.Estimated {
 			out.Estimated++
 		}
 	}
-	out.InUse = settings.AppliedAt != "" && len(starts) > 0 && !proposal
-	if out.InUse {
+	byArea, noArea := sorted(areas, books)
+	out.NoArea = append(out.NoArea, noArea...)
+	var unplaced, tooTall []ShelfBook
+	if suggest {
+		out.Suggested = true
+		unplaced, tooTall = propose(out.Shelves, areas, byArea, settings.FillPercent)
+	} else {
+		out.InUse = true
 		for i := range out.Shelves {
 			_, out.Shelves[i].InUse = starts[out.Shelves[i].ID]
 		}
-		out.Unplaced, out.TooTall = hold(out.Shelves, starts, books, settings.FillPercent)
-	} else {
-		out.Unplaced, out.TooTall = propose(out.Shelves, books, settings.FillPercent)
+		unplaced, tooTall = hold(out.Shelves, starts, areas, byArea)
 	}
-	finish(out.Shelves)
-	if out.Unplaced == nil {
-		out.Unplaced = []ShelfBook{}
+	out.Unplaced, out.TooTall = append(out.Unplaced, unplaced...), append(out.TooTall, tooTall...)
+	finish(out.Shelves, areas)
+	return out, nil
+}
+
+// editionAuthors is who wrote each edition, by person, for the areas that take an author's books.
+func editionAuthors(ctx context.Context, q *db.Queries) (map[int64][]int64, error) {
+	rows, err := q.ListEditionAuthorIDs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("authors: %w", err)
 	}
-	if out.TooTall == nil {
-		out.TooTall = []ShelfBook{}
+	out := map[int64][]int64{}
+	for _, r := range rows {
+		out[r.EditionID] = append(out[r.EditionID], r.PersonID)
 	}
 	return out, nil
 }
 
-// UseLayout puts the proposal to use: each shelf keeps where its first book falls in shelf
-// order, and from then on a new book goes to the shelf its call number belongs on, into the
-// room the proposal left, rather than every later book moving along.
+// UseLayout puts a fresh suggestion to use: each shelf keeps where its first book falls in its
+// area's order, and from then on a new book goes to the shelf of its area it belongs on, into
+// the room the suggestion left, rather than every later book moving along.
 func (s *Service) UseLayout(ctx context.Context) error {
 	plan, err := s.Layout(ctx, true)
+	if err != nil {
+		return err
+	}
+	areas, err := s.Areas(ctx)
 	if err != nil {
 		return err
 	}
@@ -305,16 +350,17 @@ func (s *Service) UseLayout(ctx context.Context) error {
 		}
 		used := false
 		for _, p := range plan.Shelves {
-			if len(p.Books) == 0 {
+			i := slices.IndexFunc(areas, func(a Area) bool { return a.ID == p.AreaID })
+			if len(p.Books) == 0 || i < 0 {
 				continue
 			}
 			used = true
-			if err := q.SetShelfStart(ctx, db.SetShelfStartParams{StartsAt: startOf(p.Books[0]), ID: p.ID}); err != nil {
+			if err := q.SetShelfStart(ctx, db.SetShelfStartParams{StartsAt: startOf(&areas[i], p.Books[0]), ID: p.ID}); err != nil {
 				return err
 			}
 		}
 		if !used {
-			return &ConflictError{"No shelf has a book on it in the proposal: add bookcases and shelves first."}
+			return &ConflictError{"No shelf has a book on it in the suggestion: give the areas shelves, and rules that take your books, first."}
 		}
 		return q.SetLayoutApplied(ctx, now())
 	})
@@ -338,8 +384,8 @@ func (s *Service) SetFillPercent(ctx context.Context, percent int64) error {
 	return db.New(s.DB.Write).SetFillPercent(ctx, percent)
 }
 
-// PlaceOf says where a copy stands: on its shelf in the layout in use, or where a proposal
-// would put it.
+// PlaceOf says where a copy stands in the layout in use. With no layout in use, no copy has a
+// place: a suggestion is only ever the owner's to look at.
 func (s *Service) PlaceOf(ctx context.Context, copyID int64) (*ShelfPlace, error) {
 	q := s.read()
 	if _, err := q.GetCopy(ctx, copyID); errors.Is(err, sql.ErrNoRows) {
@@ -347,22 +393,17 @@ func (s *Service) PlaceOf(ctx context.Context, copyID int64) (*ShelfPlace, error
 	} else if err != nil {
 		return nil, err
 	}
-	// With no shelves there is nowhere to stand, and no layout worth working out to say so.
-	if shelves, err := q.ListShelves(ctx); err != nil {
-		return nil, err
-	} else if len(shelves) == 0 {
-		return &ShelfPlace{}, nil
-	}
 	l, err := s.Layout(ctx, false)
 	if err != nil {
 		return nil, err
 	}
+	place := &ShelfPlace{InUse: l.InUse, Shelves: len(l.Shelves) > 0}
 	for _, p := range l.Shelves {
 		for i, b := range p.Books {
 			if b.CopyID != copyID {
 				continue
 			}
-			place := &ShelfPlace{ShelfID: p.ID, Bookcase: p.Bookcase, Position: p.Position, Oversize: p.Oversize, InUse: l.InUse, Placed: true, Shelves: true}
+			place.ShelfID, place.Bookcase, place.Position, place.Area, place.Placed = p.ID, p.Bookcase, p.Position, p.Area, true
 			if i > 0 {
 				place.After = p.Books[i-1].Title
 			}
@@ -372,7 +413,7 @@ func (s *Service) PlaceOf(ctx context.Context, copyID int64) (*ShelfPlace, error
 			return place, nil
 		}
 	}
-	return &ShelfPlace{InUse: l.InUse, Shelves: len(l.Shelves) > 0}, nil
+	return place, nil
 }
 
 // RangeLabelsPDF draws a label for the edge of every shelf with books on it: where it is, and
@@ -382,24 +423,19 @@ func (s *Service) RangeLabelsPDF(ctx context.Context) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if !l.InUse {
+		return nil, &FieldError{"shelves", "no layout is in use: suggest one and put it to use first"}
+	}
 	var items []labels.Range
 	for _, p := range l.Shelves {
 		if len(p.Books) == 0 {
 			continue
 		}
 		where := fmt.Sprintf("%s · shelf %d", p.Bookcase, p.Position)
-		if p.Oversize {
-			where += " · oversize"
+		if p.Area != "" {
+			where += " · " + p.Area
 		}
-		// A book without a call number is named on the label by its title.
-		first, last := strings.Join(p.First, " "), strings.Join(p.Last, " ")
-		if first == "" {
-			first = p.Books[0].Title
-		}
-		if last == "" {
-			last = p.Books[len(p.Books)-1].Title
-		}
-		items = append(items, labels.Range{Where: where, First: first, Last: last})
+		items = append(items, labels.Range{Where: where, First: p.First, Last: p.Last})
 	}
 	if len(items) == 0 {
 		return nil, &FieldError{"shelves", "no shelf has a book on it yet: add bookcases and shelves first"}

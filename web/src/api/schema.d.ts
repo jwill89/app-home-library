@@ -4,6 +4,42 @@
  */
 
 export interface paths {
+  '/areas': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** The areas of shelves, in the order a book tries them, with their rules and shelves */
+    get: operations['list-areas']
+    put?: never
+    /** Add an area of shelves, with the rules for which books it takes and their order */
+    post: operations['create-area']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/areas/{id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    /** Change an area's name, place in the order, rules, order of books, or shelves */
+    put: operations['update-area']
+    post?: never
+    /** Remove an area; its shelves are left in none */
+    delete: operations['delete-area']
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/auth/logout': {
     parameters: {
       query?: never
@@ -91,7 +127,7 @@ export interface paths {
     /** The bookcases in walking order, with their shelves */
     get: operations['list-bookcases']
     put?: never
-    /** Add a bookcase with its shelves, all alike to begin with */
+    /** Add a bookcase with its shelves, from the top down */
     post: operations['create-bookcase']
     delete?: never
     options?: never
@@ -878,7 +914,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** The library on its shelves: the layout in use, or a proposal */
+    /** The library on its shelves: the layout in use, a suggestion asked for, or the shelves with nothing on them */
     get: operations['get-layout']
     /** Set how full the planner fills a shelf */
     put: operations['set-layout']
@@ -897,10 +933,10 @@ export interface paths {
       cookie?: never
     }
     get?: never
-    /** Put the proposal to use: each shelf keeps where it starts in the order */
+    /** Put a fresh suggestion to use: each shelf keeps where it starts in its area's order */
     put: operations['use-layout']
     post?: never
-    /** Stop using the layout: the planner proposes afresh */
+    /** Stop using the layout: no book has a place until another is put to use */
     delete: operations['stop-layout']
     options?: never
     head?: never
@@ -1457,6 +1493,83 @@ export interface components {
        */
       adding: number
     }
+    Area: {
+      /** @description Books by any of these people; none for every author */
+      authors: string[] | null
+      /** @description Any of these categories; none for every one */
+      categories:
+        | ('fiction' | 'nonfiction' | 'manga' | 'light_novel' | 'graphic_novel' | 'uncategorized')[]
+        | null
+      /** @description The lowest Dewey number it takes, the book's own or estimated from its LC class; empty for no limit */
+      deweyFrom: string
+      /** @description The highest Dewey number it takes; empty for no limit */
+      deweyTo: string
+      /** Format: int64 */
+      id: number
+      /**
+       * Format: int64
+       * @description Books no taller than this; 0 for no limit
+       */
+      maxHeightMm: number
+      /**
+       * Format: int64
+       * @description Books at least this tall; 0 for no limit
+       */
+      minHeightMm: number
+      name: string
+      /** @description What its books are ordered by, first key first; none for subject, author, series, then title */
+      order: ('subject' | 'author' | 'series' | 'title' | 'published' | 'height')[] | null
+      /**
+       * Format: int64
+       * @description Where it comes in the order books try the areas, 1 first; 0 keeps its place, or puts a new one last
+       */
+      position: number
+      /** @description Books in any of these series; none for every book */
+      series: string[] | null
+      /** @description Its shelves, which leave any other area */
+      shelfIds: number[] | null
+      /** @description Words one of a book's subject headings has; empty for any */
+      subject: string
+    }
+    AreaInput: {
+      /** @description Books by any of these people; none for every author */
+      authors: string[] | null
+      /** @description Any of these categories; none for every one */
+      categories:
+        | ('fiction' | 'nonfiction' | 'manga' | 'light_novel' | 'graphic_novel' | 'uncategorized')[]
+        | null
+      /** @description The lowest Dewey number it takes, the book's own or estimated from its LC class; empty for no limit */
+      deweyFrom: string
+      /** @description The highest Dewey number it takes; empty for no limit */
+      deweyTo: string
+      /**
+       * Format: int64
+       * @description Books no taller than this; 0 for no limit
+       */
+      maxHeightMm: number
+      /**
+       * Format: int64
+       * @description Books at least this tall; 0 for no limit
+       */
+      minHeightMm: number
+      name: string
+      /** @description What its books are ordered by, first key first; none for subject, author, series, then title */
+      order: ('subject' | 'author' | 'series' | 'title' | 'published' | 'height')[] | null
+      /**
+       * Format: int64
+       * @description Where it comes in the order books try the areas, 1 first; 0 keeps its place, or puts a new one last
+       */
+      position: number
+      /** @description Books in any of these series; none for every book */
+      series: string[] | null
+      /** @description Its shelves, which leave any other area */
+      shelfIds: number[] | null
+      /** @description Words one of a book's subject headings has; empty for any */
+      subject: string
+    }
+    AreasOutputBody: {
+      areas: components['schemas']['Area'][] | null
+    }
     Book: {
       /**
        * @description As set, or worked out from its details, which its sources then name as inferred
@@ -1756,6 +1869,8 @@ export interface components {
       type: 'book' | 'scan' | 'document' | 'lookup' | 'loan' | 'label'
     }
     Choices: {
+      /** @description Everyone the library has a book by */
+      authors: string[] | null
       borrowers: string[] | null
       departments: string[] | null
       genres: string[] | null
@@ -2346,12 +2461,16 @@ export interface components {
       estimated: number
       /** Format: int64 */
       fillPercent: number
-      /** @description The shelves keep the places a layout gave them; false is a proposal */
+      /** @description The shelves keep the places a layout gave them */
       inUse: boolean
+      /** @description Books no area's rules take */
+      noArea: components['schemas']['ShelfBook'][] | null
       shelves: components['schemas']['ShelfPlan'][] | null
-      /** @description Books taller than every shelf that could take them */
+      /** @description A suggestion asked for, not yet put to use */
+      suggested: boolean
+      /** @description Books taller than the shelf their turn came on in their area */
       tooTall: components['schemas']['ShelfBook'][] | null
-      /** @description Books no shelf has room for */
+      /** @description Books their area has no room for, or no shelves */
       unplaced: components['schemas']['ShelfBook'][] | null
     }
     Link: {
@@ -2452,33 +2571,9 @@ export interface components {
       sees: components['schemas']['Sees']
     }
     NewBookcase: {
-      /**
-       * Format: int64
-       * @description How far a corner brace hangs below the shelf above; 0 for none
-       */
-      braceHeightMm: number
-      /**
-       * Format: int64
-       * @description How far a corner brace reaches in from the side; 0 for none
-       */
-      braceWidthMm: number
-      /** Format: int64 */
-      depthMm: number
-      /**
-       * Format: int64
-       * @description Clear space above the shelf
-       */
-      heightMm: number
       name: string
-      /** @description Takes the books too tall for the shelf their call number would put them on */
-      oversize: boolean
-      /** Format: int64 */
-      shelves: number
-      /**
-       * Format: int64
-       * @description Inside the sides
-       */
-      widthMm: number
+      /** @description From the top down */
+      shelves: components['schemas']['ShelfInput'][] | null
     }
     NewCalendarLinkOutputBody: {
       /** @description The link's secret part, shown this once: the link is /calendar/ and this, then .ics */
@@ -2797,6 +2892,13 @@ export interface components {
       shares: components['schemas']['ShareLink'][] | null
     }
     Shelf: {
+      /** @description The area's name; empty for none */
+      area: string
+      /**
+       * Format: int64
+       * @description The area it is in; 0 for none
+       */
+      areaId: number
       bookcase: string
       /** Format: int64 */
       bookcaseId: number
@@ -2819,8 +2921,6 @@ export interface components {
       heightMm: number
       /** Format: int64 */
       id: number
-      /** @description Takes the books too tall for the shelf their call number would put them on */
-      oversize: boolean
       /**
        * Format: int64
        * @description From the top, 1 up
@@ -2839,6 +2939,10 @@ export interface components {
       callNumber: string[] | null
       /** Format: int64 */
       copyId: number
+      /** @description Its Dewey number: its own, or estimated from its LC class */
+      dewey: string
+      /** @description The Dewey number is estimated from the LC class */
+      deweyEstimated: boolean
       /** @description Its height or thickness is worked out from its format and pages */
       estimated: boolean
       /** Format: int64 */
@@ -2867,8 +2971,6 @@ export interface components {
        * @description Clear space above the shelf
        */
       heightMm: number
-      /** @description Takes the books too tall for the shelf their call number would put them on */
-      oversize: boolean
       /**
        * Format: int64
        * @description Inside the sides
@@ -2878,13 +2980,14 @@ export interface components {
     ShelfPlace: {
       /** @description The title of the book before it on the shelf; empty at the start */
       after: string
+      /** @description The area the shelf is in */
+      area: string
       /** @description The title of the book after it; empty at the end */
       before: string
       bookcase: string
-      /** @description From the layout in use; false is where a proposal would put it */
+      /** @description Whether a layout is in use at all; with none, no book has a place */
       inUse: boolean
-      oversize: boolean
-      /** @description Whether any shelf has room for it */
+      /** @description Whether the layout in use has a place for it */
       placed: boolean
       /**
        * Format: int64
@@ -2897,6 +3000,13 @@ export interface components {
       shelves: boolean
     }
     ShelfPlan: {
+      /** @description The area's name; empty for none */
+      area: string
+      /**
+       * Format: int64
+       * @description The area it is in; 0 for none
+       */
+      areaId: number
       bookcase: string
       /** Format: int64 */
       bookcaseId: number
@@ -2913,8 +3023,8 @@ export interface components {
       braceWidthMm: number
       /** Format: int64 */
       depthMm: number
-      /** @description The first book's call number */
-      first: string[] | null
+      /** @description The first book by its area's first key: its Dewey number, author, series and volume, title, or year; the title where that is blank */
+      first: string
       /**
        * Format: int64
        * @description Space left empty at the start, where a corner brace is too low for the first book
@@ -2927,17 +3037,15 @@ export interface components {
       heightMm: number
       /** Format: int64 */
       id: number
-      /** @description Has a place in the layout in use; a shelf added since has none */
+      /** @description Has a place in the layout in use; a shelf added or moved to another area since has none */
       inUse: boolean
-      /** @description The last book's call number */
-      last: string[] | null
+      /** @description The last book, as the first */
+      last: string
       /**
        * Format: int64
        * @description How far the books run past what the shelf holds; 0 when they fit
        */
       overMm: number
-      /** @description Takes the books too tall for the shelf their call number would put them on */
-      oversize: boolean
       /**
        * Format: int64
        * @description From the top, 1 up
@@ -3039,6 +3147,132 @@ export interface components {
 }
 export type $defs = Record<string, never>
 export interface operations {
+  'list-areas': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AreasOutputBody']
+        }
+      }
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+    }
+  }
+  'create-area': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AreaInput']
+      }
+    }
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AreasOutputBody']
+        }
+      }
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+    }
+  }
+  'update-area': {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: number
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AreaInput']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AreasOutputBody']
+        }
+      }
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+    }
+  }
+  'delete-area': {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+    }
+  }
   'sign-out': {
     parameters: {
       query?: never
@@ -5434,8 +5668,8 @@ export interface operations {
   'get-layout': {
     parameters: {
       query?: {
-        /** @description A fresh proposal, even while a layout is in use */
-        proposal?: boolean
+        /** @description A fresh suggestion, by the areas' rules, even while a layout is in use */
+        suggest?: boolean
       }
       header?: never
       path?: never

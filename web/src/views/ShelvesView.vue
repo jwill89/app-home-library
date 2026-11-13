@@ -7,10 +7,13 @@ import DataTable from 'primevue/datatable'
 import Dialog from 'primevue/dialog'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
+import ToggleSwitch from 'primevue/toggleswitch'
 import { faPlus, faTags } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import {
   api,
   apiURL,
+  type Area,
+  type AreaInput,
   type Bookcase,
   type Layout,
   type ShelfBook,
@@ -19,11 +22,23 @@ import {
   type ShelfPlan,
 } from '@/api/client'
 import { useConfirmAction } from '@/app/confirm'
-import { callNumberText, count, day, lengthIn, placeLine, shelfSize } from '@/app/format'
+import {
+  areaOrderText,
+  areaRulesText,
+  callNumberText,
+  count,
+  day,
+  lengthIn,
+  placeLine,
+  shelfNumbers,
+  shelfSize,
+} from '@/app/format'
 import { useNotice } from '@/app/problem'
 import { useUnits } from '@/app/units'
+import AreaDialog from '@/components/AreaDialog.vue'
 import BookPicker from '@/components/BookPicker.vue'
 import FormField from '@/components/FormField.vue'
+import LengthField from '@/components/LengthField.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import PagePanel from '@/components/PagePanel.vue'
 import ShelfFields from '@/components/ShelfFields.vue'
@@ -34,31 +49,32 @@ const notice = useNotice()
 const id = useId()
 
 const bookcases = ref<Bookcase[]>([])
+const areas = ref<Area[]>([])
 const layout = ref<Layout | null>(null)
 const loaded = ref(false)
-// While a layout is in use, a fresh proposal can be looked at before it replaces it.
-const proposal = ref(false)
+// No book is given a place until the owner asks: a suggestion is worked out only when wanted,
+// and looked over before it is put to use.
+const suggesting = ref(false)
 
 async function load() {
-  const [b, l] = await Promise.all([
+  const [b, a, l] = await Promise.all([
     api.GET('/bookcases'),
-    api.GET('/layout', { params: { query: { proposal: proposal.value } } }),
+    api.GET('/areas'),
+    api.GET('/layout', { params: { query: { suggest: suggesting.value } } }),
   ])
-  if (b.error) {
-    notice.failed(b.error)
+  const failed = b.error ?? a.error ?? l.error
+  if (failed) {
+    notice.failed(failed)
     return
   }
-  if (l.error) {
-    notice.failed(l.error)
-    return
-  }
-  bookcases.value = b.data.bookcases ?? []
-  layout.value = l.data
-  fill.value = l.data.fillPercent
+  bookcases.value = b.data?.bookcases ?? []
+  areas.value = a.data?.areas ?? []
+  layout.value = l.data ?? null
+  fill.value = l.data?.fillPercent ?? 80
   loaded.value = true
 }
 onMounted(load)
-watch(proposal, load)
+watch(suggesting, load)
 
 // Lengths show in the unit the owner measures in, the one choice every form shares.
 const { unit } = storeToRefs(useUnits())
@@ -71,21 +87,13 @@ const summary = computed(() => {
   const n = bookcases.value.length
   return `${count(n, 'bookcase')}, ${count(shelfCount.value, 'shelf', 'shelves')}`
 })
+// Books show on the shelves only for a suggestion asked for, or the layout in use.
+const showsBooks = computed(() => !!layout.value && (layout.value.inUse || layout.value.suggested))
 const plansOf = (b: Bookcase) => (layout.value?.shelves ?? []).filter((p) => p.bookcaseId === b.id)
 const percent = (p: ShelfPlan) => Math.round((p.usedMm / p.widthMm) * 100)
-// A shelf's range, by call number; a book without one (no Dewey number, no letters in its
-// title) is named by its title instead.
-const range = (p: ShelfPlan) => {
-  const books = p.books ?? []
-  if (!books.length) {
-    return ''
-  }
-  const first = callNumberText(p.first) || (books[0]?.title ?? '')
-  const last = callNumberText(p.last) || (books.at(-1)?.title ?? '')
-  return first === last ? first : `${first} to ${last}`
-}
+const range = (p: ShelfPlan) => (p.first === p.last ? p.first : `${p.first} to ${p.last}`)
 
-// The layout: how full, put to use, let go.
+// The layout: how full, suggested, put to use, let go.
 const fill = ref(80)
 async function saveFill() {
   const { error } = await api.PUT('/layout', { body: { fillPercent: fill.value } })
@@ -98,27 +106,24 @@ async function saveFill() {
 }
 
 function useLayout() {
-  const go = async () => {
-    const { error } = await api.PUT('/layout/in-use')
-    if (error) {
-      notice.failed(error)
-      return
-    }
-    proposal.value = false
-    notice.done('Layout in use. New books will go to the shelf they belong on.')
-    await load()
-  }
-  if (!layout.value?.inUse && !proposal.value) {
-    return void go()
-  }
   ask(
     {
-      header: 'Use the new layout?',
-      message:
-        'Every shelf takes its range from this proposal instead. Books on the shelves now may need to move to match it.',
-      accept: 'Use the new layout',
+      header: 'Put this layout to use?',
+      message: layout.value?.inUse
+        ? 'Every shelf takes its range from this suggestion instead, and new books go to the shelf they belong on. Books on the shelves now may need to move to match it.'
+        : 'Every shelf keeps the range this suggestion gives it, and new books go to the shelf they belong on, into the room left. Shelve the books this way first.',
+      accept: 'Put it to use',
     },
-    go,
+    async () => {
+      const { error } = await api.PUT('/layout/in-use')
+      if (error) {
+        notice.failed(error)
+        return
+      }
+      notice.done('Layout in use. New books will go to the shelf they belong on.')
+      suggesting.value = false
+      await load()
+    },
   )
 }
 
@@ -127,7 +132,7 @@ function stopLayout() {
     {
       header: 'Stop using the layout?',
       message:
-        'The shelves no longer keep their ranges, and the planner proposes from scratch, so new books push the rest along.',
+        'The shelves no longer keep their ranges, and no book has a place on them until another suggestion is put to use.',
       accept: 'Stop using it',
       danger: true,
     },
@@ -149,31 +154,132 @@ function list(title: string, books: ShelfBook[] | null | undefined) {
   listing.value = { title, books: books ?? [] }
   listOpen.value = true
 }
+const deweyText = (b: ShelfBook) => (b.deweyEstimated ? `~${b.dewey}` : b.dewey)
+
+// Areas: which books go on which shelves, and in what order.
+const editingArea = ref<Area | null>(null)
+const areaOpen = ref(false)
+function openArea(a: Area | null) {
+  editingArea.value = a
+  areaOpen.value = true
+}
+async function savedAreas(list: Area[]) {
+  areas.value = list
+  await load()
+}
+const areaInput = (a: Area, position: number): AreaInput => ({
+  name: a.name,
+  position,
+  categories: a.categories ?? [],
+  deweyFrom: a.deweyFrom,
+  deweyTo: a.deweyTo,
+  subject: a.subject,
+  authors: a.authors ?? [],
+  series: a.series ?? [],
+  minHeightMm: a.minHeightMm,
+  maxHeightMm: a.maxHeightMm,
+  order: a.order ?? [],
+  shelfIds: a.shelfIds ?? [],
+})
+async function moveArea(a: Area, by: -1 | 1) {
+  const { error } = await api.PUT('/areas/{id}', {
+    params: { path: { id: a.id } },
+    body: areaInput(a, a.position + by),
+  })
+  if (error) {
+    notice.failed(error)
+    return
+  }
+  await load()
+}
+function removeArea(a: Area) {
+  ask(
+    {
+      header: `Remove ${a.name}?`,
+      message: `The area and its rules are removed; its shelves are left in no area. Its books go to the next area that takes them, or none.`,
+      accept: 'Remove the area',
+      danger: true,
+    },
+    async () => {
+      const { error } = await api.DELETE('/areas/{id}', { params: { path: { id: a.id } } })
+      if (error) {
+        notice.failed(error)
+        return
+      }
+      await load()
+    },
+  )
+}
+// An area's shelves, bookcase by bookcase: Living room, left, shelves 1 to 4; Hall, shelf 5.
+function areaShelves(a: Area): string {
+  const parts = bookcases.value.flatMap((b) => {
+    const here = (b.shelves ?? []).filter((s) => s.areaId === a.id).map((s) => s.position)
+    return here.length ? [`${b.name}, ${shelfNumbers(here)}`] : []
+  })
+  return parts.length ? parts.join('; ') : 'No shelves yet'
+}
 
 // Bookcases and shelves.
 const blankShelf = (): ShelfInput => ({
   widthMm: 0,
   heightMm: 0,
   depthMm: 0,
-  oversize: false,
   braceHeightMm: 0,
   braceWidthMm: 0,
 })
-const newCase = ref({ name: '', shelves: 5, shelf: blankShelf() })
+// A shelf's measurements alone, as a new or changed shelf is sent: one read back also carries
+// its id, place, area, and bookcase, which the server refuses in a shelf it is given.
+const measurementsOf = (s: ShelfInput): ShelfInput => ({
+  widthMm: s.widthMm,
+  heightMm: s.heightMm,
+  depthMm: s.depthMm,
+  braceHeightMm: s.braceHeightMm,
+  braceWidthMm: s.braceWidthMm,
+})
+// A new bookcase: the measurements its shelves share and, where they are not all one height (a
+// taller shelf at the bottom, say), each shelf's own height from the top down.
+const newCase = ref({
+  name: '',
+  shelves: 5,
+  shelf: blankShelf(),
+  apart: false,
+  heights: [] as number[],
+})
 const newCaseOpen = ref(false)
 function openNewCase() {
   const last = bookcases.value.at(-1)?.shelves?.[0]
   newCase.value = {
     name: '',
     shelves: 5,
-    shelf: last ? { ...last, oversize: false } : blankShelf(),
+    shelf: last ? measurementsOf(last) : blankShelf(),
+    apart: false,
+    heights: [],
   }
   newCaseOpen.value = true
 }
+// Each shelf's height starts at the shared one and follows it until changed on its own.
+watch([() => newCase.value.shelves, () => newCase.value.apart], () => {
+  const { shelves, shelf, heights } = newCase.value
+  newCase.value.heights = Array.from({ length: shelves }, (_, i) => heights[i] ?? shelf.heightMm)
+})
+watch(
+  () => newCase.value.shelf.heightMm,
+  (now, was) => {
+    newCase.value.heights = newCase.value.heights.map((h) => (h === was ? now : h))
+  },
+)
+const newShelves = computed(() => {
+  const { shelves, shelf, apart, heights } = newCase.value
+  return Array.from({ length: shelves }, (_, i) => ({
+    ...shelf,
+    heightMm: apart ? (heights[i] ?? shelf.heightMm) : shelf.heightMm,
+  }))
+})
 const measured = (s: ShelfInput) => s.widthMm >= 100 && s.heightMm >= 50 && s.depthMm >= 50
 async function createCase() {
-  const { name, shelves, shelf } = newCase.value
-  const { error } = await api.POST('/bookcases', { body: { name, shelves, ...shelf } })
+  const { error } = await api.POST('/bookcases', {
+    body: { name: newCase.value.name, shelves: newShelves.value },
+  })
   if (error) {
     notice.failed(error)
     return
@@ -210,7 +316,7 @@ function removeCase(b: Bookcase) {
   ask(
     {
       header: `Remove ${b.name}?`,
-      message: `${b.name} and its ${n === 1 ? 'shelf' : `${n} shelves`} are removed. The books on them are planned onto the other shelves.`,
+      message: `${b.name} and its ${n === 1 ? 'shelf' : `${n} shelves`} are removed, and leave their areas.`,
       accept: 'Remove the bookcase',
       danger: true,
     },
@@ -239,7 +345,7 @@ function addShelf(b: Bookcase) {
     shelfId: 0,
     bookcaseId: b.id,
     title: `Add a shelf to ${b.name}`,
-    shelf: last ? { ...last, oversize: false } : blankShelf(),
+    shelf: last ? measurementsOf(last) : blankShelf(),
   }
   shelfOpen.value = true
 }
@@ -248,14 +354,7 @@ function editShelf(p: ShelfPlan) {
     shelfId: p.id,
     bookcaseId: p.bookcaseId,
     title: `${p.bookcase}, shelf ${p.position}`,
-    shelf: {
-      widthMm: p.widthMm,
-      heightMm: p.heightMm,
-      depthMm: p.depthMm,
-      oversize: p.oversize,
-      braceHeightMm: p.braceHeightMm,
-      braceWidthMm: p.braceWidthMm,
-    },
+    shelf: measurementsOf(p),
   }
   shelfOpen.value = true
 }
@@ -282,8 +381,7 @@ function removeShelf(p: ShelfPlan) {
   ask(
     {
       header: `Remove shelf ${p.position} of ${p.bookcase}?`,
-      message:
-        'The shelf is removed and the ones below it move up a number. Its books are planned onto the other shelves.',
+      message: 'The shelf is removed and the ones below it move up a number.',
       accept: 'Remove the shelf',
       danger: true,
     },
@@ -298,7 +396,7 @@ function removeShelf(p: ShelfPlan) {
   )
 }
 
-// Where does this go: a copy chosen, or scanned by its label, and its place.
+// Where does this go: a copy chosen, or scanned by its label, and its place in the layout in use.
 const findCopy = ref(0)
 const place = ref<ShelfPlace | null>(null)
 watch(findCopy, async (copyId) => {
@@ -322,44 +420,55 @@ const whereItGoes = computed(() => (place.value ? placeLine(place.value, true) :
       <Button type="button" @click="openNewCase"
         ><FontAwesomeIcon :icon="faPlus" /> Add a bookcase</Button
       >
+      <Button type="button" severity="secondary" @click="openArea(null)"
+        ><FontAwesomeIcon :icon="faPlus" /> Add an area</Button
+      >
     </PageHeader>
 
     <p v-if="loaded && !bookcases.length" class="prose-text mb-6">
       Measure each bookcase's shelves (the width inside the sides, the clear height above the shelf,
-      and the depth) and add them here. The planner then lays the library out in call number order,
-      leaving room on every shelf for books to come, and says where any book belongs.
+      and the depth) and add them here. Then make areas: which books go on which shelves, and in
+      what order. The planner suggests a layout by them only when you ask.
     </p>
 
     <PagePanel v-if="layout && bookcases.length" title="The layout">
       <p class="prose-text mb-4">
-        <template v-if="layout.inUse">
-          In use since {{ day(layout.appliedAt) }}. Each shelf keeps the range it was given, so a
-          new book goes to the shelf its call number belongs on, into the room left there.
+        <template v-if="layout.suggested">
+          A suggestion by your areas, each shelf filled to {{ layout.fillPercent }}%. Look it over;
+          once the books stand this way, put it to use, so new books find their place without moving
+          the rest.
+          <template v-if="layout.inUse"
+            >The layout in use, from {{ day(layout.appliedAt) }}, stays until then.</template
+          >
         </template>
-        <template v-else-if="proposal">
-          A fresh proposal, not yet in use: the shelves still keep the ranges of the layout in use.
+        <template v-else-if="layout.inUse">
+          In use since {{ day(layout.appliedAt) }}. Each shelf keeps the range it was given, so a
+          new book goes to the shelf of its area it belongs on, into the room left there.
         </template>
         <template v-else>
-          A proposal: every book in call number order, each shelf filled to
-          {{ layout.fillPercent }}%. Put the books on the shelves this way, then use the layout so
-          new books find their place without moving the rest.
+          No book has a place on the shelves yet. Give the areas their shelves and rules, then ask
+          for a suggestion: nothing changes until you put one to use.
         </template>
       </p>
       <div class="mb-4 flex flex-wrap gap-2">
         <Button
-          v-if="!layout.inUse"
+          v-if="!layout.suggested"
           type="button"
-          :label="proposal ? 'Use the new layout' : 'Use this layout'"
-          @click="useLayout"
+          :severity="layout.inUse ? 'secondary' : undefined"
+          :label="layout.inUse ? 'Suggest again' : 'Suggest a layout'"
+          @click="suggesting = true"
         />
+        <template v-else>
+          <Button type="button" label="Put it to use" @click="useLayout" />
+          <Button
+            type="button"
+            severity="secondary"
+            label="Close the suggestion"
+            @click="suggesting = false"
+          />
+        </template>
         <Button
-          v-if="layout.inUse || proposal"
-          type="button"
-          severity="secondary"
-          :label="proposal ? 'Back to the layout in use' : 'Plan afresh'"
-          @click="proposal = !proposal"
-        />
-        <Button
+          v-if="layout.inUse && !layout.suggested"
           as="a"
           severity="secondary"
           :href="apiURL('/layout/labels')"
@@ -368,7 +477,7 @@ const whereItGoes = computed(() => (place.value ? placeLine(place.value, true) :
           ><FontAwesomeIcon :icon="faTags" /> Print shelf labels</Button
         >
         <Button
-          v-if="layout.inUse"
+          v-if="layout.inUse && !layout.suggested"
           type="button"
           text
           severity="danger"
@@ -401,12 +510,29 @@ const whereItGoes = computed(() => (place.value ? placeLine(place.value, true) :
         <!-- Its own row on a phone, so the fill's Save never reads as saving the unit. -->
         <UnitChoice class="w-full sm:ml-auto sm:w-auto" />
       </div>
-      <ul class="flex flex-col gap-2">
+      <ul v-if="showsBooks" class="flex flex-col gap-2">
+        <li v-if="layout.noArea?.length" class="flex flex-wrap items-center gap-x-3">
+          <span class="font-semibold"
+            >No area takes {{ count(layout.noArea.length, 'book') }}.</span
+          >
+          <span class="text-sm text-ink-muted"
+            >Widen an area's rules, or add one with none to take the rest.</span
+          >
+          <Button
+            type="button"
+            text
+            label="Show them"
+            @click="list('Books in no area', layout.noArea)"
+          />
+        </li>
         <li v-if="layout.unplaced?.length" class="flex flex-wrap items-center gap-x-3">
           <span class="font-semibold"
-            >No shelf has room for {{ count(layout.unplaced.length, 'book') }}.</span
+            >{{ count(layout.unplaced.length, 'book has', 'books have') }} no room in its
+            area.</span
           >
-          <span class="text-sm text-ink-muted">Add shelves, or plan them fuller.</span>
+          <span class="text-sm text-ink-muted"
+            >Give the area more shelves, or plan them fuller.</span
+          >
           <Button
             type="button"
             text
@@ -416,10 +542,12 @@ const whereItGoes = computed(() => (place.value ? placeLine(place.value, true) :
         </li>
         <li v-if="layout.tooTall?.length" class="flex flex-wrap items-center gap-x-3">
           <span class="font-semibold"
-            >{{ count(layout.tooTall.length, 'book is', 'books are') }} taller than every shelf that
-            could take them.</span
+            >{{ count(layout.tooTall.length, 'book is', 'books are') }} too tall for the shelf
+            {{ layout.tooTall.length === 1 ? 'its' : 'their' }} turn came on.</span
           >
-          <span class="text-sm text-ink-muted">Mark a tall shelf for oversize books.</span>
+          <span class="text-sm text-ink-muted"
+            >Add an area for tall books, on taller shelves, above the others.</span
+          >
           <Button
             type="button"
             text
@@ -434,7 +562,74 @@ const whereItGoes = computed(() => (place.value ? placeLine(place.value, true) :
       </ul>
     </PagePanel>
 
-    <PagePanel v-if="layout?.shelves?.length" title="Where does this go?" class="mt-6">
+    <PagePanel v-if="loaded" title="Areas" class="mt-6">
+      <template #actions>
+        <Button type="button" severity="secondary" @click="openArea(null)"
+          ><FontAwesomeIcon :icon="faPlus" /> Add an area</Button
+        >
+      </template>
+      <p class="prose-text mb-4 text-sm text-ink-muted">
+        A book goes to the first area, from the top, whose rules take it, and stands among its books
+        in the area's order.
+      </p>
+      <DataTable :value="areas" data-key="id">
+        <template #empty>
+          <p class="prose-text text-ink-muted">
+            No areas yet. Add one, like Nonfiction ordered by subject then author, and give it
+            shelves.
+          </p>
+        </template>
+        <Column header="Area">
+          <template #body="{ data }">
+            <div class="font-semibold">{{ (data as Area).name }}</div>
+            <div class="prose-text text-sm">{{ areaRulesText(data as Area, unit) }}</div>
+            <div class="prose-text text-sm text-ink-muted">
+              {{ areaOrderText((data as Area).order) }}
+            </div>
+            <div class="prose-text text-sm text-ink-muted">{{ areaShelves(data as Area) }}</div>
+          </template>
+        </Column>
+        <Column header="Actions" header-class="column-unlabelled">
+          <template #body="{ data, index }">
+            <div class="flex flex-col items-end gap-1 md:flex-row md:justify-end">
+              <Button
+                type="button"
+                text
+                label="Up"
+                :aria-label="`Try ${(data as Area).name} earlier`"
+                :disabled="index === 0"
+                @click="moveArea(data as Area, -1)"
+              />
+              <Button
+                type="button"
+                text
+                label="Down"
+                :aria-label="`Try ${(data as Area).name} later`"
+                :disabled="index === areas.length - 1"
+                @click="moveArea(data as Area, 1)"
+              />
+              <Button
+                type="button"
+                text
+                label="Edit"
+                :aria-label="`Edit ${(data as Area).name}`"
+                @click="openArea(data as Area)"
+              />
+              <Button
+                type="button"
+                text
+                severity="danger"
+                label="Remove"
+                :aria-label="`Remove ${(data as Area).name}`"
+                @click="removeArea(data as Area)"
+              />
+            </div>
+          </template>
+        </Column>
+      </DataTable>
+    </PagePanel>
+
+    <PagePanel v-if="layout?.inUse" title="Where does this go?" class="mt-6">
       <BookPicker v-model="findCopy" />
       <p v-if="whereItGoes" class="mt-4 text-lg font-semibold" role="status">{{ whereItGoes }}</p>
     </PagePanel>
@@ -465,10 +660,15 @@ const whereItGoes = computed(() => (place.value ? placeLine(place.value, true) :
         <Column header="Shelf">
           <template #body="{ data }">
             <span class="font-semibold">{{ (data as ShelfPlan).position }}</span>
-            <div v-if="(data as ShelfPlan).oversize" class="text-sm">Oversize</div>
+            <div class="text-sm" :class="{ 'text-ink-muted': !(data as ShelfPlan).area }">
+              {{ (data as ShelfPlan).area || 'No area' }}
+            </div>
+            <div v-if="!showsBooks" class="text-sm text-ink-muted md:hidden">
+              {{ shelfSize(data as ShelfPlan, unit) }}
+            </div>
           </template>
         </Column>
-        <Column header="Holds">
+        <Column v-if="showsBooks" :header="layout?.suggested ? 'Would hold' : 'Holds'">
           <template #body="{ data }">
             <span v-if="(data as ShelfPlan).books?.length" class="font-mono">{{
               range(data as ShelfPlan)
@@ -487,8 +687,11 @@ const whereItGoes = computed(() => (place.value ? placeLine(place.value, true) :
               <span v-if="(data as ShelfPlan).overMm > 0" class="font-semibold">
                 · over by {{ lengthIn((data as ShelfPlan).overMm, unit) }}
               </span>
-              <span v-if="layout?.inUse && !(data as ShelfPlan).inUse" class="text-ink-muted">
-                · not in the layout in use</span
+              <span
+                v-if="layout?.inUse && !layout.suggested && !(data as ShelfPlan).inUse"
+                class="text-ink-muted"
+              >
+                · not in the layout in use: suggest again</span
               >
             </div>
             <div v-if="(data as ShelfPlan).gapMm > 0" class="text-sm">
@@ -511,6 +714,7 @@ const whereItGoes = computed(() => (place.value ? placeLine(place.value, true) :
           <template #body="{ data }">
             <div class="flex flex-col items-end gap-1 md:flex-row md:justify-end">
               <Button
+                v-if="showsBooks"
                 type="button"
                 text
                 label="Books"
@@ -524,7 +728,7 @@ const whereItGoes = computed(() => (place.value ? placeLine(place.value, true) :
                 "
               />
               <RouterLink
-                v-if="layout?.inUse && (data as ShelfPlan).books?.length"
+                v-if="layout?.inUse && !layout.suggested && (data as ShelfPlan).books?.length"
                 v-slot="{ navigate }"
                 :to="`/shelves/${(data as ShelfPlan).id}/check`"
                 custom
@@ -584,6 +788,30 @@ const whereItGoes = computed(() => (place.value ? placeLine(place.value, true) :
           </FormField>
         </div>
         <ShelfFields v-model="newCase.shelf" />
+        <FormField
+          v-if="newCase.shelves > 1"
+          label="Some shelves are another height"
+          :for="`${id}-apart`"
+          hint="A taller shelf at the bottom, say. The rest of each shelf is as measured above."
+        >
+          <ToggleSwitch v-model="newCase.apart" :input-id="`${id}-apart`" />
+        </FormField>
+        <PagePanel
+          v-if="newCase.apart && newCase.shelves > 1"
+          fieldset
+          title="Heights, from the top shelf down"
+        >
+          <div class="grid gap-4 sm:grid-cols-3">
+            <LengthField
+              v-for="(height, n) in newCase.heights"
+              :key="n"
+              :model-value="height"
+              :label="`Shelf ${n + 1}`"
+              required
+              @update:model-value="newCase.heights[n] = $event"
+            />
+          </div>
+        </PagePanel>
       </form>
       <template #footer>
         <Button type="button" severity="secondary" label="Cancel" @click="newCaseOpen = false" />
@@ -591,7 +819,7 @@ const whereItGoes = computed(() => (place.value ? placeLine(place.value, true) :
           type="submit"
           :form="`${id}-case`"
           label="Add the bookcase"
-          :disabled="!newCase.name.trim() || !measured(newCase.shelf)"
+          :disabled="!newCase.name.trim() || !newShelves.every(measured)"
         />
       </template>
     </Dialog>
@@ -642,7 +870,7 @@ const whereItGoes = computed(() => (place.value ? placeLine(place.value, true) :
       class="w-full max-w-2xl"
     >
       <form v-if="shelfEdit" :id="`${id}-shelf`" @submit.prevent="saveShelf">
-        <ShelfFields v-model="shelfEdit.shelf" oversize-choice />
+        <ShelfFields v-model="shelfEdit.shelf" />
       </form>
       <template #footer>
         <Button type="button" severity="secondary" label="Cancel" @click="shelfOpen = false" />
@@ -654,6 +882,14 @@ const whereItGoes = computed(() => (place.value ? placeLine(place.value, true) :
         />
       </template>
     </Dialog>
+
+    <AreaDialog
+      v-model:visible="areaOpen"
+      :area="editingArea"
+      :areas="areas"
+      :bookcases="bookcases"
+      @saved="savedAreas"
+    />
 
     <Dialog
       v-model:visible="listOpen"
@@ -675,6 +911,9 @@ const whereItGoes = computed(() => (place.value ? placeLine(place.value, true) :
             }}</RouterLink>
             <div class="font-mono text-sm">
               {{ callNumberText((data as ShelfBook).callNumber) }}
+              <span v-if="(data as ShelfBook).deweyEstimated" class="text-ink-muted"
+                >· Dewey {{ deweyText(data as ShelfBook) }}, estimated from its LC class</span
+              >
             </div>
             <div v-if="(data as ShelfBook).onLoan" class="text-sm text-ink-muted">Out on loan</div>
           </template>

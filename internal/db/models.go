@@ -8,6 +8,38 @@ import (
 	"database/sql"
 )
 
+type Area struct {
+	ID          int64
+	Name        string
+	Position    int64
+	DeweyFrom   string
+	DeweyTo     string
+	Subject     string
+	MinHeightMm int64
+	MaxHeightMm int64
+}
+
+type AreaAuthor struct {
+	AreaID   int64
+	PersonID int64
+}
+
+type AreaCategory struct {
+	AreaID   int64
+	Category string
+}
+
+type AreaOrder struct {
+	AreaID int64
+	Rank   int64
+	Key    string
+}
+
+type AreaSeries struct {
+	AreaID   int64
+	SeriesID int64
+}
+
 type Bookcase struct {
 	ID        int64
 	Name      string
@@ -392,11 +424,11 @@ type Shelf struct {
 	WidthMm       int64
 	HeightMm      int64
 	DepthMm       int64
-	Oversize      int64
 	StartsAt      string
 	CreatedAt     string
 	BraceHeightMm int64
 	BraceWidthMm  int64
+	AreaID        sql.NullInt64
 }
 
 type User struct {

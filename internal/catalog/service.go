@@ -416,6 +416,7 @@ type Choices struct {
 	Sections    []string `json:"sections"`
 	Genres      []string `json:"genres"`
 	Series      []string `json:"series"`
+	Authors     []string `json:"authors" doc:"Everyone the library has a book by"`
 	Borrowers   []string `json:"borrowers"`
 	Schools     []string `json:"schools"`
 	Departments []string `json:"departments"`
@@ -433,6 +434,7 @@ func (s *Service) Choices(ctx context.Context) (*Choices, error) {
 		{&c.Sections, q.ListSections},
 		{&c.Genres, q.ListGenres},
 		{&c.Series, q.ListSeriesNames},
+		{&c.Authors, q.ListAuthorNames},
 		{&c.Borrowers, q.ListBorrowerNames},
 		{&c.Schools, q.ListSchools},
 		{&c.Departments, q.ListDepartments},

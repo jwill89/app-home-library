@@ -4,6 +4,27 @@ What changes in Home Library, release by release. The format is [Keep a Changelo
 
 ## [Unreleased]
 
+### Added
+
+- Areas of shelves on the Shelves page: each takes the books its rules say (categories, a Dewey range, subject words, authors, series, heights), in the order chosen (subject, author, series and volume, title, date, height), and a book goes to the first area that takes it. An area's shelves need not stand side by side.
+- Ordering by subject uses the Dewey number, or one estimated from the LC class where a book has none, shown as estimated.
+- A bookcase can be added with some shelves another height than the rest, such as a taller bottom shelf: each shelf's height is set from the top shelf down, and starts at the one the shelves share.
+
+### Changed
+
+- The Shelves page no longer lays books out unasked: the shelves are listed on their own, a layout is suggested only when asked for, and no book has a place (on its page, in Where does this go, or for the shelf check and range labels) until a suggestion is put to use. A layout in use before this release is let go.
+- The API's `get-layout` takes `suggest` in place of `proposal`; shelves carry their area, and a copy's place its area.
+- `POST /api/v1/bookcases` takes the new bookcase's shelves as a list from the top down, each with its own measurements, in place of a count and one shelf's.
+
+### Removed
+
+- Oversize shelves: an area for tall books, tried before the others, takes their place.
+
+### Fixed
+
+- Adding a second bookcase, or a shelf to a bookcase that already had one, was refused with "unexpected property": the form started from a copy of the last shelf whole, its id and place with its measurements.
+- A request the browser gave up on, as a page left mid-request does, could sign the owner out: a sign-in is now forgotten only when its passkey or user is gone, not when the request could not be read through.
+
 ## [1.2.1] - 2026-11-11
 
 ### Changed

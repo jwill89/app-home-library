@@ -6,6 +6,8 @@ import {
   coverURL,
   fromUnit,
   inUnit,
+  areaOrderText,
+  shelfNumbers,
   shelfSize,
   day,
   daysLate,
@@ -132,5 +134,20 @@ describe('shelf units', () => {
     expect(inUnit(19, 'in')).toBe(0.75)
     expect(inUnit(32, 'in')).toBe(1.25)
     expect(inUnit(279, 'in')).toBe(11)
+  })
+})
+
+describe('shelfNumbers', () => {
+  it('gathers runs, and names two side by side as two', () => {
+    expect(shelfNumbers([5])).toBe('shelf 5')
+    expect(shelfNumbers([1, 2])).toBe('shelves 1 and 2')
+    expect(shelfNumbers([1, 2, 3, 4])).toBe('shelves 1 to 4')
+    expect(shelfNumbers([1, 2, 3, 4, 6])).toBe('shelves 1 to 4 and 6')
+  })
+})
+
+describe('areaOrderText', () => {
+  it('names each key, the later ones mid-sentence', () => {
+    expect(areaOrderText(['author', 'subject'])).toBe('Author, then subject (Dewey number)')
   })
 })

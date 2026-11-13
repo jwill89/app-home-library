@@ -24,12 +24,13 @@ const fid = useId()
 const shelf = ref<ShelfPlan | null>(null)
 const loaded = ref(false)
 async function load() {
-  const { data, error } = await api.GET('/layout', { params: { query: { proposal: false } } })
+  const { data, error } = await api.GET('/layout')
   if (error) {
     notice.failed(error)
     return
   }
-  shelf.value = data.shelves?.find((s) => s.id === props.id) ?? null
+  // A shelf is checked against the layout in use; with none, no book has a place to check.
+  shelf.value = data.inUse ? (data.shelves?.find((s) => s.id === props.id) ?? null) : null
   loaded.value = true
 }
 onMounted(load)
@@ -137,7 +138,8 @@ const misplaced = (d: unknown) => d as Misplaced
     />
 
     <p v-if="loaded && !shelf" class="prose-text">
-      There is no such shelf in the layout. Choose a shelf to check from the Shelves page.
+      This shelf has no place in a layout in use. On the Shelves page, suggest a layout and put it
+      to use, then choose a shelf to check there.
     </p>
 
     <template v-if="shelf">

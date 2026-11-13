@@ -57,6 +57,244 @@
         "required": ["adding"],
         "type": "object"
       },
+      "Area": {
+        "additionalProperties": false,
+        "properties": {
+          "authors": {
+            "description": "Books by any of these people; none for every author",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "type": ["array", "null"]
+          },
+          "categories": {
+            "description": "Any of these categories; none for every one",
+            "items": {
+              "enum": [
+                "fiction",
+                "nonfiction",
+                "manga",
+                "light_novel",
+                "graphic_novel",
+                "uncategorized"
+              ],
+              "type": "string"
+            },
+            "maxItems": 6,
+            "type": ["array", "null"]
+          },
+          "deweyFrom": {
+            "description": "The lowest Dewey number it takes, the book's own or estimated from its LC class; empty for no limit",
+            "maxLength": 20,
+            "type": "string"
+          },
+          "deweyTo": {
+            "description": "The highest Dewey number it takes; empty for no limit",
+            "maxLength": 20,
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "maxHeightMm": {
+            "description": "Books no taller than this; 0 for no limit",
+            "format": "int64",
+            "maximum": 1000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "minHeightMm": {
+            "description": "Books at least this tall; 0 for no limit",
+            "format": "int64",
+            "maximum": 1000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "order": {
+            "description": "What its books are ordered by, first key first; none for subject, author, series, then title",
+            "items": {
+              "enum": ["subject", "author", "series", "title", "published", "height"],
+              "type": "string"
+            },
+            "maxItems": 6,
+            "type": ["array", "null"]
+          },
+          "position": {
+            "description": "Where it comes in the order books try the areas, 1 first; 0 keeps its place, or puts a new one last",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "series": {
+            "description": "Books in any of these series; none for every book",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "type": ["array", "null"]
+          },
+          "shelfIds": {
+            "description": "Its shelves, which leave any other area",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "maxItems": 500,
+            "type": ["array", "null"]
+          },
+          "subject": {
+            "description": "Words one of a book's subject headings has; empty for any",
+            "maxLength": 100,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "position",
+          "order",
+          "shelfIds",
+          "categories",
+          "deweyFrom",
+          "deweyTo",
+          "subject",
+          "authors",
+          "series",
+          "minHeightMm",
+          "maxHeightMm"
+        ],
+        "type": "object"
+      },
+      "AreaInput": {
+        "additionalProperties": false,
+        "properties": {
+          "authors": {
+            "description": "Books by any of these people; none for every author",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "type": ["array", "null"]
+          },
+          "categories": {
+            "description": "Any of these categories; none for every one",
+            "items": {
+              "enum": [
+                "fiction",
+                "nonfiction",
+                "manga",
+                "light_novel",
+                "graphic_novel",
+                "uncategorized"
+              ],
+              "type": "string"
+            },
+            "maxItems": 6,
+            "type": ["array", "null"]
+          },
+          "deweyFrom": {
+            "description": "The lowest Dewey number it takes, the book's own or estimated from its LC class; empty for no limit",
+            "maxLength": 20,
+            "type": "string"
+          },
+          "deweyTo": {
+            "description": "The highest Dewey number it takes; empty for no limit",
+            "maxLength": 20,
+            "type": "string"
+          },
+          "maxHeightMm": {
+            "description": "Books no taller than this; 0 for no limit",
+            "format": "int64",
+            "maximum": 1000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "minHeightMm": {
+            "description": "Books at least this tall; 0 for no limit",
+            "format": "int64",
+            "maximum": 1000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "order": {
+            "description": "What its books are ordered by, first key first; none for subject, author, series, then title",
+            "items": {
+              "enum": ["subject", "author", "series", "title", "published", "height"],
+              "type": "string"
+            },
+            "maxItems": 6,
+            "type": ["array", "null"]
+          },
+          "position": {
+            "description": "Where it comes in the order books try the areas, 1 first; 0 keeps its place, or puts a new one last",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "series": {
+            "description": "Books in any of these series; none for every book",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "type": ["array", "null"]
+          },
+          "shelfIds": {
+            "description": "Its shelves, which leave any other area",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "maxItems": 500,
+            "type": ["array", "null"]
+          },
+          "subject": {
+            "description": "Words one of a book's subject headings has; empty for any",
+            "maxLength": 100,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "position",
+          "order",
+          "shelfIds",
+          "categories",
+          "deweyFrom",
+          "deweyTo",
+          "subject",
+          "authors",
+          "series",
+          "minHeightMm",
+          "maxHeightMm"
+        ],
+        "type": "object"
+      },
+      "AreasOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "areas": {
+            "items": {
+              "$ref": "#/components/schemas/Area"
+            },
+            "type": ["array", "null"]
+          }
+        },
+        "required": ["areas"],
+        "type": "object"
+      },
       "Book": {
         "additionalProperties": false,
         "properties": {
@@ -879,6 +1117,13 @@
       "Choices": {
         "additionalProperties": false,
         "properties": {
+          "authors": {
+            "description": "Everyone the library has a book by",
+            "items": {
+              "type": "string"
+            },
+            "type": ["array", "null"]
+          },
           "borrowers": {
             "items": {
               "type": "string"
@@ -926,6 +1171,7 @@
           "sections",
           "genres",
           "series",
+          "authors",
           "borrowers",
           "schools",
           "departments",
@@ -2428,8 +2674,15 @@
             "type": "integer"
           },
           "inUse": {
-            "description": "The shelves keep the places a layout gave them; false is a proposal",
+            "description": "The shelves keep the places a layout gave them",
             "type": "boolean"
+          },
+          "noArea": {
+            "description": "Books no area's rules take",
+            "items": {
+              "$ref": "#/components/schemas/ShelfBook"
+            },
+            "type": ["array", "null"]
           },
           "shelves": {
             "items": {
@@ -2437,15 +2690,19 @@
             },
             "type": ["array", "null"]
           },
+          "suggested": {
+            "description": "A suggestion asked for, not yet put to use",
+            "type": "boolean"
+          },
           "tooTall": {
-            "description": "Books taller than every shelf that could take them",
+            "description": "Books taller than the shelf their turn came on in their area",
             "items": {
               "$ref": "#/components/schemas/ShelfBook"
             },
             "type": ["array", "null"]
           },
           "unplaced": {
-            "description": "Books no shelf has room for",
+            "description": "Books their area has no room for, or no shelves",
             "items": {
               "$ref": "#/components/schemas/ShelfBook"
             },
@@ -2454,9 +2711,11 @@
         },
         "required": [
           "inUse",
+          "suggested",
           "appliedAt",
           "fillPercent",
           "shelves",
+          "noArea",
           "unplaced",
           "tooTall",
           "estimated"
@@ -2775,66 +3034,22 @@
       "NewBookcase": {
         "additionalProperties": false,
         "properties": {
-          "braceHeightMm": {
-            "description": "How far a corner brace hangs below the shelf above; 0 for none",
-            "format": "int64",
-            "maximum": 200,
-            "minimum": 0,
-            "type": "integer"
-          },
-          "braceWidthMm": {
-            "description": "How far a corner brace reaches in from the side; 0 for none",
-            "format": "int64",
-            "maximum": 200,
-            "minimum": 0,
-            "type": "integer"
-          },
-          "depthMm": {
-            "format": "int64",
-            "maximum": 1000,
-            "minimum": 50,
-            "type": "integer"
-          },
-          "heightMm": {
-            "description": "Clear space above the shelf",
-            "format": "int64",
-            "maximum": 1000,
-            "minimum": 50,
-            "type": "integer"
-          },
           "name": {
             "maxLength": 100,
             "minLength": 1,
             "type": "string"
           },
-          "oversize": {
-            "description": "Takes the books too tall for the shelf their call number would put them on",
-            "type": "boolean"
-          },
           "shelves": {
-            "format": "int64",
-            "maximum": 20,
-            "minimum": 1,
-            "type": "integer"
-          },
-          "widthMm": {
-            "description": "Inside the sides",
-            "format": "int64",
-            "maximum": 5000,
-            "minimum": 100,
-            "type": "integer"
+            "description": "From the top down",
+            "items": {
+              "$ref": "#/components/schemas/ShelfInput"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "type": ["array", "null"]
           }
         },
-        "required": [
-          "name",
-          "shelves",
-          "widthMm",
-          "heightMm",
-          "depthMm",
-          "oversize",
-          "braceHeightMm",
-          "braceWidthMm"
-        ],
+        "required": ["name", "shelves"],
         "type": "object"
       },
       "NewCalendarLinkOutputBody": {
@@ -3696,6 +3911,15 @@
       "Shelf": {
         "additionalProperties": false,
         "properties": {
+          "area": {
+            "description": "The area's name; empty for none",
+            "type": "string"
+          },
+          "areaId": {
+            "description": "The area it is in; 0 for none",
+            "format": "int64",
+            "type": "integer"
+          },
           "bookcase": {
             "type": "string"
           },
@@ -3734,10 +3958,6 @@
             "format": "int64",
             "type": "integer"
           },
-          "oversize": {
-            "description": "Takes the books too tall for the shelf their call number would put them on",
-            "type": "boolean"
-          },
           "position": {
             "description": "From the top, 1 up",
             "format": "int64",
@@ -3756,10 +3976,11 @@
           "bookcaseId",
           "bookcase",
           "position",
+          "areaId",
+          "area",
           "widthMm",
           "heightMm",
           "depthMm",
-          "oversize",
           "braceHeightMm",
           "braceWidthMm"
         ],
@@ -3784,6 +4005,14 @@
           "copyId": {
             "format": "int64",
             "type": "integer"
+          },
+          "dewey": {
+            "description": "Its Dewey number: its own, or estimated from its LC class",
+            "type": "string"
+          },
+          "deweyEstimated": {
+            "description": "The Dewey number is estimated from the LC class",
+            "type": "boolean"
           },
           "estimated": {
             "description": "Its height or thickness is worked out from its format and pages",
@@ -3811,6 +4040,8 @@
           "barcode",
           "title",
           "callNumber",
+          "dewey",
+          "deweyEstimated",
           "heightMm",
           "thicknessMm",
           "estimated",
@@ -3848,10 +4079,6 @@
             "minimum": 50,
             "type": "integer"
           },
-          "oversize": {
-            "description": "Takes the books too tall for the shelf their call number would put them on",
-            "type": "boolean"
-          },
           "widthMm": {
             "description": "Inside the sides",
             "format": "int64",
@@ -3860,7 +4087,7 @@
             "type": "integer"
           }
         },
-        "required": ["widthMm", "heightMm", "depthMm", "oversize", "braceHeightMm", "braceWidthMm"],
+        "required": ["widthMm", "heightMm", "depthMm", "braceHeightMm", "braceWidthMm"],
         "type": "object"
       },
       "ShelfPlace": {
@@ -3868,6 +4095,10 @@
         "properties": {
           "after": {
             "description": "The title of the book before it on the shelf; empty at the start",
+            "type": "string"
+          },
+          "area": {
+            "description": "The area the shelf is in",
             "type": "string"
           },
           "before": {
@@ -3878,14 +4109,11 @@
             "type": "string"
           },
           "inUse": {
-            "description": "From the layout in use; false is where a proposal would put it",
-            "type": "boolean"
-          },
-          "oversize": {
+            "description": "Whether a layout is in use at all; with none, no book has a place",
             "type": "boolean"
           },
           "placed": {
-            "description": "Whether any shelf has room for it",
+            "description": "Whether the layout in use has a place for it",
             "type": "boolean"
           },
           "position": {
@@ -3906,7 +4134,7 @@
           "shelfId",
           "bookcase",
           "position",
-          "oversize",
+          "area",
           "after",
           "before",
           "inUse",
@@ -3918,6 +4146,15 @@
       "ShelfPlan": {
         "additionalProperties": false,
         "properties": {
+          "area": {
+            "description": "The area's name; empty for none",
+            "type": "string"
+          },
+          "areaId": {
+            "description": "The area it is in; 0 for none",
+            "format": "int64",
+            "type": "integer"
+          },
           "bookcase": {
             "type": "string"
           },
@@ -3952,11 +4189,8 @@
             "type": "integer"
           },
           "first": {
-            "description": "The first book's call number",
-            "items": {
-              "type": "string"
-            },
-            "type": ["array", "null"]
+            "description": "The first book by its area's first key: its Dewey number, author, series and volume, title, or year; the title where that is blank",
+            "type": "string"
           },
           "gapMm": {
             "description": "Space left empty at the start, where a corner brace is too low for the first book",
@@ -3975,24 +4209,17 @@
             "type": "integer"
           },
           "inUse": {
-            "description": "Has a place in the layout in use; a shelf added since has none",
+            "description": "Has a place in the layout in use; a shelf added or moved to another area since has none",
             "type": "boolean"
           },
           "last": {
-            "description": "The last book's call number",
-            "items": {
-              "type": "string"
-            },
-            "type": ["array", "null"]
+            "description": "The last book, as the first",
+            "type": "string"
           },
           "overMm": {
             "description": "How far the books run past what the shelf holds; 0 when they fit",
             "format": "int64",
             "type": "integer"
-          },
-          "oversize": {
-            "description": "Takes the books too tall for the shelf their call number would put them on",
-            "type": "boolean"
           },
           "position": {
             "description": "From the top, 1 up",
@@ -4024,10 +4251,11 @@
           "bookcaseId",
           "bookcase",
           "position",
+          "areaId",
+          "area",
           "widthMm",
           "heightMm",
           "depthMm",
-          "oversize",
           "braceHeightMm",
           "braceWidthMm"
         ],
@@ -4189,6 +4417,169 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/areas": {
+      "get": {
+        "operationId": "list-areas",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AreasOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "The areas of shelves, in the order a book tries them, with their rules and shelves"
+      },
+      "post": {
+        "operationId": "create-area",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AreaInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AreasOutputBody"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Add an area of shelves, with the rules for which books it takes and their order"
+      }
+    },
+    "/areas/{id}": {
+      "delete": {
+        "operationId": "delete-area",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Remove an area; its shelves are left in none"
+      },
+      "put": {
+        "operationId": "update-area",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AreaInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AreasOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Change an area's name, place in the order, rules, order of books, or shelves"
+      }
+    },
     "/auth/logout": {
       "post": {
         "operationId": "sign-out",
@@ -4461,7 +4852,7 @@
             "session": []
           }
         ],
-        "summary": "Add a bookcase with its shelves, all alike to begin with"
+        "summary": "Add a bookcase with its shelves, from the top down"
       }
     },
     "/bookcases/{id}": {
@@ -7576,12 +7967,12 @@
         "operationId": "get-layout",
         "parameters": [
           {
-            "description": "A fresh proposal, even while a layout is in use",
+            "description": "A fresh suggestion, by the areas' rules, even while a layout is in use",
             "explode": false,
             "in": "query",
-            "name": "proposal",
+            "name": "suggest",
             "schema": {
-              "description": "A fresh proposal, even while a layout is in use",
+              "description": "A fresh suggestion, by the areas' rules, even while a layout is in use",
               "type": "boolean"
             }
           }
@@ -7613,7 +8004,7 @@
             "session": []
           }
         ],
-        "summary": "The library on its shelves: the layout in use, or a proposal"
+        "summary": "The library on its shelves: the layout in use, a suggestion asked for, or the shelves with nothing on them"
       },
       "put": {
         "operationId": "set-layout",
@@ -7673,7 +8064,7 @@
             "session": []
           }
         ],
-        "summary": "Stop using the layout: the planner proposes afresh"
+        "summary": "Stop using the layout: no book has a place until another is put to use"
       },
       "put": {
         "operationId": "use-layout",
@@ -7697,7 +8088,7 @@
             "session": []
           }
         ],
-        "summary": "Put the proposal to use: each shelf keeps where it starts in the order"
+        "summary": "Put a fresh suggestion to use: each shelf keeps where it starts in its area's order"
       }
     },
     "/layout/labels": {

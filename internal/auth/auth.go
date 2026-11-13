@@ -10,6 +10,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -92,19 +93,17 @@ func Resolve(sm *scs.SessionManager, read *sql.DB, local bool, next http.Handler
 		ctx := r.Context()
 		q := db.New(read)
 		if id := sm.GetInt64(ctx, sessionUser); id > 0 {
-			cred := sm.GetString(ctx, sessionPasskey)
-			kept := cred == devPasskey && local
-			if !kept && cred != "" && cred != devPasskey {
-				n, err := q.CountUserPasskey(ctx, db.CountUserPasskeyParams{UserID: id, CredentialID: cred})
-				kept = err == nil && n > 0
-			}
-			u, err := q.GetUser(ctx, id)
-			if kept && err == nil {
+			u, err := signedIn(ctx, q, id, sm.GetString(ctx, sessionPasskey), local)
+			switch {
+			case err == nil:
 				r = r.WithContext(context.WithValue(ctx, principalKey{}, Principal{UserID: u.ID, Name: u.Name}))
-			} else {
+			case errors.Is(err, errSignedOut):
 				sm.Remove(ctx, sessionUser)
 				sm.Remove(ctx, sessionPasskey)
 			}
+			// Any other error is a read that failed (the request given up by the browser, the
+			// database busy): it proves nothing, so the session stays as it is, and only this
+			// request goes unanswered as the owner's.
 		} else if h := sm.GetString(ctx, sessionShare); h != "" {
 			// The link is known by its token's hash, which no later link can share; a link's
 			// number is used again once the newest is removed. What it shows is read with it,
@@ -200,6 +199,34 @@ func SignIn(ctx context.Context, sm *scs.SessionManager, userID int64, credentia
 
 // splitStore keeps sessions in one table and reads them on the read pool: every request
 // reads its session, so reads must not queue behind a write.
+// errSignedOut is a session's sign-in that no longer holds: its user, or the passkey they
+// signed in with, is gone.
+var errSignedOut = errors.New("signed out")
+
+// signedIn is the session's user, while the passkey they signed in with is still theirs:
+// errSignedOut when it or they are gone, any other error when that cannot be read now. A
+// dev-session's sign-in holds only while every origin is this machine.
+func signedIn(ctx context.Context, q *db.Queries, id int64, cred string, local bool) (*db.User, error) {
+	switch {
+	case cred == devPasskey && local:
+	case cred == "" || cred == devPasskey:
+		return nil, errSignedOut
+	default:
+		n, err := q.CountUserPasskey(ctx, db.CountUserPasskeyParams{UserID: id, CredentialID: cred})
+		if err != nil {
+			return nil, fmt.Errorf("passkey: %w", err)
+		}
+		if n == 0 {
+			return nil, errSignedOut
+		}
+	}
+	u, err := q.GetUser(ctx, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, errSignedOut
+	}
+	return u, err
+}
+
 type splitStore struct {
 	read, write scs.Store
 }

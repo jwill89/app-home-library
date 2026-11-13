@@ -1,17 +1,12 @@
 <script setup lang="ts">
-import { useId } from 'vue'
-import ToggleSwitch from 'primevue/toggleswitch'
 import type { ShelfInput } from '@/api/client'
-import FormField from './FormField.vue'
 import LengthField from './LengthField.vue'
 import PagePanel from './PagePanel.vue'
 import UnitChoice from './UnitChoice.vue'
 
 // The one shelf form: its inside measurements and its corner braces, typed in inches or
 // centimetres and kept in millimetres.
-defineProps<{ oversizeChoice?: boolean }>()
 const shelf = defineModel<ShelfInput>({ required: true })
-const id = useId()
 </script>
 
 <template>
@@ -45,13 +40,5 @@ const id = useId()
         />
       </div>
     </PagePanel>
-    <FormField
-      v-if="oversizeChoice"
-      label="For oversize books"
-      :for="`${id}-oversize`"
-      hint="Takes the books too tall for the shelf their call number would put them on."
-    >
-      <ToggleSwitch v-model="shelf.oversize" :input-id="`${id}-oversize`" />
-    </FormField>
   </div>
 </template>

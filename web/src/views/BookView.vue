@@ -797,7 +797,7 @@ function copyLine(c: Copy): string {
               <p v-if="owner && c.seenOn && !c.goneAs" class="text-sm text-ink-muted">
                 Last found on a shelf check {{ calendarDate(c.seenOn) }}
               </p>
-              <p v-if="owner && !c.goneAs && places[c.id]?.shelves" class="mt-1 text-sm">
+              <p v-if="owner && !c.goneAs && places[c.id]?.inUse" class="mt-1 text-sm">
                 {{ placeLine(places[c.id]!) }}
                 <RouterLink to="/shelves" class="text-accent">Shelves</RouterLink>
               </p>

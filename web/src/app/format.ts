@@ -1,4 +1,6 @@
 import type {
+  Area,
+  AreaInput,
   Book,
   BookInput,
   Contributor,
@@ -432,14 +434,17 @@ export function fromUnit(value: number, unit: Unit): number {
 export const lengthIn = (mm: number, unit: Unit) => (mm ? `${inUnit(mm, unit)} ${unit}` : '')
 
 /**
- * Where a copy stands, or would in the proposed layout: its bookcase and shelf, and with
- * `neighbours` the books either side of it there.
+ * Where a copy stands in the layout in use: its bookcase, shelf, and area, and with `neighbours`
+ * the books either side of it there.
  */
 export function placeLine(p: ShelfPlace, neighbours = false): string {
-  if (!p.placed) {
-    return 'No shelf has room for it. Add a shelf, or plan the shelves fuller.'
+  if (!p.inUse) {
+    return 'No layout is in use: suggest one on the Shelves page, and put it to use.'
   }
-  const where = `${p.bookcase}, shelf ${p.position} from the top${p.oversize ? ' (oversize)' : ''}`
+  if (!p.placed) {
+    return 'The layout in use has no place for it: no area takes it, or its area has no room.'
+  }
+  const where = `${p.bookcase}, shelf ${p.position} from the top${p.area ? ` (${p.area})` : ''}`
   const between = !neighbours
     ? ''
     : p.after && p.before
@@ -449,9 +454,91 @@ export function placeLine(p: ShelfPlace, neighbours = false): string {
         : p.before
           ? `, at the start, before ${p.before}`
           : ''
-  return p.inUse
-    ? `On ${where}${between}.`
-    : `Would go on ${where}${between}, in the proposed layout.`
+  return `On ${where}${between}.`
+}
+
+type AreaKey = NonNullable<AreaInput['order']>[number]
+
+/** What an area can order its books by, in words, as its dialog offers them. */
+export const areaKeys = [
+  { value: 'subject', label: 'Subject (Dewey number)' },
+  { value: 'author', label: 'Author' },
+  { value: 'series', label: 'Series and volume' },
+  { value: 'title', label: 'Title' },
+  { value: 'published', label: 'Date published' },
+  { value: 'height', label: 'Height' },
+] as const satisfies readonly { value: AreaKey; label: string }[]
+
+/** An order key in words, its first letter small to stand mid-sentence: subject (Dewey number). */
+export function areaKeyText(k: string, first = true): string {
+  const label = areaKeys.find((o) => o.value === k)?.label ?? k
+  return first ? label : label.charAt(0).toLowerCase() + label.slice(1)
+}
+
+/**
+ * Shelf numbers in words, runs gathered: shelf 5; shelves 1 and 2; shelves 1 to 4 and 6. The
+ * numbers come in order, as a bookcase lists its shelves from the top.
+ */
+export function shelfNumbers(positions: readonly number[]): string {
+  const runs: string[] = []
+  let start = positions[0] ?? 0
+  for (let i = 1; i <= positions.length; i++) {
+    const prev = positions[i - 1] ?? 0
+    if (positions[i] !== prev + 1) {
+      // Two side by side read as two; three or more as a run.
+      runs.push(
+        ...(start === prev
+          ? [`${start}`]
+          : prev === start + 1
+            ? [`${start}`, `${prev}`]
+            : [`${start} to ${prev}`]),
+      )
+      start = positions[i] ?? 0
+    }
+  }
+  return `${positions.length === 1 ? 'shelf' : 'shelves'} ${listed(runs)}`
+}
+
+/** An area's order in words: Subject (Dewey number), then author, then title. */
+export function areaOrderText(order: readonly string[] | null | undefined): string {
+  return (order ?? []).map((k, i) => areaKeyText(k, i === 0)).join(', then ')
+}
+
+/** What an area takes, in words, or that it takes whatever no area before it does. */
+export function areaRulesText(a: Area, unit: Unit): string {
+  const parts: string[] = []
+  const kinds = (a.categories ?? []).map((c) => categories.find((k) => k.value === c)?.plural ?? c)
+  if (kinds.length) {
+    parts.push(listed(kinds, 'or'))
+  }
+  if (a.deweyFrom && a.deweyTo) {
+    parts.push(`Dewey ${a.deweyFrom} to ${a.deweyTo}`)
+  } else if (a.deweyFrom) {
+    parts.push(`Dewey ${a.deweyFrom} and up`)
+  } else if (a.deweyTo) {
+    parts.push(`Dewey up to ${a.deweyTo}`)
+  }
+  if (a.subject) {
+    parts.push(`subject headings with “${a.subject}”`)
+  }
+  if (a.authors?.length) {
+    parts.push(`by ${listed(a.authors, 'or')}`)
+  }
+  if (a.series?.length) {
+    parts.push(`in ${listed(a.series, 'or')}`)
+  }
+  if (a.minHeightMm && a.maxHeightMm) {
+    parts.push(`${lengthIn(a.minHeightMm, unit)} to ${lengthIn(a.maxHeightMm, unit)} tall`)
+  } else if (a.minHeightMm) {
+    parts.push(`at least ${lengthIn(a.minHeightMm, unit)} tall`)
+  } else if (a.maxHeightMm) {
+    parts.push(`no taller than ${lengthIn(a.maxHeightMm, unit)}`)
+  }
+  if (!parts.length) {
+    return 'Every book no area before it takes'
+  }
+  const text = parts.join('; ')
+  return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
 /** A shelf's size as it is read: 31.5 × 11 × 10 in, and its corner braces if it has them. */

@@ -188,6 +188,8 @@ func TestShareLinks(t *testing.T) {
 		{http.MethodGet, "/api/v1/courses/" + strconv.FormatInt(course.ID, 10), ""},
 		{http.MethodGet, "/api/v1/labels", ""},
 		{http.MethodGet, "/api/v1/bookcases", ""},
+		{http.MethodGet, "/api/v1/areas", ""},
+		{http.MethodPost, "/api/v1/areas", `{"name":"Mine"}`},
 		{http.MethodGet, "/api/v1/layout", ""},
 		{http.MethodGet, "/api/v1/copies/" + copyPath + "/place", ""},
 		{http.MethodPut, "/api/v1/layout/in-use", ""},
@@ -581,4 +583,58 @@ func TestSuggestedChanges(t *testing.T) {
 	visitor.expect(http.MethodGet, "/api/v1/suggestions", "", http.StatusForbidden)
 	visitor.expect(http.MethodGet, book+"/suggestions", "", http.StatusForbidden)
 	visitor.expect(http.MethodPost, book+"/declined-suggestions", `{"fields":["publisher"]}`, http.StatusForbidden)
+}
+
+// A request the browser gives up on, as a page left mid-request does, signs no one out: what
+// could not be read then says nothing about whether the owner is still signed in.
+func TestAbandonedRequestKeepsTheSession(t *testing.T) {
+	a := newApp(t)
+	me := owner(t, a)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	r := httptest.NewRequestWithContext(ctx, http.MethodGet, "http://"+host+"/api/v1/books", nil)
+	r.AddCookie(&http.Cookie{Name: "hl_session", Value: me.cookie})
+	a.Handler().ServeHTTP(httptest.NewRecorder(), r)
+	me.expect(http.MethodGet, "/api/v1/books", "", http.StatusOK)
+}
+
+// An area is made, listed, refused with the field named, and removed over the API.
+func TestAreasAPI(t *testing.T) {
+	a := newApp(t)
+	me := owner(t, a)
+	type areas struct {
+		Areas []catalog.Area `json:"areas"`
+	}
+	body := func(in catalog.AreaInput) string {
+		t.Helper()
+		for _, l := range []*[]string{&in.Categories, &in.Authors, &in.Series, &in.Order} {
+			if *l == nil {
+				*l = []string{}
+			}
+		}
+		if in.ShelfIDs == nil {
+			in.ShelfIDs = []int64{}
+		}
+		b, err := json.Marshal(in)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	made := decode[areas](t, me.expect(http.MethodPost, "/api/v1/areas", body(catalog.AreaInput{Name: "Nonfiction",
+		AreaRules: catalog.AreaRules{Categories: []string{"nonfiction"}}, Order: []string{"subject", "author"}}), http.StatusCreated))
+	if len(made.Areas) != 1 || made.Areas[0].Name != "Nonfiction" || len(made.Areas[0].Order) != 2 {
+		t.Fatalf("made %+v", made.Areas)
+	}
+	path := "/api/v1/areas/" + strconv.FormatInt(made.Areas[0].ID, 10)
+	w := me.expect(http.MethodPut, path, body(catalog.AreaInput{Name: "Nonfiction", AreaRules: catalog.AreaRules{DeweyFrom: "600", DeweyTo: "500"}}), http.StatusUnprocessableEntity)
+	if !strings.Contains(w.Body.String(), "body.deweyTo") {
+		t.Errorf("the field not named: %s", w.Body.String())
+	}
+	me.expect(http.MethodPost, "/api/v1/areas", body(catalog.AreaInput{Name: "Kinds", AreaRules: catalog.AreaRules{Categories: []string{"poetry"}}}), http.StatusUnprocessableEntity)
+	me.expect(http.MethodDelete, path, "", http.StatusNoContent)
+	me.expect(http.MethodDelete, path, "", http.StatusNotFound)
+	if got := decode[areas](t, me.expect(http.MethodGet, "/api/v1/areas", "", http.StatusOK)); len(got.Areas) != 0 {
+		t.Errorf("after removing: %+v", got.Areas)
+	}
 }
