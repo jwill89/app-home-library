@@ -36,7 +36,7 @@ export function useLength(
       if (typed.value && fromUnit(typed.value, units.unit) === mm) {
         return typed.value
       }
-      return inUnit(mm, units.unit, 2)
+      return inUnit(mm, units.unit)
     },
     set: (v) => {
       typed.value = v

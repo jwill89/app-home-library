@@ -26,7 +26,7 @@ const value = useLength(
       :input-id="id"
       :min="0"
       :min-fraction-digits="0"
-      :max-fraction-digits="2"
+      :max-fraction-digits="4"
       :use-grouping="false"
     />
   </FormField>

@@ -32,7 +32,7 @@ describe('format', () => {
 
   it('writes a measurement in the chosen unit, and nothing when it is not known', () => {
     expect(lengthIn(240, 'cm')).toBe('24 cm')
-    expect(lengthIn(201, 'in')).toBe('7.9 in')
+    expect(lengthIn(201, 'in')).toBe('7.91 in')
     expect(lengthIn(0, 'in')).toBe('')
   })
 
@@ -116,24 +116,28 @@ describe('shelf units', () => {
     ).toBe('31.5 × 11 × 10 in, braces 1.5 × 0.75 in')
   })
 
-  it('gives a field the plainest number that keeps the same millimetres', () => {
-    for (const typed of [11, 31.5, 1.5, 1.25, 0.75, 10.9, 7.95]) {
-      expect(inUnit(fromUnit(typed, 'in'), 'in', 2)).toBe(typed)
+  it('gives back what was typed, and every length its own millimetres', () => {
+    for (const typed of [11, 31.5, 1.5, 1.25, 0.75, 10.9, 7.95, 1.18, 8.35]) {
+      expect(inUnit(fromUnit(typed, 'in'), 'in')).toBe(typed)
     }
-    expect(inUnit(279, 'cm', 2)).toBe(27.9)
-    expect(inUnit(280, 'cm', 2)).toBe(28)
-    for (let mm = 1; mm <= 1000; mm++) {
-      expect(fromUnit(inUnit(mm, 'in', 2), 'in')).toBe(mm)
-      expect(fromUnit(inUnit(mm, 'cm', 2), 'cm')).toBe(mm)
+    expect(inUnit(279, 'cm')).toBe(27.9)
+    expect(inUnit(280, 'cm')).toBe(28)
+    for (let mm = 1; mm <= 5000; mm++) {
+      expect(fromUnit(inUnit(mm, 'in'), 'in')).toBe(mm)
+      expect(fromUnit(inUnit(mm, 'cm'), 'cm')).toBe(mm)
     }
   })
 
-  it('reads to a tenth, keeping quarter inches that are exact', () => {
-    expect(inUnit(212, 'in')).toBe(8.3)
-    expect(inUnit(35, 'in')).toBe(1.4)
+  it("reads to three significant figures, keeping a tape measure's marks that are exact", () => {
+    expect(inUnit(212, 'in')).toBe(8.35)
+    expect(inUnit(35, 'in')).toBe(1.38)
+    expect(inUnit(30, 'in')).toBe(1.18)
+    expect(inUnit(22, 'in')).toBe(0.866)
+    expect(inUnit(300, 'in')).toBe(11.8)
     expect(inUnit(19, 'in')).toBe(0.75)
     expect(inUnit(32, 'in')).toBe(1.25)
     expect(inUnit(279, 'in')).toBe(11)
+    expect(inUnit(1524, 'cm')).toBe(152.4)
   })
 })
 

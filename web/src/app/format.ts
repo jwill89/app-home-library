@@ -405,24 +405,33 @@ export function sourceLabel(source: string | undefined): string {
 
 export type Unit = 'in' | 'cm'
 
-// Whole, half, and quarter inches first: a tape measure's marks, as the owner reads them.
-const inchSteps = [1, 0.5, 0.25, 0.1, 0.01]
+// Whole, half, and quarter inches, or whole centimetres: a tape measure's marks, as the owner
+// reads them.
+const markSteps = { in: [1, 0.5, 0.25], cm: [1] } as const
 
 /**
- * Millimetres in the owner's unit, as the plainest number that comes back to the same
- * millimetres: 279 mm is 11 in, not 10.98; 32 mm is 1.25 in; 279 mm is 27.9 cm. Read to a
- * tenth (212 mm is 8.3 in); a field asks for hundredths, so what was typed comes back.
+ * Millimetres in the owner's unit: a tape measure's mark where one comes back to the same
+ * millimetres (279 mm is 11 in, not 10.98; 19 mm is 0.75 in), and otherwise three significant
+ * figures (30 mm is 1.18 in, 212 mm 8.35 in, 279 mm 27.9 cm), or more where three would not come
+ * back to the same millimetres (1524 mm is 152.4 cm). What is shown is what a field holds, so a
+ * field never changes a length by showing it.
  */
-export function inUnit(mm: number, unit: Unit, places: 1 | 2 = 1): number {
+export function inUnit(mm: number, unit: Unit): number {
   const exact = unit === 'in' ? mm / 25.4 : mm / 10
-  const scale = 10 ** places
-  for (const step of (unit === 'in' ? inchSteps : [1, 0.1]).filter((s) => s * scale >= 1)) {
-    const v = Math.round(Math.round(exact / step) * step * 100) / 100
+  for (const step of markSteps[unit]) {
+    const v = Math.round(exact / step) * step
     if (fromUnit(v, unit) === mm) {
       return v
     }
   }
-  return Math.round(exact * scale) / scale
+  let v = exact
+  for (let figures = 3; figures <= 6; figures++) {
+    v = Number(exact.toPrecision(figures))
+    if (fromUnit(v, unit) === mm) {
+      break
+    }
+  }
+  return v
 }
 
 /** A measurement in the owner's unit back to whole millimetres. */

@@ -4,6 +4,8 @@ What changes in Home Library, release by release. The format is [Keep a Changelo
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-13
+
 ### Added
 
 - Areas of shelves on the Shelves page: each takes the books its rules say (categories, a Dewey range, subject words, authors, series, heights), in the order chosen (subject, author, series and volume, title, date, height), and a book goes to the first area that takes it. An area's shelves need not stand side by side.
@@ -12,6 +14,7 @@ What changes in Home Library, release by release. The format is [Keep a Changelo
 
 ### Changed
 
+- Lengths read to three significant figures (1.18 in, 8.35 in) where they read to a tenth, keeping whole, half, and quarter inches that are exact, and a length field shows the same.
 - The Shelves page no longer lays books out unasked: the shelves are listed on their own, a layout is suggested only when asked for, and no book has a place (on its page, in Where does this go, or for the shelf check and range labels) until a suggestion is put to use. A layout in use before this release is let go.
 - The API's `get-layout` takes `suggest` in place of `proposal`; shelves carry their area, and a copy's place its area.
 - `POST /api/v1/bookcases` takes the new bookcase's shelves as a list from the top down, each with its own measurements, in place of a count and one shelf's.
@@ -74,7 +77,8 @@ What changes in Home Library, release by release. The format is [Keep a Changelo
 
 - The first release: the catalog, covers, loans, courses, labels, documents, share links, imports and exports, and the nightly backup.
 
-[Unreleased]: https://github.com/jwill89/app-home-library/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/jwill89/app-home-library/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/jwill89/app-home-library/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/jwill89/app-home-library/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/jwill89/app-home-library/compare/v1.1.2...v1.2.0
 [1.1.2]: https://github.com/jwill89/app-home-library/compare/v1.1.1...v1.1.2
