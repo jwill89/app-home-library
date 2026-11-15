@@ -17,7 +17,7 @@ jobs:
   # (any advisory in what ships, a high one in the tooling), and the build, which the Go
   # binary embeds.
   web:
-    uses: jwill89/shared-tooling/.github/workflows/web.yml@v2.8.0
+    uses: jwill89/shared-tooling/.github/workflows/web.yml@v2.15.0
     with:
       dir: web
       fontawesome: true
@@ -30,7 +30,7 @@ jobs:
   # under the race detector: the background lookup runs beside the requests.
   go:
     needs: web
-    uses: jwill89/shared-tooling/.github/workflows/go.yml@v2.8.0
+    uses: jwill89/shared-tooling/.github/workflows/go.yml@v2.15.0
     with:
       download-artifact: web-dist
       download-path: web/dist
@@ -49,7 +49,7 @@ jobs:
   # Font Awesome kit is not fetched again; the front end is built here for the server to embed.
   e2e:
     needs: [web, go]
-    uses: jwill89/shared-tooling/.github/workflows/e2e.yml@v2.8.0
+    uses: jwill89/shared-tooling/.github/workflows/e2e.yml@v2.15.0
     with:
       dir: web
       go-version-file: go.mod
@@ -59,25 +59,22 @@ jobs:
       FONTAWESOME_TOKEN: ${{ secrets.FONTAWESOME_NPM_TOKEN }}
 
   scripts:
-    uses: jwill89/shared-tooling/.github/workflows/pwsh.yml@v2.8.0
+    uses: jwill89/shared-tooling/.github/workflows/pwsh.yml@v2.15.0
 
   docs:
-    uses: jwill89/shared-tooling/.github/workflows/docs.yml@v2.8.0
+    uses: jwill89/shared-tooling/.github/workflows/docs.yml@v2.15.0
 
   # OSV-Scanner over every lockfile. An osv-scanner.toml beside a lockfile passes over the
   # advisories that reach only lint, test or build tooling.
   osv:
-    uses: jwill89/shared-tooling/.github/workflows/osv.yml@v2.8.0
-    permissions:
-      contents: read
-      actions: read
-      security-events: write
+    uses: jwill89/shared-tooling/.github/workflows/osv.yml@v2.15.0
 
   # The generated code (sqlc's, the OpenAPI document and the TypeScript client) is what the
   # generators make from the current schema and handlers.
   generated:
     needs: web
-    runs-on: ubuntu-24.04
+    # A pull request from a fork runs on GitHub's runners, never on a self-hosted one.
+    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-24.04' || vars.CI_RUNNER || 'ubuntu-24.04' }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -91,6 +88,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+          cache: ${{ runner.environment == 'github-hosted' }} # a self-hosted runner keeps Go's caches itself
 
       # The web job's node_modules, by the same key, so the Font Awesome kit isn't fetched
       # again; the web job always saves it first.
@@ -122,7 +120,8 @@ jobs:
     name: Tag + release (on version bump)
     needs: [web, go, e2e, scripts, docs, generated, osv]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
+    # A pull request from a fork runs on GitHub's runners, never on a self-hosted one.
+    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-24.04' || vars.CI_RUNNER || 'ubuntu-24.04' }}
     permissions:
       contents: write
     steps:
