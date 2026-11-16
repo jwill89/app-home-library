@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"homelibrary/internal/civil"
 	"homelibrary/internal/db"
 )
 
@@ -21,7 +22,7 @@ type Reading struct {
 func readingsOf(rows []*db.Reading) []Reading {
 	out := make([]Reading, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, Reading{ID: r.ID, StartedOn: r.StartedOn, FinishedOn: r.FinishedOn})
+		out = append(out, Reading{ID: r.ID, StartedOn: string(r.StartedOn), FinishedOn: string(r.FinishedOn)})
 	}
 	return out
 }
@@ -29,7 +30,7 @@ func readingsOf(rows []*db.Reading) []Reading {
 // ReadAgain begins a book again on the day given: the read it had, finished or not, is kept
 // among its earlier reads first. A book being read now is begun already.
 func (s *Service) ReadAgain(ctx context.Context, bookID int64, on string) error {
-	if !dayRe.MatchString(on) {
+	if !isDay(on) {
 		return &FieldError{"on", "give the day, as YYYY-MM-DD"}
 	}
 	return s.inTx(ctx, func(q *db.Queries) error {
@@ -52,7 +53,7 @@ func (s *Service) ReadAgain(ctx context.Context, bookID int64, on string) error 
 				return fmt.Errorf("keep the read: %w", err)
 			}
 		}
-		return q.ReadAgain(ctx, db.ReadAgainParams{StartedOn: on, ID: w.ID})
+		return q.ReadAgain(ctx, db.ReadAgainParams{StartedOn: civil.Date(on), ID: w.ID})
 	})
 }
 
@@ -66,7 +67,7 @@ type ReadStatusInput struct {
 // keeps a day already: reading is now. A book marked read is given no day: it is as often one read
 // years ago as one finished today, and the owner enters the day when it is known.
 func (s *Service) SetReadStatus(ctx context.Context, bookID int64, in ReadStatusInput) error {
-	if !dayRe.MatchString(in.On) {
+	if !isDay(in.On) {
 		return &FieldError{"on", "give the day, as YYYY-MM-DD"}
 	}
 	return s.inTx(ctx, func(q *db.Queries) error {
@@ -83,7 +84,7 @@ func (s *Service) SetReadStatus(ctx context.Context, bookID int64, in ReadStatus
 		}
 		started, finished := w.StartedOn, w.FinishedOn
 		if in.ReadStatus == "reading" && started == "" {
-			started = in.On
+			started = civil.Date(in.On)
 		}
 		return q.SetReadStatus(ctx, db.SetReadStatusParams{ReadStatus: in.ReadStatus, StartedOn: started, FinishedOn: finished, ID: w.ID})
 	})
@@ -155,8 +156,8 @@ func (s *Service) Reading(ctx context.Context, sc *Scope) (*ReadingStats, error)
 		if shown != nil && !shown[r.BookID] {
 			continue
 		}
-		out.Finished = append(out.Finished, FinishedRead{BookID: r.BookID, Title: r.Title, FinishedOn: r.FinishedOn, Pages: r.Pages})
-		year := r.FinishedOn[:min(4, len(r.FinishedOn))]
+		out.Finished = append(out.Finished, FinishedRead{BookID: r.BookID, Title: r.Title, FinishedOn: string(r.FinishedOn), Pages: r.Pages})
+		year := string(r.FinishedOn)[:min(4, len(r.FinishedOn))]
 		i := slices.IndexFunc(out.Years, func(y ReadingYear) bool { return y.Year == year })
 		if i < 0 {
 			out.Years = append(out.Years, ReadingYear{Year: year})

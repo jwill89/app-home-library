@@ -27,6 +27,7 @@ var ErrNoShare = errors.New("no such share link")
 
 // ShareLink is a share link as Settings lists it; the link itself is shown only once.
 type ShareLink struct {
+	catalog.Stamp
 	ID         int64         `json:"id"`
 	Name       string        `json:"name"`
 	ExpiresAt  string        `json:"expiresAt" doc:"When the link stops working; empty for never"`
@@ -41,7 +42,7 @@ func linkOf(ctx context.Context, q *db.Queries, s *db.Share) (ShareLink, error) 
 	if err != nil {
 		return ShareLink{}, err
 	}
-	return ShareLink{ID: s.ID, Name: s.Name, ExpiresAt: s.ExpiresAt, CreatedAt: s.CreatedAt, LastUsedAt: s.LastUsedAt, Scope: scope}, nil
+	return ShareLink{Stamp: catalog.Stamp{UpdatedAt: s.UpdatedAt}, ID: s.ID, Name: s.Name, ExpiresAt: s.ExpiresAt.String, CreatedAt: s.CreatedAt, LastUsedAt: s.LastUsedAt.String, Scope: scope}, nil
 }
 
 // scopeOf is what a link shows: its choices of books and papers, and those it names.
@@ -108,12 +109,12 @@ func wishlistInt(sc catalog.Scope) int64 {
 	return 0
 }
 
-// endStamp is a link's end as kept: empty for none.
-func endStamp(t time.Time) string {
+// endStamp is a link's end as kept: NULL for none.
+func endStamp(t time.Time) sql.NullString {
 	if t.IsZero() {
-		return ""
+		return sql.NullString{}
 	}
-	return stamp(t)
+	return sql.NullString{String: stamp(t), Valid: true}
 }
 
 // hashToken is what is kept of a share link's token.
@@ -163,13 +164,24 @@ func NewShare(ctx context.Context, d *db.DB, name string, expires time.Time, sc 
 }
 
 // UpdateShare renames a link, gives it a new end (or none), and changes what it shows. Its
-// address stays the same, and its visitors see the change on their next request.
-func UpdateShare(ctx context.Context, d *db.DB, id int64, name string, expires time.Time, sc catalog.Scope) (ShareLink, error) {
+// address stays the same, and its visitors see the change on their next request. seen is the
+// link's stamp as the owner's form read it, refused when the link has changed since; empty,
+// nothing is checked.
+func UpdateShare(ctx context.Context, d *db.DB, id int64, seen, name string, expires time.Time, sc catalog.Scope) (ShareLink, error) {
 	if err := sc.Normalize(); err != nil {
 		return ShareLink{}, err
 	}
 	var link ShareLink
 	err := d.InTx(ctx, func(q *db.Queries) error {
+		kept, err := q.ShareStamp(ctx, id)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNoShare
+		} else if err != nil {
+			return fmt.Errorf("share: %w", err)
+		}
+		if err := catalog.Unmoved(seen, kept, "share link"); err != nil {
+			return err
+		}
 		s, err := q.UpdateShare(ctx, db.UpdateShareParams{
 			Name: strings.TrimSpace(name), ExpiresAt: endStamp(expires),
 			Books: sc.Books, Wishlist: wishlistInt(sc), Papers: sc.Papers, ID: id,
@@ -243,6 +255,7 @@ func (s *ShareLinks) open(w http.ResponseWriter, r *http.Request) {
 		TokenHash: hashToken(r.PathValue("token")), Now: stamp(time.Now()),
 	})
 	if errors.Is(err, sql.ErrNoRows) {
+		w.Header().Set("Clear-Site-Data", ClearCache)
 		http.Redirect(w, r, "/link-ended", http.StatusSeeOther)
 		return
 	}

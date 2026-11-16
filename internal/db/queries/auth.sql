@@ -1,11 +1,11 @@
 -- name: CreateUser :one
-INSERT INTO users (name) VALUES (?) RETURNING *;
+INSERT INTO users (name) VALUES (?) RETURNING id, name, created_at;
 
 -- name: GetFirstUser :one
-SELECT * FROM users ORDER BY id LIMIT 1;
+SELECT id, name, created_at FROM users ORDER BY id LIMIT 1;
 
 -- name: GetUser :one
-SELECT * FROM users WHERE id = ?;
+SELECT id, name, created_at FROM users WHERE id = ?;
 
 -- name: CreatePasskey :one
 -- The passkey as the owner's list shows it.
@@ -39,3 +39,17 @@ DELETE FROM setup_codes WHERE expires_at <= ?;
 -- name: CountUserPasskey :one
 -- Whether the passkey a session signed in with is still the user's.
 SELECT count(*) FROM passkeys WHERE user_id = ? AND credential_id = ?;
+
+-- name: FindSession :one
+-- A session's data while it runs, by its token's hash.
+SELECT data FROM sessions WHERE token = ? AND expiry > strftime('%Y-%m-%dT%H:%M:%SZ', 'now');
+
+-- name: SaveSession :exec
+INSERT INTO sessions (token, data, expiry) VALUES (?, ?, ?)
+ON CONFLICT (token) DO UPDATE SET data = excluded.data, expiry = excluded.expiry;
+
+-- name: DeleteSession :exec
+DELETE FROM sessions WHERE token = ?;
+
+-- name: DeleteExpiredSessions :execrows
+DELETE FROM sessions WHERE expiry <= strftime('%Y-%m-%dT%H:%M:%SZ', 'now');

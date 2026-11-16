@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"strings"
 
+	"homelibrary/internal/civil"
 	"homelibrary/internal/db"
 )
 
 // LoanInput is a loan as the owner records it. The borrower is named, and a name the library
 // has not seen before is a new borrower.
 type LoanInput struct {
+	Stamp
 	Borrower   string `json:"borrower" minLength:"1" maxLength:"100"`
 	LentOn     string `json:"lentOn" doc:"YYYY-MM-DD"`
 	DueOn      string `json:"dueOn" doc:"YYYY-MM-DD, or empty for no due date"`
@@ -35,6 +37,7 @@ type Loan struct {
 
 // BorrowerInput is what the owner keeps about someone they lend to.
 type BorrowerInput struct {
+	Stamp
 	Name    string `json:"name" minLength:"1" maxLength:"100"`
 	Contact string `json:"contact" maxLength:"200" doc:"A phone number or an address to reach them by"`
 	Notes   string `json:"notes" maxLength:"2000"`
@@ -54,7 +57,7 @@ func (in *LoanInput) normalize() error {
 	if in.Borrower == "" {
 		return &FieldError{"borrower", "say who has the book"}
 	}
-	if !dayRe.MatchString(in.LentOn) {
+	if !isDay(in.LentOn) {
 		return &FieldError{"lentOn", "write the day it was lent as YYYY-MM-DD"}
 	}
 	for _, d := range []struct{ field, name, value string }{
@@ -64,7 +67,7 @@ func (in *LoanInput) normalize() error {
 		if d.value == "" {
 			continue
 		}
-		if !dayRe.MatchString(d.value) {
+		if !isDay(d.value) {
 			return &FieldError{d.field, "write " + d.name + " as YYYY-MM-DD"}
 		}
 		// ISO days compare as text.
@@ -107,8 +110,8 @@ func (s *Service) Lend(ctx context.Context, copyID int64, in LoanInput) (*Loan, 
 			return fmt.Errorf("borrower: %w", err)
 		}
 		id, err = q.CreateLoan(ctx, db.CreateLoanParams{
-			CopyID: copyID, BorrowerID: borrower, LentOn: in.LentOn, DueOn: in.DueOn,
-			ReturnedOn: in.ReturnedOn, Notes: in.Notes,
+			CopyID: copyID, BorrowerID: borrower, LentOn: civil.Date(in.LentOn), DueOn: civil.Date(in.DueOn),
+			ReturnedOn: civil.Date(in.ReturnedOn), Notes: in.Notes,
 		})
 		if err != nil {
 			return fmt.Errorf("create loan: %w", err)
@@ -133,6 +136,9 @@ func (s *Service) UpdateLoan(ctx context.Context, id int64, in LoanInput) (*Loan
 		} else if err != nil {
 			return err
 		}
+		if err := Unmoved(in.UpdatedAt, l.UpdatedAt, "loan"); err != nil {
+			return err
+		}
 		if err := stillHere(ctx, q, l.CopyID, id, in); err != nil {
 			return err
 		}
@@ -141,7 +147,7 @@ func (s *Service) UpdateLoan(ctx context.Context, id int64, in LoanInput) (*Loan
 			return fmt.Errorf("borrower: %w", err)
 		}
 		return q.UpdateLoan(ctx, db.UpdateLoanParams{
-			BorrowerID: borrower, LentOn: in.LentOn, DueOn: in.DueOn, ReturnedOn: in.ReturnedOn,
+			BorrowerID: borrower, LentOn: civil.Date(in.LentOn), DueOn: civil.Date(in.DueOn), ReturnedOn: civil.Date(in.ReturnedOn),
 			Notes: in.Notes, ID: id,
 		})
 	})
@@ -209,7 +215,8 @@ func (s *Service) loanOf(l *db.LoanRow) Loan {
 		ID: l.ID, CopyID: l.CopyID, Barcode: Barcode(l.CopyID), BookID: l.EditionID, Title: l.Title,
 		Authors: l.Authors, Cover: s.cover(l.Cover), BorrowerID: l.BorrowerID,
 		LoanInput: LoanInput{
-			Borrower: l.Borrower, LentOn: l.LentOn, DueOn: l.DueOn, ReturnedOn: l.ReturnedOn, Notes: l.Notes,
+			Stamp:    Stamp{UpdatedAt: l.UpdatedAt},
+			Borrower: l.Borrower, LentOn: string(l.LentOn), DueOn: string(l.DueOn), ReturnedOn: string(l.ReturnedOn), Notes: l.Notes,
 		},
 	}
 }
@@ -233,9 +240,13 @@ func (s *Service) UpdateBorrower(ctx context.Context, id int64, in BorrowerInput
 		return nil, err
 	}
 	err := s.inTx(ctx, func(q *db.Queries) error {
-		if _, err := q.GetBorrower(ctx, id); errors.Is(err, sql.ErrNoRows) {
+		b, err := q.GetBorrower(ctx, id)
+		if errors.Is(err, sql.ErrNoRows) {
 			return ErrNotFound
 		} else if err != nil {
+			return err
+		}
+		if err := Unmoved(in.UpdatedAt, b.UpdatedAt, "borrower"); err != nil {
 			return err
 		}
 		if other, err := q.BorrowerNamed(ctx, in.Name); err == nil && other != id {
@@ -276,7 +287,7 @@ func (s *Service) DeleteBorrower(ctx context.Context, id int64) error {
 func borrowerOf(b *db.GetBorrowerRow) Borrower {
 	return Borrower{
 		ID:            b.ID,
-		BorrowerInput: BorrowerInput{Name: b.Name, Contact: b.Contact, Notes: b.Notes},
+		BorrowerInput: BorrowerInput{Stamp: Stamp{UpdatedAt: b.UpdatedAt}, Name: b.Name, Contact: b.Contact, Notes: b.Notes},
 		Out:           b.OutCount, Loans: b.LoanCount,
 	}
 }

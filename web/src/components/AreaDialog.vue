@@ -5,9 +5,12 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
-import { api, type Area, type AreaInput, type Bookcase } from '@/api/client'
-import { areaKeyText, areaKeys, categories, shelfNumbers } from '@/app/format'
-import { useNotice } from '@/app/problem'
+import { api } from '@/api/client'
+import type { Area, AreaInput, Bookcase } from '@/types'
+import { areaKeyText, shelfNumbers } from '@/app/format'
+import { areaKeys, categories } from '@/constants'
+import { useNotice } from '@/composables/useNotice'
+import { useStaleSave } from '@/composables/useStaleSave'
 import FormField from './FormField.vue'
 import LengthField from './LengthField.vue'
 import PagePanel from './PagePanel.vue'
@@ -20,6 +23,7 @@ const props = defineProps<{ area: Area | null; areas: Area[]; bookcases: Bookcas
 const emit = defineEmits<{ saved: [areas: Area[]] }>()
 const open = defineModel<boolean>('visible', { required: true })
 const notice = useNotice()
+const stale = useStaleSave()
 const id = useId()
 
 type Key = NonNullable<AreaInput['order']>[number]
@@ -37,6 +41,21 @@ const blank = (): AreaInput => ({
   order: ['subject', 'author', 'series', 'title'],
   shelfIds: [],
 })
+const areaForm = (a: Area): AreaInput => ({
+  name: a.name,
+  position: 0,
+  categories: [...(a.categories ?? [])],
+  deweyFrom: a.deweyFrom,
+  deweyTo: a.deweyTo,
+  subject: a.subject,
+  authors: [...(a.authors ?? [])],
+  series: [...(a.series ?? [])],
+  minHeightMm: a.minHeightMm,
+  maxHeightMm: a.maxHeightMm,
+  order: [...(a.order ?? [])],
+  shelfIds: [...(a.shelfIds ?? [])],
+  updatedAt: a.updatedAt,
+})
 const form = ref<AreaInput>(blank())
 const authors = ref<string[]>([])
 const seriesNames = ref<string[]>([])
@@ -44,23 +63,7 @@ watch(open, async (now) => {
   if (!now) {
     return
   }
-  const a = props.area
-  form.value = a
-    ? {
-        name: a.name,
-        position: 0,
-        categories: [...(a.categories ?? [])],
-        deweyFrom: a.deweyFrom,
-        deweyTo: a.deweyTo,
-        subject: a.subject,
-        authors: [...(a.authors ?? [])],
-        series: [...(a.series ?? [])],
-        minHeightMm: a.minHeightMm,
-        maxHeightMm: a.maxHeightMm,
-        order: [...(a.order ?? [])],
-        shelfIds: [...(a.shelfIds ?? [])],
-      }
-    : blank()
+  form.value = props.area ? areaForm(props.area) : blank()
   const { data } = await api.GET('/choices')
   authors.value = data?.authors ?? []
   seriesNames.value = data?.series ?? []
@@ -126,7 +129,24 @@ async function save() {
     : await api.POST('/areas', { body: form.value })
   busy.value = false
   if (error) {
-    notice.failed(error)
+    const refused =
+      a !== null &&
+      stale(error, {
+        latest: async () => {
+          const { data: list, error: failed } = await api.GET('/areas')
+          return { data: list?.areas?.find((x) => x.id === a.id), error: failed }
+        },
+        load: (latest) => {
+          form.value = areaForm(latest)
+        },
+        overwrite: (updatedAt) => {
+          form.value.updatedAt = updatedAt
+          return save()
+        },
+      })
+    if (!refused) {
+      notice.failed(error)
+    }
     return
   }
   open.value = false

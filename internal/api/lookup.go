@@ -57,6 +57,7 @@ func (h *handlers) registerImports() {
 	}
 	imp := h.op("create-import", http.MethodPost, "/imports", "Import another app's export: Bookshelf, Goodreads, or LibraryThing, told by its columns, or EndNote's XML")
 	imp.MaxBodyBytes = uploadLimit
+	imp.BodyReadTimeout = uploadReadTimeout
 	huma.Register(h.api, imp, func(ctx context.Context, in *struct {
 		NotOwned string `query:"notOwned" enum:"leave,library,wishlist" default:"leave" doc:"Where the books the other app does not mark as owned go: left out, on the shelves, or on the wishlist"`
 		RawBody  huma.MultipartFormFiles[exportForm]

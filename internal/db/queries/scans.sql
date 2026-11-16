@@ -12,17 +12,29 @@ ORDER BY id DESC
 LIMIT 1;
 
 -- name: GetScan :one
-SELECT * FROM scans WHERE id = ?;
+SELECT
+    id, isbn13, section, acquired_as, status, proposal, edition_id, error, attempts, reviewed,
+    scanned_at, done_at, want
+FROM scans WHERE id = ?;
 
 -- name: ListOpenScans :many
-SELECT * FROM scan_rows WHERE reviewed = 0 ORDER BY id DESC LIMIT 300;
+SELECT
+    id, isbn13, section, status, proposal, error, scanned_at, reviewed, edition_id, title, cover,
+    wanted_on, authors
+FROM scan_rows WHERE reviewed = 0 ORDER BY id DESC LIMIT 300;
 
 -- name: GetScanView :one
-SELECT * FROM scan_rows WHERE id = ?;
+SELECT
+    id, isbn13, section, status, proposal, error, scanned_at, reviewed, edition_id, title, cover,
+    wanted_on, authors
+FROM scan_rows WHERE id = ?;
 
 -- name: NextScanWork :one
 -- The oldest scan the background owes something: a lookup, or the adding the owner asked for.
-SELECT * FROM scans WHERE status IN ('pending', 'adding') ORDER BY id LIMIT 1;
+SELECT
+    id, isbn13, section, acquired_as, status, proposal, edition_id, error, attempts, reviewed,
+    scanned_at, done_at, want
+FROM scans WHERE status IN ('pending', 'adding') ORDER BY id LIMIT 1;
 
 -- name: FindScan :exec
 UPDATE scans SET status = 'found', proposal = ?, attempts = 0, error = '' WHERE id = ?;

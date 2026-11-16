@@ -84,15 +84,25 @@
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
   }
+}
 
-  @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      transition-duration: 0s !important;
-      animation-duration: 0s !important;
-      scroll-behavior: auto !important;
-    }
+/* What moves or grows, where the device asks for less motion: a fade in place, or a pulse in
+   place of a turn. Each rule below that uses them says what it stands in for. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes busy-pulse {
+  50% {
+    opacity: 0.5;
   }
 }
 
@@ -193,6 +203,73 @@
     flex: 1 1 auto;
     width: 1%;
     min-width: 0;
+  }
+
+  /* PrimeVue's motion where the device asks for less. A dialog, a list of choices and a toast
+     come and go through Vue's transitions, which wait for the animation to end, so each keeps
+     a fade in place of growing or sliding. Colours that change on hover, focus or choosing
+     fade as they do, moving nothing. */
+
+  /* A dialog, a confirmation among them, fades in and out without growing. */
+  @media (prefers-reduced-motion: reduce) {
+    .p-dialog-enter-active {
+      animation-name: fade-in;
+    }
+
+    .p-dialog-leave-active {
+      animation-name: fade-out;
+    }
+  }
+
+  /* A select's or a search's list of choices fades in and out without growing. */
+  @media (prefers-reduced-motion: reduce) {
+    .p-anchored-overlay-enter-active {
+      animation-name: fade-in;
+    }
+
+    .p-anchored-overlay-leave-active {
+      animation-name: fade-out;
+    }
+  }
+
+  /* A toast fades in and out where it stands, without growing or rising, and its padding
+     changes at once. */
+  @media (prefers-reduced-motion: reduce) {
+    .p-toast-message-enter-active {
+      animation-name: fade-in;
+    }
+
+    .p-toast-message-leave-active {
+      animation-name: fade-out;
+    }
+
+    .p-toast-message-content {
+      transition: none;
+    }
+  }
+
+  /* A switch's handle is at its side at once; its colours still change as they do. */
+  @media (prefers-reduced-motion: reduce) {
+    .p-toggleswitch-handle {
+      transition-property: background, color;
+    }
+  }
+
+  /* The lookup's progress bar stands at its new length at once instead of growing to it. */
+  @media (prefers-reduced-motion: reduce) {
+    .p-progressbar-determinate .p-progressbar-value {
+      transition: none;
+    }
+  }
+}
+
+/* A busy button's, search's or table's spinner pulses where it is instead of turning. PrimeVue
+   adds its icons' own style outside any layer, after this sheet, so the rule is outside the
+   layers too and names both of the icon's classes to come first. */
+@media (prefers-reduced-motion: reduce) {
+  .p-icon.p-icon-spin {
+    animation-name: busy-pulse;
+    animation-timing-function: ease-in-out;
   }
 }
 

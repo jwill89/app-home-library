@@ -12,13 +12,16 @@ import {
   faKey,
   faRightFromBracket,
 } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
-import { api, apiURL, type Passkey, type SetupCode } from '@/api/client'
-import { useConfirmAction } from '@/app/confirm'
-import { day } from '@/app/format'
+import { api, apiURL } from '@/api/client'
+import type { LogLevel, Passkey, SetupCode } from '@/types'
+import { useConfirmAction } from '@/composables/useConfirmAction'
+import { day, logLevelLabel } from '@/app/format'
 import { librarySearch, librarySearchLink } from '@/app/libraryLink'
-import { useNotice } from '@/app/problem'
-import { scheme, schemes } from '@/app/scheme'
-import { useSession } from '@/app/session'
+import { logLevels, schemes } from '@/constants'
+import { useLogLevel } from '@/composables/useLogLevel'
+import { useNotice } from '@/composables/useNotice'
+import { scheme } from '@/app/scheme'
+import { useSession } from '@/stores/session'
 import FormField from '@/components/FormField.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import PagePanel from '@/components/PagePanel.vue'
@@ -49,6 +52,22 @@ async function load() {
   passkeys.value = data.passkeys ?? []
 }
 onMounted(load)
+
+const logLevel = useLogLevel()
+onMounted(() =>
+  logLevel.load().catch((e: unknown) => {
+    notice.failed(e)
+  }),
+)
+
+async function chooseLogLevel(next: LogLevel) {
+  try {
+    await logLevel.choose(next)
+    notice.done(`The server's log now keeps ${logLevelLabel(next).toLowerCase()}`)
+  } catch (e) {
+    notice.failed(e)
+  }
+}
 
 async function addHere() {
   try {
@@ -227,6 +246,30 @@ const until = (s: string) =>
           ><FontAwesomeIcon :icon="faFileCode" /> Download the JSON</Button
         >
       </div>
+    </PagePanel>
+
+    <PagePanel title="Server log detail" class="mt-6">
+      <FormField
+        label="What the server writes to its log"
+        :for="`${id}-log`"
+        hint="More detail helps find out what went wrong; it changes at once, for every device."
+      >
+        <SelectButton
+          :id="`${id}-log`"
+          :model-value="logLevel.level.value"
+          :options="logLevels"
+          option-label="label"
+          option-value="value"
+          :allow-empty="false"
+          :aria-labelledby="`${id}-log-label`"
+          class="flex-wrap"
+          @update:model-value="chooseLogLevel"
+        />
+      </FormField>
+      <p v-if="logLevel.started.value" class="prose-text mt-2 text-sm text-ink-muted">
+        A restart goes back to {{ logLevelLabel(logLevel.started.value).toLowerCase() }}, the detail
+        the server started with.
+      </p>
     </PagePanel>
   </div>
 </template>

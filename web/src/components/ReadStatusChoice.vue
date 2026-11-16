@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import Select from 'primevue/select'
-import type { BookRow, ReadStatus } from '@/api/client'
-import { readStatuses, readStatusLabel } from '@/app/format'
-import { useLibrary } from '@/app/library'
-import { useNotice } from '@/app/problem'
-import { useSession } from '@/app/session'
+import type { BookRow, ReadStatus } from '@/types'
+import { readStatuses } from '@/constants'
+import { readStatusLabel } from '@/app/format'
+import { useLibrary } from '@/stores/library'
+import { useNotice } from '@/composables/useNotice'
+import { useSession } from '@/stores/session'
 
 // A book's reading status in a row of a table: a choice for the owner, kept as soon as it is
 // made, and the word for a visitor. A click on it is not a click on the row.

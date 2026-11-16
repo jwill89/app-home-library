@@ -58,7 +58,10 @@ func (q *Queries) DeleteCourse(ctx context.Context, id int64) (int64, error) {
 }
 
 const getCourse = `-- name: GetCourse :one
-SELECT c.id, c.school, c.level, c.department, c.number, c.title, c.term, c.year, c.instructor, c.notes, c.created_at, c.updated_at, (SELECT count(*) FROM course_copies cc WHERE cc.course_id = c.id) AS book_count
+SELECT
+    c.id, c.school, c.level, c.department, c.number, c.title, c.term, c.year, c.instructor, c.notes,
+    c.created_at, c.updated_at,
+    (SELECT count(*) FROM course_copies cc WHERE cc.course_id = c.id) AS book_count
 FROM courses c
 WHERE c.id = ?
 `
@@ -154,7 +157,10 @@ func (q *Queries) ListCourseBooks(ctx context.Context, courseID int64) ([]*ListC
 }
 
 const listCourses = `-- name: ListCourses :many
-SELECT c.id, c.school, c.level, c.department, c.number, c.title, c.term, c.year, c.instructor, c.notes, c.created_at, c.updated_at, (SELECT count(*) FROM course_copies cc WHERE cc.course_id = c.id) AS book_count
+SELECT
+    c.id, c.school, c.level, c.department, c.number, c.title, c.term, c.year, c.instructor, c.notes,
+    c.created_at, c.updated_at,
+    (SELECT count(*) FROM course_copies cc WHERE cc.course_id = c.id) AS book_count
 FROM courses c
 ORDER BY COALESCE(c.year, 0) DESC,
     CASE c.term WHEN 'fall' THEN 4 WHEN 'summer' THEN 3 WHEN 'spring' THEN 2 WHEN 'winter' THEN 1 ELSE 0 END DESC,
@@ -370,7 +376,7 @@ func (q *Queries) SetCourseCopy(ctx context.Context, arg SetCourseCopyParams) er
 const updateCourse = `-- name: UpdateCourse :exec
 UPDATE courses
 SET school = ?, level = ?, department = ?, number = ?, title = ?, term = ?, year = ?,
-    instructor = ?, notes = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+    instructor = ?, notes = ?, updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE id = ?
 `
 

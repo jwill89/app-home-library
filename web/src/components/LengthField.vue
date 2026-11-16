@@ -2,7 +2,8 @@
 import { useId } from 'vue'
 import { storeToRefs } from 'pinia'
 import InputNumber from 'primevue/inputnumber'
-import { useLength, useUnits } from '@/app/units'
+import { useLength } from '@/composables/useLength'
+import { useUnits } from '@/stores/units'
 import FormField from './FormField.vue'
 
 // The one field for a length: typed in inches or centimetres, as the owner measures, and kept

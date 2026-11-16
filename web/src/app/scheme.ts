@@ -1,14 +1,9 @@
 import { watch } from 'vue'
-import { useRemembered } from './remember'
+import { useRemembered } from '@/composables/useRemembered'
+import { schemes } from '@/constants'
 
 // Light or dark: as the device is set, or as the owner chose on this device. The whole theme
 // follows one class on the page's root, the one PrimeVue's dark scheme is keyed to (main.ts).
-
-export const schemes = [
-  { value: 'device', label: 'Match this device' },
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-] as const
 
 export type Scheme = (typeof schemes)[number]['value']
 

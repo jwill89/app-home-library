@@ -3,7 +3,7 @@ import type { Point } from './perspective'
 
 // Finds a book in a photo with OpenCV: the largest four-sided outline among the photo's edges.
 // detect.worker.ts loads OpenCV and runs this off the page's thread; it lives here, apart from
-// the worker and with OpenCV's types alone, so outline.test.ts can run it on the real OpenCV.
+// the worker and with OpenCV's types alone, so outline.spec.ts can run it on the real OpenCV.
 
 export type CV = typeof cvModule
 

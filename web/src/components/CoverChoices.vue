@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { reactive } from 'vue'
 import { faCheck } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
-import type { CoverChoice } from '@/api/client'
+import type { CoverChoice } from '@/types'
 import { sourceLabel } from '@/app/format'
 import BookCover from './BookCover.vue'
 

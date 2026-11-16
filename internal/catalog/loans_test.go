@@ -95,7 +95,20 @@ func TestLoans(t *testing.T) {
 	if second.BorrowerID != first.BorrowerID {
 		t.Fatal("the same name in another case made a second borrower")
 	}
+	// The first loan as read before it came back is refused as out of date; read again and
+	// reopened, it still cannot be put over the second.
 	_, err = s.UpdateLoan(ctx, first.ID, first.LoanInput)
+	var moved *MovedError
+	if !errors.As(err, &moved) {
+		t.Fatalf("a loan saved from an old copy: %v", err)
+	}
+	fresh, err := s.GetLoan(ctx, first.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reopen := fresh.LoanInput
+	reopen.ReturnedOn = ""
+	_, err = s.UpdateLoan(ctx, first.ID, reopen)
 	wantConflict(t, err)
 
 	loans, err := s.Loans(ctx)

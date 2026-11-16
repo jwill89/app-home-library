@@ -82,8 +82,9 @@ func Services(ctx context.Context, cfg config.Config, logger *slog.Logger) (*db.
 	return database, schema, svc, nil
 }
 
-// New opens everything and wires every route.
-func New(ctx context.Context, cfg config.Config, logger *slog.Logger) (*App, error) {
+// New opens everything and wires every route. level is the logger's, which the owner may
+// change while the server runs.
+func New(ctx context.Context, cfg config.Config, logger *slog.Logger, level *slog.LevelVar) (*App, error) {
 	database, schema, svc, err := Services(ctx, cfg, logger)
 	if err != nil {
 		return nil, err
@@ -107,7 +108,8 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger) (*App, err
 	mux.Handle("GET /media/{item}/{file}", signedIn(svc.Covers.Handler()))
 	mux.HandleFunc("GET /calendar/{file}", a.calendar)
 	a.feed = events.New(database.Read, database.Write, logger)
-	api.New(mux, api.Deps{DB: database, Catalog: svc, Lookup: svc.Lookup, Feed: a.feed, Sessions: a.sessions, Logger: logger})
+	api.New(mux, api.Deps{DB: database, Catalog: svc, Lookup: svc.Lookup, Feed: a.feed, Sessions: a.sessions, Logger: logger,
+		Level: level, StartLevel: cfg.LogLevel})
 	mux.Handle("/", web.Handler())
 
 	signIn := ratelimit.New(20, 10)
@@ -115,7 +117,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger) (*App, err
 	visits := ratelimit.New(120, 60)
 	h := writes.Middleware(writeKey)(routed(mux))
 	h = visits.Middleware(visitKey)(h)
-	h = a.sessions.LoadAndSave(auth.Resolve(a.sessions, database.Read, cfg.Local(), h))
+	h = a.sessions.LoadAndSave(auth.Resolve(a.sessions, database.Read, cfg.Local(), revalidated(h)))
 	h = signIn.Middleware(signInKey)(h)
 	h = http.NewCrossOriginProtection().Handler(h)
 	h = securityHeaders(h)
@@ -140,7 +142,6 @@ func (a *App) health(w http.ResponseWriter, r *http.Request) {
 		status, code = "database unreachable", http.StatusServiceUnavailable
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status": status, "version": version.Version, "commit": version.Commit,
@@ -214,8 +215,11 @@ func securityHeaders(next http.Handler) http.Handler {
 		h.Set("Permissions-Policy", "camera=(self), microphone=(), geolocation=()")
 		// The library is private: no search engine is to list any of it.
 		h.Set("X-Robots-Tag", "noindex, nofollow")
-		if strings.HasPrefix(r.URL.Path, "/api/") {
-			h.Set("Cache-Control", "no-store")
+		// Every API answer, and the health check, is private unless revalidated finds it is a
+		// public read; the answers refused before it runs (a rate limit, a cross-origin write)
+		// stay so.
+		if strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/healthz" {
+			h.Set("Cache-Control", "private, no-store")
 		}
 		next.ServeHTTP(w, r)
 	})
@@ -279,14 +283,28 @@ func requestLog(logger *slog.Logger, next http.Handler) http.Handler {
 	})
 }
 
+// httpServer is the server Listen runs. There is no WriteTimeout: it would cut the change
+// feed, which stays open. The ReadTimeout bounds reading a request, not the stream that
+// answers it, and an upload that takes longer sets its own deadline.
+func (a *App) httpServer() *http.Server {
+	return &http.Server{
+		Addr:              a.cfg.Addr,
+		Handler:           a.handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		IdleTimeout:       2 * time.Minute,
+	}
+}
+
 // Listen runs the server and the background lookup until the context is cancelled.
 func (a *App) Listen(ctx context.Context) error {
-	srv := &http.Server{Addr: a.cfg.Addr, Handler: a.handler, ReadHeaderTimeout: 10 * time.Second}
+	srv := a.httpServer()
 	errc := make(chan error, 1)
 	go func() { errc <- srv.ListenAndServe() }()
 	go a.catalog.RunEnricher(ctx)
 	go a.catalog.RunScans(ctx)
 	go a.feed.RunPruner(ctx)
+	go auth.RunSessionPruner(ctx, a.db.Write, a.logger)
 	a.logger.Info("listening", "addr", a.cfg.Addr, "origins", a.cfg.Origins, "version", version.Version, "schema", a.schema)
 	select {
 	case err := <-errc:
@@ -326,6 +344,6 @@ func (a *App) calendar(w http.ResponseWriter, r *http.Request) {
 	h := w.Header()
 	h.Set("Content-Type", "text/calendar; charset=utf-8")
 	h.Set("Content-Disposition", `inline; filename="loans.ics"`)
-	h.Set("Cache-Control", "no-store")
+	h.Set("Cache-Control", "private, no-store")
 	_, _ = w.Write(body) // a calendar that hangs up early fetches again on its next refresh
 }

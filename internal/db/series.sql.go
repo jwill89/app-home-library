@@ -8,6 +8,8 @@ package db
 import (
 	"context"
 	"database/sql"
+
+	"homelibrary/internal/civil"
 )
 
 const deleteSeries = `-- name: DeleteSeries :exec
@@ -20,7 +22,7 @@ func (q *Queries) DeleteSeries(ctx context.Context, id int64) error {
 }
 
 const emptySeries = `-- name: EmptySeries :execrows
-UPDATE works SET series_id = NULL, series_number = '', updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+UPDATE works SET series_id = NULL, series_number = '', updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE series_id = ?
 `
 
@@ -45,7 +47,7 @@ func (q *Queries) GetSeriesByName(ctx context.Context, name string) (*Series, er
 }
 
 const leaveSeries = `-- name: LeaveSeries :execrows
-UPDATE works SET series_id = NULL, series_number = '', updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+UPDATE works SET series_id = NULL, series_number = '', updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE id = ?1 AND series_id = ?2
 `
 
@@ -103,7 +105,7 @@ type ListSeriesVolumesRow struct {
 	ID           int64
 	Name         string
 	SeriesNumber string
-	WantedOn     string
+	WantedOn     civil.Date
 	EditionID    int64
 }
 
@@ -138,7 +140,7 @@ func (q *Queries) ListSeriesVolumes(ctx context.Context) ([]*ListSeriesVolumesRo
 }
 
 const moveSeriesWorks = `-- name: MoveSeriesWorks :exec
-UPDATE works SET series_id = ?1, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+UPDATE works SET series_id = ?1, updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE series_id = ?2
 `
 
@@ -171,7 +173,8 @@ func (q *Queries) RenameSeries(ctx context.Context, arg RenameSeriesParams) (int
 }
 
 const setSeriesByOwner = `-- name: SetSeriesByOwner :exec
-UPDATE editions SET sources = json_set(sources, '$.series', 'owner', '$.seriesNumber', 'owner')
+UPDATE editions SET sources = json_set(sources, '$.series', 'owner', '$.seriesNumber', 'owner'),
+    updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE work_id = ?
 `
 
@@ -186,12 +189,22 @@ UPDATE series SET dismissed_on = ? WHERE id = ?
 `
 
 type SetSeriesDismissedParams struct {
-	DismissedOn string
+	DismissedOn civil.Date
 	ID          int64
 }
 
 // A series put aside as no series, on the day given, or taken back with an empty day.
 func (q *Queries) SetSeriesDismissed(ctx context.Context, arg SetSeriesDismissedParams) error {
 	_, err := q.db.ExecContext(ctx, setSeriesDismissed, arg.DismissedOn, arg.ID)
+	return err
+}
+
+const touchSeriesWorks = `-- name: TouchSeriesWorks :exec
+UPDATE works SET updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second')) WHERE series_id = ?
+`
+
+// A series renamed is a change to each of its works, whose form names it.
+func (q *Queries) TouchSeriesWorks(ctx context.Context, seriesID sql.NullInt64) error {
+	_, err := q.db.ExecContext(ctx, touchSeriesWorks, seriesID)
 	return err
 }

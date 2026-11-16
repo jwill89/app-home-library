@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { nextTick, ref, useId } from 'vue'
 import AutoComplete from 'primevue/autocomplete'
-import type { DocumentRow } from '@/api/client'
+import type { DocumentRow } from '@/types'
 import FormField from './FormField.vue'
 
 // The one way to choose a paper from the library: a word of its title, an author, or where it

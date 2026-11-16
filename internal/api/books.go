@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"slices"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 
@@ -25,6 +26,10 @@ type coverForm struct {
 
 // Uploads are the one place a request is large: a phone photo before the browser shrinks it.
 const uploadLimit = 16 << 20
+
+// uploadReadTimeout is how long an upload may take to arrive: a document's 40 MB at about
+// 550 kbit/s, a phone's slow connection. Every other body has the default few seconds.
+const uploadReadTimeout = 10 * time.Minute
 
 func (h *handlers) book(ctx context.Context, id int64) (*bookOutput, error) {
 	b, err := h.Catalog.Get(ctx, id)
@@ -124,6 +129,7 @@ func (h *handlers) registerBooks() {
 
 	upload := h.op("upload-cover", http.MethodPut, "/books/{id}/cover", "Make a photo or an image file the cover")
 	upload.MaxBodyBytes = uploadLimit
+	upload.BodyReadTimeout = uploadReadTimeout
 	huma.Register(h.api, upload, func(ctx context.Context, in *struct {
 		ID      int64 `path:"id"`
 		RawBody huma.MultipartFormFiles[coverForm]

@@ -8,12 +8,15 @@ import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
 import { faBookArrowRight } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
-import { api, type Borrower, type BorrowerInput, type Loan } from '@/api/client'
-import { useConfirmAction } from '@/app/confirm'
-import { useFeed } from '@/app/feed'
+import { api } from '@/api/client'
+import type { Borrower, BorrowerInput, Loan } from '@/types'
+import { useConfirmAction } from '@/composables/useConfirmAction'
+import { useFeed } from '@/composables/useFeed'
 import { calendarDate } from '@/app/format'
-import { loanLine, overdueBy, useReturnLoan } from '@/app/loans'
-import { useNotice } from '@/app/problem'
+import { loanLine, overdueBy } from '@/app/loans'
+import { useReturnLoan } from '@/composables/useReturnLoan'
+import { useNotice } from '@/composables/useNotice'
+import { useStaleSave } from '@/composables/useStaleSave'
 import BookCover from '@/components/BookCover.vue'
 import FormField from '@/components/FormField.vue'
 import LateNote from '@/components/LateNote.vue'
@@ -24,6 +27,7 @@ import LoansCalendar from '@/components/LoansCalendar.vue'
 
 const ask = useConfirmAction()
 const notice = useNotice()
+const stale = useStaleSave()
 const id = useId()
 
 const loans = ref<Loan[]>([])
@@ -101,12 +105,7 @@ async function saved() {
   await load()
 }
 
-const returnLoan = useReturnLoan()
-async function returned(l: Loan) {
-  if (await returnLoan(l)) {
-    await load()
-  }
-}
+const returned = useReturnLoan(load)
 
 function removeLoan(l: Loan) {
   ask(
@@ -129,8 +128,14 @@ function removeLoan(l: Loan) {
 
 const borrowerOpen = ref(false)
 const borrower = ref<{ id: number; input: BorrowerInput } | null>(null)
+const borrowerInput = (b: Borrower): BorrowerInput => ({
+  name: b.name,
+  contact: b.contact,
+  notes: b.notes,
+  updatedAt: b.updatedAt,
+})
 function editBorrower(b: Borrower) {
-  borrower.value = { id: b.id, input: { name: b.name, contact: b.contact, notes: b.notes } }
+  borrower.value = { id: b.id, input: borrowerInput(b) }
   borrowerOpen.value = true
 }
 async function saveBorrower() {
@@ -140,7 +145,22 @@ async function saveBorrower() {
   const { id: bid, input } = borrower.value
   const { error } = await api.PUT('/borrowers/{id}', { params: { path: { id: bid } }, body: input })
   if (error) {
-    notice.failed(error)
+    const refused = stale(error, {
+      latest: async () => {
+        const { data, error: failed } = await api.GET('/borrowers')
+        return { data: data?.borrowers?.find((b) => b.id === bid), error: failed }
+      },
+      load: (b) => {
+        borrower.value = { id: bid, input: borrowerInput(b) }
+      },
+      overwrite: (updatedAt) => {
+        input.updatedAt = updatedAt
+        return saveBorrower()
+      },
+    })
+    if (!refused) {
+      notice.failed(error)
+    }
     return
   }
   borrowerOpen.value = false

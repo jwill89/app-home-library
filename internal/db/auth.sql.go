@@ -95,6 +95,18 @@ func (q *Queries) CreateUser(ctx context.Context, name string) (*User, error) {
 	return &i, err
 }
 
+const deleteExpiredSessions = `-- name: DeleteExpiredSessions :execrows
+DELETE FROM sessions WHERE expiry <= strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+`
+
+func (q *Queries) DeleteExpiredSessions(ctx context.Context) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteExpiredSessions)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const deleteExpiredSetupCodes = `-- name: DeleteExpiredSetupCodes :exec
 DELETE FROM setup_codes WHERE expires_at <= ?
 `
@@ -119,6 +131,27 @@ func (q *Queries) DeletePasskey(ctx context.Context, arg DeletePasskeyParams) (i
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const deleteSession = `-- name: DeleteSession :exec
+DELETE FROM sessions WHERE token = ?
+`
+
+func (q *Queries) DeleteSession(ctx context.Context, token string) error {
+	_, err := q.db.ExecContext(ctx, deleteSession, token)
+	return err
+}
+
+const findSession = `-- name: FindSession :one
+SELECT data FROM sessions WHERE token = ? AND expiry > strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+`
+
+// A session's data while it runs, by its token's hash.
+func (q *Queries) FindSession(ctx context.Context, token string) ([]byte, error) {
+	row := q.db.QueryRowContext(ctx, findSession, token)
+	var data []byte
+	err := row.Scan(&data)
+	return data, err
 }
 
 const getFirstUser = `-- name: GetFirstUser :one
@@ -214,6 +247,22 @@ func (q *Queries) ListPasskeys(ctx context.Context, userID int64) ([]*ListPasske
 		return nil, err
 	}
 	return items, nil
+}
+
+const saveSession = `-- name: SaveSession :exec
+INSERT INTO sessions (token, data, expiry) VALUES (?, ?, ?)
+ON CONFLICT (token) DO UPDATE SET data = excluded.data, expiry = excluded.expiry
+`
+
+type SaveSessionParams struct {
+	Token  string
+	Data   []byte
+	Expiry string
+}
+
+func (q *Queries) SaveSession(ctx context.Context, arg SaveSessionParams) error {
+	_, err := q.db.ExecContext(ctx, saveSession, arg.Token, arg.Data, arg.Expiry)
+	return err
 }
 
 const takeSetupCode = `-- name: TakeSetupCode :one

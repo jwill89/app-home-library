@@ -4,9 +4,10 @@ import Button from 'primevue/button'
 import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'
 import { faPrint } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
-import { api, apiURL, type LabelSheet, type QueuedLabel } from '@/api/client'
+import { api, apiURL } from '@/api/client'
+import type { LabelSheet, QueuedLabel } from '@/types'
 import { callNumberText, count, labelKindLabel } from '@/app/format'
-import { useNotice } from '@/app/problem'
+import { useNotice } from '@/composables/useNotice'
 import PagePanel from './PagePanel.vue'
 
 // One kind of label sheet: what waits for it, printing it a sheet at a time, and taking what

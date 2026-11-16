@@ -3,11 +3,14 @@ import { onMounted, ref, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import { faFileArrowUp } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
-import { api, type Course, type DocumentInput } from '@/api/client'
+import { api } from '@/api/client'
+import type { Course, DocumentInput } from '@/types'
 import { addDocumentFile, documentFileTypes, documentToInput, emptyDocument } from '@/app/documents'
 import { fileSize } from '@/app/format'
 import { goBack, returnTo } from '@/app/navigation'
-import { messageOf, useNotice } from '@/app/problem'
+import { messageOf } from '@/app/problem'
+import { useNotice } from '@/composables/useNotice'
+import { useStaleSave } from '@/composables/useStaleSave'
 import DocumentForm from '@/components/DocumentForm.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import PagePanel from '@/components/PagePanel.vue'
@@ -18,6 +21,7 @@ const props = defineProps<{ id?: number }>()
 const route = useRoute()
 const router = useRouter()
 const notice = useNotice()
+const stale = useStaleSave()
 
 const doc = ref<DocumentInput>(emptyDocument(Number(route.query.course) || 0))
 const courses = ref<Course[]>([])
@@ -61,10 +65,26 @@ async function save() {
     : await api.POST('/documents', { body: doc.value })
   if (error) {
     busy.value = false
-    notice.failed(error)
+    const docId = props.id
+    const refused =
+      docId !== undefined &&
+      stale(error, {
+        latest: () => api.GET('/documents/{id}', { params: { path: { id: docId } } }),
+        load: (d) => {
+          doc.value = documentToInput(d)
+        },
+        overwrite: (updatedAt) => {
+          doc.value.updatedAt = updatedAt
+          return save()
+        },
+      })
+    if (!refused) {
+      notice.failed(error)
+    }
     return
   }
   if (props.id) {
+    doc.value.updatedAt = data.updatedAt
     busy.value = false
     notice.done('Paper saved')
     return returnTo(router, `/papers/${data.id}`)

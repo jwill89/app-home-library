@@ -6,9 +6,11 @@ import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
-import { api, type Choices, type Course, type CourseDetail, type CourseInput } from '@/api/client'
-import { levels, terms } from '@/app/format'
-import { useNotice } from '@/app/problem'
+import { api } from '@/api/client'
+import type { Choices, Course, CourseDetail, CourseInput } from '@/types'
+import { levels, terms } from '@/constants'
+import { useNotice } from '@/composables/useNotice'
+import { useStaleSave } from '@/composables/useStaleSave'
 import FormField from './FormField.vue'
 
 // The one course form, for a new course and for changing one.
@@ -16,6 +18,7 @@ const props = defineProps<{ course?: Course | null }>()
 const emit = defineEmits<{ saved: [course: CourseDetail] }>()
 const open = defineModel<boolean>('visible', { required: true })
 const notice = useNotice()
+const stale = useStaleSave()
 const id = useId()
 const f = (name: string) => `${id}-${name}`
 
@@ -30,6 +33,18 @@ const blank = (): CourseInput => ({
   instructor: '',
   notes: '',
 })
+const courseInput = (c: CourseInput): CourseInput => ({
+  school: c.school,
+  level: c.level,
+  department: c.department,
+  number: c.number,
+  title: c.title,
+  term: c.term,
+  year: c.year,
+  instructor: c.instructor,
+  notes: c.notes,
+  updatedAt: c.updatedAt,
+})
 const input = ref<CourseInput>(blank())
 const choices = ref<Choices | null>(null)
 const busy = ref(false)
@@ -38,20 +53,7 @@ watch(open, async (v) => {
   if (!v) {
     return
   }
-  const c = props.course
-  input.value = c
-    ? {
-        school: c.school,
-        level: c.level,
-        department: c.department,
-        number: c.number,
-        title: c.title,
-        term: c.term,
-        year: c.year,
-        instructor: c.instructor,
-        notes: c.notes,
-      }
-    : blank()
+  input.value = props.course ? courseInput(props.course) : blank()
   const { data } = await api.GET('/choices')
   choices.value = data ?? null
 })
@@ -75,7 +77,22 @@ async function save() {
     : await api.POST('/courses', { body: input.value })
   busy.value = false
   if (error) {
-    notice.failed(error)
+    const was = props.course
+    const refused =
+      was &&
+      stale(error, {
+        latest: () => api.GET('/courses/{id}', { params: { path: { id: was.id } } }),
+        load: (c) => {
+          input.value = courseInput(c)
+        },
+        overwrite: (updatedAt) => {
+          input.value.updatedAt = updatedAt
+          return save()
+        },
+      })
+    if (!refused) {
+      notice.failed(error)
+    }
     return
   }
   open.value = false

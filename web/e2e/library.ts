@@ -1,5 +1,5 @@
 import { expect, type APIRequestContext } from '@playwright/test'
-import type { BookInput } from '../src/api/client'
+import type { BookInput } from '../src/types'
 import { emptyBook, emptyCopy } from '../src/app/book'
 
 /** Adds a book through the API, as the owner, for a test to work on; it returns the book. */

@@ -1,123 +1,27 @@
-import type {
-  Area,
-  AreaInput,
-  Book,
-  BookInput,
-  Contributor,
-  Copy,
-  Course,
-  Cover,
-  CopyInput,
-  CourseInput,
-  DocumentFile,
-  DocumentInput,
-  QueuedLabel,
-  Scan,
-  ShelfPlace,
-  ShelvingRule,
-} from '@/api/client'
+import {
+  acquiredAs,
+  areaKeys,
+  categories,
+  conditions,
+  documentKinds,
+  formats,
+  goneKinds,
+  labelKinds,
+  levels,
+  logLevels,
+  readStatuses,
+  roles,
+  scanStatuses,
+  shelvings,
+  terms,
+  textStatuses,
+} from '@/constants'
+import type { Area, Book, BookInput, Copy, Course, Cover, DocumentInput, ShelfPlace } from '@/types'
 
-// The one place the catalog's stored words become the words shown. Each list's values are typed
-// by the field it is for, so a value the server does not take is a type error.
-
-/** The kinds of book the library sorts by: one each, set or worked out from its details. */
-export const categories = [
-  { value: 'fiction', label: 'Fiction', plural: 'Fiction' },
-  { value: 'nonfiction', label: 'Nonfiction', plural: 'Nonfiction' },
-  { value: 'manga', label: 'Manga', plural: 'Manga' },
-  { value: 'light_novel', label: 'Light novel', plural: 'Light novels' },
-  { value: 'graphic_novel', label: 'Graphic novel', plural: 'Graphic novels' },
-  { value: 'uncategorized', label: 'Uncategorized', plural: 'Uncategorized' },
-] as const satisfies readonly { value: Book['category']; label: string; plural: string }[]
+// The one place the catalog's stored words become the words shown: a value's words come from
+// its list in constants/index.ts, and everything else said about a record is made here.
 
 export const categoryLabel = (v: string) => categories.find((c) => c.value === v)?.label ?? ''
-
-export const formats: { value: BookInput['format']; label: string }[] = [
-  { value: '', label: 'Not known' },
-  { value: 'hardcover', label: 'Hardcover' },
-  { value: 'paperback', label: 'Paperback' },
-  { value: 'trade_paperback', label: 'Trade paperback' },
-  { value: 'mass_market', label: 'Mass market paperback' },
-  { value: 'library_binding', label: 'Library binding' },
-  { value: 'spiral', label: 'Spiral-bound' },
-  { value: 'board_book', label: 'Board book' },
-  { value: 'leather', label: 'Leather-bound' },
-  { value: 'other', label: 'Other' },
-]
-
-export const readStatuses: { value: BookInput['readStatus']; label: string }[] = [
-  { value: 'unread', label: 'Unread' },
-  { value: 'reading', label: 'Reading' },
-  { value: 'read', label: 'Read' },
-]
-
-export const conditions: { value: CopyInput['condition']; label: string }[] = [
-  { value: 'unknown', label: 'Not recorded' },
-  { value: 'fine', label: 'Fine' },
-  { value: 'very_good', label: 'Very good' },
-  { value: 'good', label: 'Good' },
-  { value: 'fair', label: 'Fair' },
-  { value: 'poor', label: 'Poor' },
-]
-
-export const acquiredAs: { value: CopyInput['acquiredAs']; label: string }[] = [
-  { value: 'unknown', label: 'Not recorded' },
-  { value: 'new', label: 'New' },
-  { value: 'used', label: 'Used' },
-]
-
-export const dustJackets: { value: CopyInput['dustJacket']; label: string }[] = [
-  { value: 'unknown', label: 'Not recorded' },
-  { value: 'yes', label: 'Has one' },
-  { value: 'no', label: 'None' },
-]
-
-export const roles: { value: Contributor['role']; label: string }[] = [
-  { value: 'author', label: 'Author' },
-  { value: 'editor', label: 'Editor' },
-  { value: 'translator', label: 'Translator' },
-  { value: 'illustrator', label: 'Illustrator' },
-  { value: 'narrator', label: 'Narrator' },
-  { value: 'contributor', label: 'Contributor' },
-]
-
-const scanStatuses: { value: Scan['status']; label: string }[] = [
-  { value: 'pending', label: 'Looking it up…' },
-  { value: 'found', label: 'Not in your library yet' },
-  { value: 'adding', label: 'Adding…' },
-  { value: 'added', label: 'Added' },
-  { value: 'owned', label: 'Already in your library' },
-  { value: 'not_found', label: 'No source knows this ISBN' },
-  { value: 'failed', label: 'The sources could not be reached' },
-]
-
-export const levels: { value: CourseInput['level']; label: string }[] = [
-  { value: 'unknown', label: 'Not recorded' },
-  { value: 'high_school', label: 'High school' },
-  { value: 'undergraduate', label: 'Undergraduate' },
-  { value: 'graduate', label: 'Graduate' },
-  { value: 'professional', label: 'Professional development' },
-  { value: 'other', label: 'Other' },
-]
-
-export const terms: { value: CourseInput['term']; label: string }[] = [
-  { value: 'unknown', label: 'No season' },
-  { value: 'winter', label: 'Winter' },
-  { value: 'spring', label: 'Spring' },
-  { value: 'summer', label: 'Summer' },
-  { value: 'fall', label: 'Fall' },
-]
-
-export const shelvings: { value: ShelvingRule['shelving']; label: string }[] = [
-  { value: 'dewey', label: 'By Dewey number' },
-  { value: 'author', label: 'By author' },
-  { value: 'series', label: 'By series' },
-]
-
-const labelKinds: { value: QueuedLabel['kind']; label: string; short: string }[] = [
-  { value: 'barcode', label: 'Barcode labels', short: 'barcode' },
-  { value: 'spine', label: 'Spine labels', short: 'spine' },
-]
 
 /** A sheet of labels by its kind: Barcode labels, Spine labels. */
 export const labelKindLabel = (v: string) => labelIn(labelKinds, v)
@@ -128,17 +32,6 @@ export function labelsWaiting(kinds: string[]): string {
   const sentence = `${words.join(' and ')} ${words.length === 1 ? 'label waits' : 'labels wait'} to print.`
   return sentence.charAt(0).toUpperCase() + sentence.slice(1)
 }
-
-export const goneKinds: {
-  value: 'lost' | 'sold' | 'donated' | 'given' | 'discarded'
-  label: string
-}[] = [
-  { value: 'lost', label: 'Lost' },
-  { value: 'sold', label: 'Sold' },
-  { value: 'donated', label: 'Donated' },
-  { value: 'given', label: 'Given away' },
-  { value: 'discarded', label: 'Discarded' },
-]
 
 export const goneKindLabel = (v: string) => labelIn(goneKinds, v)
 
@@ -275,25 +168,6 @@ export const copyLabel = (c: Copy) =>
 /** A call number on one line, as it reads across the spine label's lines. */
 export const callNumberText = (lines: string[] | null) => (lines ?? []).join(' ')
 
-export const documentKinds: { value: DocumentInput['kind']; label: string }[] = [
-  { value: 'article', label: 'Article' },
-  { value: 'chapter', label: 'Chapter' },
-  { value: 'review', label: 'Book review' },
-  { value: 'handout', label: 'Handout' },
-  { value: 'syllabus', label: 'Syllabus' },
-  { value: 'notes', label: 'Notes' },
-  { value: 'exam', label: 'Exam' },
-  { value: 'other', label: 'Other' },
-]
-
-const textStatuses: { value: DocumentFile['textStatus']; label: string }[] = [
-  { value: 'pending', label: 'Waiting to be read' },
-  { value: 'done', label: 'Text read' },
-  { value: 'empty', label: 'No text found' },
-  { value: 'failed', label: 'Could not be read' },
-  { value: 'owner', label: 'Text typed by you' },
-]
-
 /** A file's size as a person reads it: 340 KB, 2.4 MB. */
 export function fileSize(bytes: number): string {
   if (bytes < 1024 * 1024) {
@@ -309,6 +183,9 @@ function labelIn(list: { value: string; label: string }[], value: string): strin
 export const levelLabel = (v: string) => (v === 'unknown' ? '' : labelIn(levels, v))
 export const shelvingLabel = (v: string) => labelIn(shelvings, v)
 export const documentKindLabel = (v: string) => labelIn(documentKinds, v)
+
+/** The server's log level as the Settings choice names it: Problems (warn). */
+export const logLevelLabel = (v: string) => labelIn(logLevels, v)
 
 const paperLabels: Record<string, string> = {
   kind: 'Kind',
@@ -465,18 +342,6 @@ export function placeLine(p: ShelfPlace, neighbours = false): string {
           : ''
   return `On ${where}${between}.`
 }
-
-type AreaKey = NonNullable<AreaInput['order']>[number]
-
-/** What an area can order its books by, in words, as its dialog offers them. */
-export const areaKeys = [
-  { value: 'subject', label: 'Subject (Dewey number)' },
-  { value: 'author', label: 'Author' },
-  { value: 'series', label: 'Series and volume' },
-  { value: 'title', label: 'Title' },
-  { value: 'published', label: 'Date published' },
-  { value: 'height', label: 'Height' },
-] as const satisfies readonly { value: AreaKey; label: string }[]
 
 /** An order key in words, its first letter small to stand mid-sentence: subject (Dewey number). */
 export function areaKeyText(k: string, first = true): string {

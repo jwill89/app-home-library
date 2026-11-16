@@ -7,20 +7,18 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
 	"homelibrary/internal/db"
+	"homelibrary/internal/db/dbtest"
 )
 
 func TestRun(t *testing.T) {
 	ctx := context.Background()
 	root := t.TempDir()
-	database, err := db.Open(filepath.Join(root, "live.sqlite"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = database.Close() })
+	database := dbtest.Open(t)
 
 	media, docs, dir := filepath.Join(root, "media"), filepath.Join(root, "documents"), filepath.Join(root, "backups")
 	write := func(p, s string) {
@@ -73,6 +71,9 @@ func TestRun(t *testing.T) {
 		t.Errorf("restored snapshot: %q, err %v", verdict, err)
 	}
 	_ = copied.Close()
+	if info, err := os.Stat(dir); err != nil || (runtime.GOOS != "windows" && info.Mode().Perm() != 0o700) {
+		t.Errorf("the backup folder: %v, err %v", info.Mode(), err)
+	}
 	if partial, _ := filepath.Glob(filepath.Join(dir, "*.partial")); len(partial) > 0 {
 		t.Errorf("left behind: %v", partial)
 	}

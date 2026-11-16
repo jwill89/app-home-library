@@ -4,6 +4,33 @@ What changes in Home Library, release by release. The format is [Keep a Changelo
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-15
+
+### Added
+
+- Settings has Server log detail: how much the server writes to its log, from everything to failures alone, until it next restarts (`GET` and `PUT /api/v1/log-level`).
+
+### Changed
+
+- After a release, the app takes the new version on its next load, and the installed app still opens without a connection. It keeps in advance only what the sign-in pages need, and clears the old version's stored files on its next load.
+- Every date and time is stored in one checked form, and a date not set is stored as none rather than as empty text; the API sends the same values as before. Needs a step at deploy (docs/ops.md, Upgrading to 1.4.0).
+- "Skip to the content" moves to the page's content without changing the address, and moving to another page puts the focus on its content.
+- With reduced motion asked for on the device, dialogs, lists of choices and toasts fade instead of growing, and spinners pulse instead of turning; the lookup's progress bar and the switches move at once.
+- A list the browser receives whole (the library, papers, loans and the rest) carries an `ETag`, kept in the browser's own cache and checked each time, so an unchanged one comes back as an empty 304; signing out, or a share link ending, lets go of what was kept. Other answers to the owner and to a share link's visitor are never kept by the browser, and a read made before signing in is answered 304 when unchanged.
+- The API's description says who may call each operation.
+- `homelibrary` refuses a missing database file instead of making an empty one, so a mistyped `HL_DB_PATH` stops it rather than starting a new library.
+- `task deploy` gives the server's binary and folder to the service's own account, and closes the backups folder to all but it.
+
+### Fixed
+
+- Saving a book, copy, loan, borrower, course, paper, area, bookcase, shelf or share link that was changed on another device or page since you opened it put the old values back without asking. The app now says so and offers "Load the latest" or "Save mine over it", marking a loan back and taking a lookup's suggested changes included.
+- A cover photo, a document's file or an import sent over a slow connection was cut off after five seconds; an upload now has ten minutes.
+- A day that isn't on the calendar, such as 30 February, was taken as a loan's, a copy's or a reading's date; it is refused with the field named.
+
+### Security
+
+- The server closes a connection that is slow to send its request or sits idle between requests.
+
 ## [1.3.0] - 2026-11-13
 
 ### Added
@@ -75,9 +102,12 @@ What changes in Home Library, release by release. The format is [Keep a Changelo
 
 ## [1.0.0] - 2026-11-05
 
+### Added
+
 - The first release: the catalog, covers, loans, courses, labels, documents, share links, imports and exports, and the nightly backup.
 
-[Unreleased]: https://github.com/jwill89/app-home-library/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/jwill89/app-home-library/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/jwill89/app-home-library/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/jwill89/app-home-library/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/jwill89/app-home-library/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/jwill89/app-home-library/compare/v1.1.2...v1.2.0

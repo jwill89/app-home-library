@@ -3,7 +3,6 @@ module homelibrary
 go 1.27.4
 
 require (
-	github.com/alexedwards/scs/sqlite3store v0.0.0-20251002162104-209de6e426de
 	github.com/alexedwards/scs/v2 v2.9.0
 	github.com/danielgtaylor/huma/v2 v2.40.0
 	github.com/go-webauthn/webauthn v0.18.2

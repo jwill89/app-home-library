@@ -1,4 +1,4 @@
-import type { BookRow } from '@/api/client'
+import type { BookRow } from '@/types'
 
 // The library list as this device last had it, for the owner when there is no connection: the
 // Library page still lists the books, and Scan still answers "do I own this?". It is kept in

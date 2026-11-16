@@ -3,7 +3,7 @@ import Aura from '@primeuix/themes/aura'
 
 // Every color the app uses lives in this directory. The schemes below are the source: the
 // PrimeVue preset is built from them, tailwind.css names them for utilities, and
-// contrast.test.ts checks every pair the pages put together against WCAG AAA.
+// contrast.spec.ts checks every pair the pages put together against WCAG AAA.
 
 // Book cloth: the oxblood of an old library binding, the one accent.
 const cloth = {

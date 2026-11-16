@@ -14,28 +14,14 @@ import {
   faPen,
   faShareNodes,
 } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
-import {
-  api,
-  type BookRow,
-  type Course,
-  type DocumentRow,
-  type ShareLink,
-  type ShareScope,
-} from '@/api/client'
-import { useConfirmAction } from '@/app/confirm'
-import {
-  addDays,
-  categories,
-  count,
-  courseLabel,
-  day,
-  endOf,
-  lastDay,
-  listed,
-  today,
-} from '@/app/format'
-import { useLibrary } from '@/app/library'
-import { useNotice } from '@/app/problem'
+import { api } from '@/api/client'
+import type { BookRow, Course, DocumentRow, ShareLink, ShareScope } from '@/types'
+import { useConfirmAction } from '@/composables/useConfirmAction'
+import { addDays, count, courseLabel, day, endOf, lastDay, listed, today } from '@/app/format'
+import { categories } from '@/constants'
+import { useLibrary } from '@/stores/library'
+import { useNotice } from '@/composables/useNotice'
+import { useStaleSave } from '@/composables/useStaleSave'
 import { copyText } from '@/app/clipboard'
 import BookPicker from './BookPicker.vue'
 import FormField from './FormField.vue'
@@ -44,6 +30,7 @@ import PaperPicker from './PaperPicker.vue'
 
 const ask = useConfirmAction()
 const notice = useNotice()
+const stale = useStaleSave()
 const library = useLibrary()
 const id = useId()
 const shares = ref<ShareLink[]>([])
@@ -263,10 +250,26 @@ async function save() {
   }
   const was = editing.value
   if (was) {
-    const { error } = await api.PUT('/shares/{id}', { params: { path: { id: was.id } }, body })
+    const { error } = await api.PUT('/shares/{id}', {
+      params: { path: { id: was.id } },
+      body: { ...body, updatedAt: was.updatedAt },
+    })
     busy.value = false
     if (error) {
-      notice.failed(error)
+      const refused = stale(error, {
+        latest: async () => {
+          const { data, error: failed } = await api.GET('/shares')
+          return { data: data?.shares?.find((x) => x.id === was.id), error: failed }
+        },
+        load: change,
+        overwrite: (updatedAt) => {
+          editing.value = { ...was, updatedAt }
+          return save()
+        },
+      })
+      if (!refused) {
+        notice.failed(error)
+      }
       return
     }
     notice.done(`Saved the link for ${body.name.trim()}`)

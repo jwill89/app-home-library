@@ -112,7 +112,10 @@ func (q *Queries) FinishScan(ctx context.Context, arg FinishScanParams) error {
 }
 
 const getScan = `-- name: GetScan :one
-SELECT id, isbn13, section, acquired_as, status, proposal, edition_id, error, attempts, reviewed, scanned_at, done_at, want FROM scans WHERE id = ?
+SELECT
+    id, isbn13, section, acquired_as, status, proposal, edition_id, error, attempts, reviewed,
+    scanned_at, done_at, want
+FROM scans WHERE id = ?
 `
 
 func (q *Queries) GetScan(ctx context.Context, id int64) (*Scan, error) {
@@ -137,7 +140,10 @@ func (q *Queries) GetScan(ctx context.Context, id int64) (*Scan, error) {
 }
 
 const getScanView = `-- name: GetScanView :one
-SELECT id, isbn13, section, status, proposal, error, scanned_at, reviewed, edition_id, title, cover, wanted_on, authors FROM scan_rows WHERE id = ?
+SELECT
+    id, isbn13, section, status, proposal, error, scanned_at, reviewed, edition_id, title, cover,
+    wanted_on, authors
+FROM scan_rows WHERE id = ?
 `
 
 func (q *Queries) GetScanView(ctx context.Context, id int64) (*ScanRow, error) {
@@ -162,7 +168,10 @@ func (q *Queries) GetScanView(ctx context.Context, id int64) (*ScanRow, error) {
 }
 
 const listOpenScans = `-- name: ListOpenScans :many
-SELECT id, isbn13, section, status, proposal, error, scanned_at, reviewed, edition_id, title, cover, wanted_on, authors FROM scan_rows WHERE reviewed = 0 ORDER BY id DESC LIMIT 300
+SELECT
+    id, isbn13, section, status, proposal, error, scanned_at, reviewed, edition_id, title, cover,
+    wanted_on, authors
+FROM scan_rows WHERE reviewed = 0 ORDER BY id DESC LIMIT 300
 `
 
 func (q *Queries) ListOpenScans(ctx context.Context) ([]*ScanRow, error) {
@@ -203,7 +212,10 @@ func (q *Queries) ListOpenScans(ctx context.Context) ([]*ScanRow, error) {
 }
 
 const nextScanWork = `-- name: NextScanWork :one
-SELECT id, isbn13, section, acquired_as, status, proposal, edition_id, error, attempts, reviewed, scanned_at, done_at, want FROM scans WHERE status IN ('pending', 'adding') ORDER BY id LIMIT 1
+SELECT
+    id, isbn13, section, acquired_as, status, proposal, edition_id, error, attempts, reviewed,
+    scanned_at, done_at, want
+FROM scans WHERE status IN ('pending', 'adding') ORDER BY id LIMIT 1
 `
 
 // The oldest scan the background owes something: a lookup, or the adding the owner asked for.

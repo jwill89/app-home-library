@@ -1,8 +1,9 @@
 import createClient from 'openapi-fetch'
-import type { components, operations, paths } from './schema'
+import type { paths } from './schema'
 
-// The one API client. Types come from the generated schema; never hand-write them. A list in
-// a query is sent as huma reads one: comma-separated in a single parameter.
+// The one API client, typed by the generated schema's paths; the names the app gives the API's
+// types are in types/index.ts. A list in a query is sent as huma reads one: comma-separated in a
+// single parameter.
 export const api = createClient<paths>({
   baseUrl: '/api/v1',
   credentials: 'same-origin',
@@ -27,73 +28,6 @@ api.use({
 
 /** Whether an answer is the device's own, made for want of a connection. */
 export const isOffline = (response?: Response) => response?.headers.get('X-Offline') === '1'
-
-export type Cover = components['schemas']['Cover']
-export type CoverChoice = components['schemas']['CoverChoice']
-export type CalendarLink = components['schemas']['CalendarLink']
-export type QueueCounts = components['schemas']['QueueCounts']
-export type Change = components['schemas']['Change']
-export type SetupCode = components['schemas']['SetupCodeOutputBody']
-export type NotOwned = NonNullable<
-  NonNullable<operations['create-import']['parameters']['query']>['notOwned']
->
-export type BookGaps = components['schemas']['BookGaps']
-export type Reading = components['schemas']['Reading']
-export type FinishedRead = components['schemas']['FinishedRead']
-export type ReadingStats = components['schemas']['ReadingStats']
-export type Series = components['schemas']['Series']
-export type OpenCopy = components['schemas']['OpenCopy']
-export type DocumentFill = components['schemas']['DocumentFill']
-export type DocProposal = components['schemas']['DocProposal']
-export type DocumentSuggestions = components['schemas']['DocumentSuggestions']
-export type GoneInput = components['schemas']['GoneInput']
-export type ErrorModel = components['schemas']['ErrorModel']
-export type Book = components['schemas']['Book']
-export type Suggestions = components['schemas']['Suggestions']
-export type SuggestedBook = components['schemas']['SuggestedBook']
-export type ReadStatusInput = components['schemas']['ReadStatusInput']
-export type ReadStatus = ReadStatusInput['readStatus']
-export type BookRow = components['schemas']['BookRow']
-export type BookInput = components['schemas']['BookInput']
-export type CopyInput = components['schemas']['CopyInput']
-export type Copy = components['schemas']['Copy']
-export type Contributor = components['schemas']['Contributor']
-export type Proposal = components['schemas']['Proposal']
-export type Candidate = components['schemas']['Candidate']
-export type Choices = components['schemas']['Choices']
-export type ImportReport = components['schemas']['ImportReport']
-export type Passkey = components['schemas']['Passkey']
-export type Scan = components['schemas']['Scan']
-export type ShareLink = components['schemas']['ShareLink']
-export type ShareScope = components['schemas']['Scope']
-export type Sees = components['schemas']['Sees']
-export type Me = components['schemas']['MeOutputBody']
-export type Role = Me['role']
-export type Loan = components['schemas']['Loan']
-export type LoanInput = components['schemas']['LoanInput']
-export type Borrower = components['schemas']['Borrower']
-export type BorrowerInput = components['schemas']['BorrowerInput']
-export type Course = components['schemas']['Course']
-export type CourseInput = components['schemas']['CourseInput']
-export type CourseDetail = components['schemas']['CourseDetail']
-export type CourseBook = components['schemas']['CourseBook']
-export type CourseUse = components['schemas']['CourseUse']
-export type QueuedLabel = components['schemas']['QueuedLabel']
-export type LabelSheet = components['schemas']['LabelSheet']
-export type ShelvingRule = components['schemas']['ShelvingRule']
-export type Document = components['schemas']['Document']
-export type DocumentInput = components['schemas']['DocumentInput']
-export type DocumentRow = components['schemas']['DocumentRow']
-export type DocumentFile = components['schemas']['DocumentFile']
-export type Bookcase = components['schemas']['Bookcase']
-export type Area = components['schemas']['Area']
-export type AreaInput = components['schemas']['AreaInput']
-export type Shelf = components['schemas']['Shelf']
-export type ShelfInput = components['schemas']['ShelfInput']
-export type ShelfPlan = components['schemas']['ShelfPlan']
-export type ShelfBook = components['schemas']['ShelfBook']
-export type Layout = components['schemas']['Layout']
-export type ShelfPlace = components['schemas']['ShelfPlace']
 
 /** The address of one of a document's files, which the browser shows or downloads. */
 export const fileURL = (documentId: number, fileId: number) =>

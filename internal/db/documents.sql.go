@@ -157,7 +157,11 @@ func (q *Queries) DocumentByDOI(ctx context.Context, doi string) (int64, error) 
 }
 
 const getDocument = `-- name: GetDocument :one
-SELECT d.id, d.kind, d.title, d.authors, d.container, d.volume, d.issue, d.pages, d.published, d.publisher, d.doi, d.url, d.course_id, d.notes, d.created_at, d.updated_at, d.subjects, d.abstract, d.editors, CAST(COALESCE(c.department || ' ' || c.number || ' ' || c.title, '') AS TEXT) AS course_name
+SELECT
+    d.id, d.kind, d.title, d.authors, d.container, d.volume, d.issue, d.pages, d.published,
+    d.publisher, d.doi, d.url, d.course_id, d.notes, d.created_at, d.updated_at, d.subjects,
+    d.abstract, d.editors,
+    CAST(COALESCE(c.department || ' ' || c.number || ' ' || c.title, '') AS TEXT) AS course_name
 FROM documents d LEFT JOIN courses c ON c.id = d.course_id
 WHERE d.id = ?
 `
@@ -214,7 +218,10 @@ func (q *Queries) GetDocument(ctx context.Context, id int64) (*GetDocumentRow, e
 }
 
 const getDocumentFile = `-- name: GetDocumentFile :one
-SELECT id, document_id, name, stored, content_type, size, position, text, text_status, text_attempts, text_error, created_at FROM document_files WHERE id = ? AND document_id = ?
+SELECT
+    id, document_id, name, stored, content_type, size, position, text, text_status, text_attempts,
+    text_error, created_at
+FROM document_files WHERE id = ? AND document_id = ?
 `
 
 type GetDocumentFileParams struct {
@@ -303,7 +310,10 @@ func (q *Queries) ListCourseDocuments(ctx context.Context, courseID sql.NullInt6
 }
 
 const listDocumentFiles = `-- name: ListDocumentFiles :many
-SELECT id, document_id, name, stored, content_type, size, position, text, text_status, text_attempts, text_error, created_at FROM document_files WHERE document_id = ? ORDER BY position, id
+SELECT
+    id, document_id, name, stored, content_type, size, position, text, text_status, text_attempts,
+    text_error, created_at
+FROM document_files WHERE document_id = ? ORDER BY position, id
 `
 
 func (q *Queries) ListDocumentFiles(ctx context.Context, documentID int64) ([]*DocumentFile, error) {
@@ -406,7 +416,10 @@ func (q *Queries) ListDocuments(ctx context.Context) ([]*ListDocumentsRow, error
 }
 
 const nextFileForText = `-- name: NextFileForText :one
-SELECT id, document_id, name, stored, content_type, size, position, text, text_status, text_attempts, text_error, created_at FROM document_files
+SELECT
+    id, document_id, name, stored, content_type, size, position, text, text_status, text_attempts,
+    text_error, created_at
+FROM document_files
 WHERE text_status = 'pending' AND text_attempts < 3
 ORDER BY id
 LIMIT 1
@@ -481,7 +494,7 @@ const updateDocument = `-- name: UpdateDocument :exec
 UPDATE documents
 SET kind = ?, title = ?, authors = ?, container = ?, volume = ?, issue = ?, pages = ?, published = ?,
     publisher = ?, doi = ?, url = ?, course_id = ?, notes = ?, subjects = ?, abstract = ?,
-    editors = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+    editors = ?, updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE id = ?
 `
 

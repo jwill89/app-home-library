@@ -42,7 +42,7 @@ func Load() (Config, error) {
 		Backup:         Backup{Dir: envOr("HL_BACKUP_DIR", "devdata/backups")},
 	}
 	// Documents' files sit beside the covers unless told otherwise: devdata/documents here,
-	// /opt/homelibrary/data/documents on the droplet, with nothing to add to its settings.
+	// and data/documents in the app's folder on the droplet, with nothing to add to its settings.
 	cfg.DocsDir = envOr("HL_DOCS_DIR", filepath.Join(filepath.Dir(cfg.MediaDir), "documents"))
 	if err := cfg.LogLevel.UnmarshalText([]byte(envOr("HL_LOG_LEVEL", "info"))); err != nil {
 		return cfg, fmt.Errorf("HL_LOG_LEVEL: %w", err)

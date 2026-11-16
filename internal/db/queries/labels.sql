@@ -8,7 +8,9 @@ DELETE FROM label_queue WHERE copy_id = ? AND kind = ?;
 DELETE FROM label_queue WHERE copy_id = ?;
 
 -- name: ListLabelQueue :many
-SELECT q.kind, q.queued_at, cs.*
+SELECT
+    q.kind, q.queued_at, cs.copy_id, cs.edition_id, cs.section, cs.shelving, cs.label_prefix,
+    cs.ddc, cs.title, cs.series, cs.series_number, cs.author_sort
 FROM label_queue q
 JOIN copy_shelving cs ON cs.copy_id = q.copy_id
 ORDER BY q.copy_id;
@@ -30,21 +32,28 @@ WHERE c.edition_id = ?
 ORDER BY q.copy_id, q.kind;
 
 -- name: ListEditionShelving :many
-SELECT * FROM copy_shelving WHERE edition_id = ? ORDER BY copy_id;
+SELECT
+    copy_id, edition_id, section, shelving, label_prefix, ddc, title, series, series_number,
+    author_sort
+FROM copy_shelving WHERE edition_id = ? ORDER BY copy_id;
 
 -- name: ListLabelOffsets :many
-SELECT * FROM label_offsets ORDER BY kind;
+SELECT kind, x_mm, y_mm, enabled FROM label_offsets ORDER BY kind;
 
 -- name: SetLabelSheet :execrows
 UPDATE label_offsets SET x_mm = ?, y_mm = ?, enabled = ? WHERE kind = ?;
 
 -- name: ListShelvingRules :many
-SELECT s.*, (SELECT count(*) FROM copies c WHERE c.section_id = s.id) AS copies
+SELECT
+    s.id, s.name, s.shelving, s.label_prefix,
+    (SELECT count(*) FROM copies c WHERE c.section_id = s.id) AS copies
 FROM sections s
 ORDER BY s.name;
 
 -- name: GetShelvingRule :one
-SELECT s.*, (SELECT count(*) FROM copies c WHERE c.section_id = s.id) AS copies
+SELECT
+    s.id, s.name, s.shelving, s.label_prefix,
+    (SELECT count(*) FROM copies c WHERE c.section_id = s.id) AS copies
 FROM sections s
 WHERE s.id = ?;
 

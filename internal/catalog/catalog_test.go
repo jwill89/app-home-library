@@ -19,6 +19,7 @@ import (
 
 	"homelibrary/internal/covers"
 	"homelibrary/internal/db"
+	"homelibrary/internal/db/dbtest"
 	"homelibrary/internal/files"
 	"homelibrary/internal/lookup"
 )
@@ -58,15 +59,7 @@ func coverPNG(t *testing.T) []byte {
 
 func newService(t *testing.T) *Service {
 	t.Helper()
-	ctx := context.Background()
-	database, err := db.Open(filepath.Join(t.TempDir(), "test.sqlite"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = database.Close() })
-	if _, err := db.Migrate(ctx, database.Write); err != nil {
-		t.Fatal(err)
-	}
+	database := dbtest.Open(t)
 	store, err := covers.NewStore(t.TempDir())
 	if err != nil {
 		t.Fatal(err)

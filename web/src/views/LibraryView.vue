@@ -16,20 +16,14 @@ import {
   faPlus,
   faTags,
 } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
-import { api, type BookRow } from '@/api/client'
-import {
-  categories,
-  count,
-  day,
-  formatLabel,
-  formats,
-  readStatuses,
-  seriesLine,
-} from '@/app/format'
-import { useFeed } from '@/app/feed'
-import { ALL, useLibrary } from '@/app/library'
-import { useQueue } from '@/app/queue'
-import { useSession } from '@/app/session'
+import { api } from '@/api/client'
+import type { BookRow } from '@/types'
+import { categories, formats, readStatuses } from '@/constants'
+import { count, day, formatLabel, seriesLine } from '@/app/format'
+import { useFeed } from '@/composables/useFeed'
+import { ALL, useLibrary } from '@/stores/library'
+import { useQueue } from '@/composables/useQueue'
+import { useSession } from '@/stores/session'
 import BookCover from '@/components/BookCover.vue'
 import LibraryTabs from '@/components/LibraryTabs.vue'
 import PageHeader from '@/components/PageHeader.vue'

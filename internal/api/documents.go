@@ -101,6 +101,7 @@ func (h *handlers) registerDocuments() {
 
 	upload := h.op("add-document-file", http.MethodPost, "/documents/{id}/files", "Add a PDF or a photo of a page to a document")
 	upload.MaxBodyBytes = catalog.FileLimit + 1<<20
+	upload.BodyReadTimeout = uploadReadTimeout
 	huma.Register(h.api, upload, func(ctx context.Context, in *struct {
 		ID      int64 `path:"id"`
 		RawBody huma.MultipartFormFiles[fileForm]

@@ -103,7 +103,7 @@ var errGone = errors.New("the page has gone")
 
 func (f *Feed) start(ctx context.Context, since int64, out Sink) (int64, error) {
 	if since <= 0 {
-		from, err := f.read.ChangeBefore(ctx, time.Now().UTC().Add(-f.Lookback).Format(changeTime))
+		from, err := f.read.ChangeBefore(ctx, time.Now().UTC().Add(-f.Lookback).Format(time.RFC3339))
 		if err != nil {
 			return 0, fmt.Errorf("feed start: %w", err)
 		}
@@ -159,9 +159,6 @@ func (f *Feed) send(ctx context.Context, cursor int64, out Sink) (int64, error) 
 		}
 	}
 }
-
-// changeTime is how the changes table writes its times: strftime's %Y-%m-%dT%H:%M:%fZ.
-const changeTime = "2006-01-02T15:04:05.000Z"
 
 // changesPage is ListChanges' LIMIT: a full page means more may wait.
 const changesPage = 1000

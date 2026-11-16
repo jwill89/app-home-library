@@ -1,6 +1,6 @@
 import { ref, watch } from 'vue'
-import { parseName } from './cite'
-import { recall, remember } from './remember'
+import { parseName } from '@/app/cite'
+import { recall, remember } from '@/composables/useRemembered'
 
 // The owner's library: a search of its databases for a document, opened in the browser, where
 // the owner signs in with their own card. The app never signs in to a database itself.

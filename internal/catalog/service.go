@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 
+	"homelibrary/internal/civil"
 	"homelibrary/internal/covers"
 	"homelibrary/internal/db"
 	"homelibrary/internal/files"
@@ -95,8 +96,8 @@ func createBook(ctx context.Context, q *db.Queries, in BookInput, isbn13 string,
 		SeriesNumber: strings.TrimSpace(in.SeriesNumber),
 		ReadStatus:   in.ReadStatus,
 		CurrentPage:  nullInt(in.CurrentPage),
-		StartedOn:    in.StartedOn,
-		FinishedOn:   in.FinishedOn,
+		StartedOn:    civil.Date(in.StartedOn),
+		FinishedOn:   civil.Date(in.FinishedOn),
 		Rating:       nullInt(in.Rating),
 		Notes:        in.Notes,
 		Category:     storedCategory(&in),
@@ -139,7 +140,7 @@ func createBook(ctx context.Context, q *db.Queries, in BookInput, isbn13 string,
 		return 0, 0, err
 	}
 	if first == nil {
-		if err := q.SetEditionWanted(ctx, db.SetEditionWantedParams{WantedOn: today(), ID: editionID}); err != nil {
+		if err := q.SetEditionWanted(ctx, db.SetEditionWantedParams{WantedOn: civil.Date(today()), ID: editionID}); err != nil {
 			return 0, 0, fmt.Errorf("on the wishlist: %w", err)
 		}
 		return editionID, 0, nil
@@ -192,6 +193,15 @@ func (s *Service) update(ctx context.Context, q *db.Queries, id int64, in BookIn
 	if err != nil {
 		return err
 	}
+	if in.UpdatedAt != "" {
+		w, err := q.GetWork(ctx, ed.WorkID)
+		if err != nil {
+			return fmt.Errorf("work: %w", err)
+		}
+		if err := Unmoved(in.UpdatedAt, max(w.UpdatedAt, ed.UpdatedAt), "book"); err != nil {
+			return err
+		}
+	}
 	if isbn13 != "" && isbn13 != ed.Isbn13.String {
 		if other, err := q.GetEditionByISBN(ctx, nullString(isbn13)); err == nil && other.ID != id {
 			return &DuplicateError{ID: other.ID}
@@ -207,8 +217,8 @@ func (s *Service) update(ctx context.Context, q *db.Queries, id int64, in BookIn
 		SeriesNumber: strings.TrimSpace(in.SeriesNumber),
 		ReadStatus:   in.ReadStatus,
 		CurrentPage:  nullInt(in.CurrentPage),
-		StartedOn:    in.StartedOn,
-		FinishedOn:   in.FinishedOn,
+		StartedOn:    civil.Date(in.StartedOn),
+		FinishedOn:   civil.Date(in.FinishedOn),
 		Rating:       nullInt(in.Rating),
 		Notes:        in.Notes,
 		Category:     storedCategory(&in),
@@ -300,13 +310,13 @@ func (s *Service) get(ctx context.Context, q *db.Queries, id int64) (*Book, erro
 	b := &Book{
 		ID: ed.ID, WorkID: w.ID, Title: ed.Title, Subtitle: ed.Subtitle,
 		Series: w.SeriesName, SeriesID: w.SeriesID.Int64, SeriesNumber: w.SeriesNumber, ReadStatus: w.ReadStatus,
-		CurrentPage: w.CurrentPage.Int64, StartedOn: w.StartedOn, FinishedOn: w.FinishedOn,
+		CurrentPage: w.CurrentPage.Int64, StartedOn: string(w.StartedOn), FinishedOn: string(w.FinishedOn),
 		Rating: w.Rating.Int64, Notes: w.Notes,
 		ISBN13: ed.Isbn13.String, ISBN10: ed.Isbn10, LCCN: ed.Lccn, Publisher: ed.Publisher,
 		PublishPlace: ed.PublishPlace, Published: ed.Published, EditionStatement: ed.EditionStatement,
 		Format: ed.Format, Pages: ed.Pages.Int64, HeightMM: ed.HeightMm.Int64, WidthMM: ed.WidthMm.Int64,
 		ThicknessMM: ed.ThicknessMm.Int64, Language: ed.Language, DDC: ed.Ddc, LCC: ed.Lcc,
-		Description: ed.Description, CreatedAt: ed.CreatedAt, UpdatedAt: ed.UpdatedAt, WantedOn: ed.WantedOn,
+		Description: ed.Description, CreatedAt: ed.CreatedAt, UpdatedAt: max(w.UpdatedAt, ed.UpdatedAt), WantedOn: string(ed.WantedOn),
 		Cover: s.cover(ed.Cover), Contributors: []lookup.Contributor{}, Copies: []Copy{},
 	}
 	_ = json.Unmarshal([]byte(ed.Subjects), &b.Subjects) // written by this package as a JSON list
@@ -391,7 +401,7 @@ func (s *Service) List(ctx context.Context) ([]BookRow, error) {
 			ID: r.ID, WorkID: r.WorkID, Title: r.Title, Subtitle: r.Subtitle, Authors: r.Authors,
 			Series: r.SeriesName, SeriesID: r.SeriesID, SeriesNumber: r.SeriesNumber, ISBN13: r.Isbn13.String, Format: r.Format,
 			DDC: r.Ddc, Published: r.Published, Publisher: r.Publisher, ReadStatus: r.ReadStatus,
-			Sections: r.Sections, Cover: s.cover(r.Cover), Copies: r.CopyCount, WantedOn: r.WantedOn, AddedAt: r.CreatedAt,
+			Sections: r.Sections, Cover: s.cover(r.Cover), Copies: r.CopyCount, WantedOn: string(r.WantedOn), AddedAt: r.CreatedAt,
 			Subjects: []string{}, Genres: r.Genres, Credits: r.Credits, LCC: r.Lcc,
 		}
 		_ = json.Unmarshal([]byte(r.Subjects), &row.Subjects) // written by this package as a JSON list

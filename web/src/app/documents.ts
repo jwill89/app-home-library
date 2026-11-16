@@ -1,5 +1,6 @@
-import { api, formData, type Document, type DocumentInput } from '@/api/client'
-import type { CiteWork } from './cite'
+import { api, formData } from '@/api/client'
+import type { Document, DocumentInput } from '@/types'
+import type { CiteWork } from '@/app/cite'
 
 /** The files a document takes, for a file picker's accept. */
 export const documentFileTypes = 'application/pdf,image/jpeg,image/png,image/webp'
@@ -51,6 +52,7 @@ export function documentToInput(d: Document): DocumentInput {
     abstract: d.abstract,
     notes: d.notes,
     subjects: [...(d.subjects ?? [])],
+    updatedAt: d.updatedAt,
   }
 }
 

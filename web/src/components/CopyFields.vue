@@ -6,8 +6,8 @@ import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
 import Textarea from 'primevue/textarea'
 import ToggleSwitch from 'primevue/toggleswitch'
-import type { CopyInput } from '@/api/client'
-import { acquiredAs, conditions, dustJackets } from '@/app/format'
+import type { CopyInput } from '@/types'
+import { acquiredAs, conditions, dustJackets } from '@/constants'
 import FormField from './FormField.vue'
 
 // The one copy form: where this physical book came from and what shape it is in. Brief, it is

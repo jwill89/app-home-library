@@ -47,10 +47,12 @@ tasks:
       - go run ./cmd/homelibrary serve
 
   gen:
-    desc: Regenerate sqlc code and the TypeScript API client from the OpenAPI document
+    desc: Regenerate the committed schema, sqlc code and the TypeScript API client from the OpenAPI document
     # The Go packages embed web/dist, so the frontend must exist before go run compiles them.
     deps: [build:web]
     cmds:
+      # internal/db/schema.sql, from a throwaway database the migrations build; sqlc reads it.
+      - go test ./internal/db -run TestSchema -count=1 -update
       - sqlc generate
       - go run ./cmd/homelibrary openapi > web/src/api/openapi.json
       - cd web && npx -y openapi-typescript@7.13.0 src/api/openapi.json -o src/api/schema.d.ts
@@ -68,6 +70,8 @@ tasks:
       - package.json
       - vite.config.ts
       - tsconfig.json
+      - tsconfig.app.json
+      - tsconfig.node.json
       - src/**/*
       - public/**/*
     generates:
@@ -101,9 +105,6 @@ tasks:
       - go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0 run ./...
       - task: lint:web
       - task: lint:scripts
-      - task: shared:lint:md
-      - task: shared:repo:check
-      - task: shared:version:check
       - task: lint:vulns
 
   # Known vulnerabilities: Go's in the code the app calls; npm's in what ships, at any
@@ -139,11 +140,19 @@ tasks:
       - task: test:e2e
 
   test:coverage:
-    desc: Run the Go and frontend tests with coverage; the frontend's fails below its floor
+    desc: Run the Go and frontend tests with coverage, each held to the floor CI holds
     deps: [build:web]
     cmds:
-      - go test -cover ./...
+      # go.yml's floor and excludes in ci.yml: sqlc's output stays out of the count.
+      - task: shared:go:coverage
+        vars: { FLOOR: 57, EXCLUDE: '/internal/db/((db|models)\.go|[^/]+\.sql\.go)$' }
       - cd web && npm run test:coverage
+
+  # The Vitest specs' types under web/tsconfig.vitest.json, as web.yml checks them.
+  web:specs:
+    cmds:
+      - task: shared:web:specs
+        vars: { DIR: web }
 
   # The whole app in a real browser (Edge here, Chrome on CI), against a server of its own, on a
   # throwaway library in the temp folder, never devdata's.
@@ -155,16 +164,28 @@ tasks:
     cmds:
       - npm run test:e2e
 
+  gen:check:
+    desc: Run every generator and fail if what they make differs from the tree as it was
+    vars:
+      # The tree before the generators run, uncommitted changes included, as a commit object
+      # that changes nothing (git stash create); a clean tree gives none, and the index stands in.
+      BEFORE:
+        sh: git stash create
+    cmds:
+      - task: gen
+      - git diff --exit-code {{.BEFORE}} -- internal/db web/src/api
+
   check:
-    desc: Everything CI checks, in its order
+    desc: Everything CI runs - lint, docs.yml's checks, the specs' types, the tests with their floors and the vulnerability scan at once, then the end-to-end suite and the generated code
     cmds:
       # The steps that don't depend on each other run at once, each line prefixed with
       # its task; the ones that need them follow, in order.
-      - task --parallel --output prefixed lint shared:vuln test:coverage
+      - task --parallel --output prefixed lint shared:docs:check web:specs test:coverage shared:vuln
       - task: test:e2e
+      - task: gen:check
 
   push:
-    desc: Take the in-range updates Dependabot would open, scan for advisories, run task check, then push (-- -Yes, -SkipUpdates, -SkipCheck)
+    desc: Take the in-range updates Dependabot would open, start the self-hosted runners, push, and follow CI to its verdict (-- -Yes, -SkipUpdates, -NoWait)
     interactive: true
     cmds:
       - task: shared:push

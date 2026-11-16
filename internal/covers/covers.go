@@ -53,13 +53,9 @@ func FileName(width int) string {
 	return fmt.Sprintf("w%d.jpg", width)
 }
 
-// One image is decoded and encoded at a time: a decoded photo is its whole bitmap, and the
-// droplet has little memory to spare.
-var gate = make(chan struct{}, 1)
-
 // Process reads an image and encodes its renditions. Decoding and encoding again is also
 // what strips the metadata a phone photo carries, its location included.
-func Process(ctx context.Context, r io.ReadSeeker) (*Result, error) {
+func (s *Store) Process(ctx context.Context, r io.ReadSeeker) (*Result, error) {
 	cfg, _, err := image.DecodeConfig(r)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrUnsupported, err)
@@ -73,11 +69,11 @@ func Process(ctx context.Context, r io.ReadSeeker) (*Result, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 	select {
-	case gate <- struct{}{}:
+	case s.gate <- struct{}{}:
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
-	defer func() { <-gate }()
+	defer func() { <-s.gate }()
 	if _, err := r.Seek(0, io.SeekStart); err != nil {
 		return nil, err
 	}
@@ -107,7 +103,7 @@ func Process(ctx context.Context, r io.ReadSeeker) (*Result, error) {
 }
 
 // Download fetches an image from a source's cover link and processes it.
-func Download(ctx context.Context, client *http.Client, userAgent, url string) (*Result, error) {
+func (s *Store) Download(ctx context.Context, client *http.Client, userAgent, url string) (*Result, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
@@ -131,7 +127,7 @@ func Download(ctx context.Context, client *http.Client, userAgent, url string) (
 	if len(body) > MaxBytes {
 		return nil, ErrTooLarge
 	}
-	return Process(ctx, bytes.NewReader(body))
+	return s.Process(ctx, bytes.NewReader(body))
 }
 
 func encode(img image.Image) ([]byte, error) {

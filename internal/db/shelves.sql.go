@@ -7,7 +7,20 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
+
+const bookcaseStamp = `-- name: BookcaseStamp :one
+SELECT updated_at FROM bookcases WHERE id = ?
+`
+
+// When a bookcase last changed, which a save of its form must have read.
+func (q *Queries) BookcaseStamp(ctx context.Context, id int64) (string, error) {
+	row := q.db.QueryRowContext(ctx, bookcaseStamp, id)
+	var updated_at string
+	err := row.Scan(&updated_at)
+	return updated_at, err
+}
 
 const clearShelfStarts = `-- name: ClearShelfStarts :exec
 UPDATE shelves SET starts_at = ''
@@ -95,7 +108,10 @@ func (q *Queries) GetLayoutSettings(ctx context.Context) (*LayoutSetting, error)
 }
 
 const getShelf = `-- name: GetShelf :one
-SELECT id, bookcase_id, position, width_mm, height_mm, depth_mm, starts_at, created_at, brace_height_mm, brace_width_mm, area_id FROM shelves WHERE id = ?
+SELECT
+    id, bookcase_id, position, width_mm, height_mm, depth_mm, starts_at, created_at,
+    brace_height_mm, brace_width_mm, area_id, updated_at
+FROM shelves WHERE id = ?
 `
 
 func (q *Queries) GetShelf(ctx context.Context, id int64) (*Shelf, error) {
@@ -113,12 +129,13 @@ func (q *Queries) GetShelf(ctx context.Context, id int64) (*Shelf, error) {
 		&i.BraceHeightMm,
 		&i.BraceWidthMm,
 		&i.AreaID,
+		&i.UpdatedAt,
 	)
 	return &i, err
 }
 
 const listBookcases = `-- name: ListBookcases :many
-SELECT id, name, position, created_at FROM bookcases ORDER BY position, id
+SELECT id, name, position, created_at, updated_at FROM bookcases ORDER BY position, id
 `
 
 func (q *Queries) ListBookcases(ctx context.Context) ([]*Bookcase, error) {
@@ -135,6 +152,7 @@ func (q *Queries) ListBookcases(ctx context.Context) ([]*Bookcase, error) {
 			&i.Name,
 			&i.Position,
 			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -184,12 +202,13 @@ func (q *Queries) ListEditionAuthorIDs(ctx context.Context) ([]*ListEditionAutho
 
 const listShelfCopies = `-- name: ListShelfCopies :many
 SELECT
-    cs.copy_id, cs.edition_id, cs.section, cs.shelving, cs.label_prefix, cs.ddc, cs.title, cs.series, cs.series_number, cs.author_sort, e.format, e.cover, e.publisher, e.subjects, e.lcc, e.published,
+    cs.copy_id, cs.edition_id, cs.section, cs.shelving, cs.label_prefix, cs.ddc, cs.title,
+    cs.series, cs.series_number, cs.author_sort, e.format, e.cover, e.publisher, e.subjects, e.lcc, e.published,
     w.category, CAST(COALESCE(w.series_id, 0) AS INTEGER) AS series_id,
     CAST(COALESCE(e.pages, 0) AS INTEGER) AS pages,
     CAST(COALESCE(e.height_mm, 0) AS INTEGER) AS height_mm,
     CAST(COALESCE(e.thickness_mm, 0) AS INTEGER) AS thickness_mm,
-    CAST(EXISTS (SELECT 1 FROM loans l WHERE l.copy_id = cs.copy_id AND l.returned_on = '') AS INTEGER) AS on_loan
+    CAST(EXISTS (SELECT 1 FROM loans l WHERE l.copy_id = cs.copy_id AND l.returned_on IS NULL) AS INTEGER) AS on_loan
 FROM copy_shelving cs
 JOIN editions e ON e.id = cs.edition_id
 JOIN works w ON w.id = e.work_id
@@ -271,7 +290,7 @@ const listShelves = `-- name: ListShelves :many
 SELECT
     s.id, s.bookcase_id, s.position, s.width_mm, s.height_mm, s.depth_mm, s.brace_height_mm,
     s.brace_width_mm, s.starts_at, CAST(COALESCE(s.area_id, 0) AS INTEGER) AS area_id,
-    CAST(COALESCE(a.name, '') AS TEXT) AS area, b.name AS bookcase
+    CAST(COALESCE(a.name, '') AS TEXT) AS area, b.name AS bookcase, s.updated_at
 FROM shelves s
 JOIN bookcases b ON b.id = s.bookcase_id
 LEFT JOIN areas a ON a.id = s.area_id
@@ -291,6 +310,7 @@ type ListShelvesRow struct {
 	AreaID        int64
 	Area          string
 	Bookcase      string
+	UpdatedAt     string
 }
 
 // Every shelf in walking order: bookcase by bookcase, each from the top down, with its area.
@@ -316,6 +336,7 @@ func (q *Queries) ListShelves(ctx context.Context) ([]*ListShelvesRow, error) {
 			&i.AreaID,
 			&i.Area,
 			&i.Bookcase,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -342,7 +363,7 @@ func (q *Queries) NextShelfPosition(ctx context.Context, bookcaseID int64) (int6
 }
 
 const renameBookcase = `-- name: RenameBookcase :execrows
-UPDATE bookcases SET name = ? WHERE id = ?
+UPDATE bookcases SET name = ?, updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second')) WHERE id = ?
 `
 
 type RenameBookcaseParams struct {
@@ -373,7 +394,8 @@ func (q *Queries) RenumberShelf(ctx context.Context, arg RenumberShelfParams) er
 }
 
 const setBookcasePosition = `-- name: SetBookcasePosition :exec
-UPDATE bookcases SET position = ? WHERE id = ?
+UPDATE bookcases SET position = ?1, updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
+WHERE id = ?2 AND position <> ?1
 `
 
 type SetBookcasePositionParams struct {
@@ -399,7 +421,7 @@ const setLayoutApplied = `-- name: SetLayoutApplied :exec
 UPDATE layout_settings SET applied_at = ? WHERE id = 1
 `
 
-func (q *Queries) SetLayoutApplied(ctx context.Context, appliedAt string) error {
+func (q *Queries) SetLayoutApplied(ctx context.Context, appliedAt sql.NullString) error {
 	_, err := q.db.ExecContext(ctx, setLayoutApplied, appliedAt)
 	return err
 }
@@ -420,7 +442,8 @@ func (q *Queries) SetShelfStart(ctx context.Context, arg SetShelfStartParams) er
 
 const updateShelf = `-- name: UpdateShelf :execrows
 UPDATE shelves
-SET width_mm = ?, height_mm = ?, depth_mm = ?, brace_height_mm = ?, brace_width_mm = ?
+SET width_mm = ?, height_mm = ?, depth_mm = ?, brace_height_mm = ?, brace_width_mm = ?,
+    updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE id = ?
 `
 

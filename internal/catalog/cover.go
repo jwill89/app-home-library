@@ -20,7 +20,7 @@ const SourceOwner = "owner"
 // CoverFromURL fetches a cover from a link and makes it the edition's, named by the source
 // the link belongs to, however it was chosen.
 func (s *Service) CoverFromURL(ctx context.Context, id int64, url string) error {
-	res, err := covers.Download(ctx, s.HTTP, s.UserAgent, url)
+	res, err := s.Covers.Download(ctx, s.HTTP, s.UserAgent, url)
 	if err != nil {
 		return err
 	}
@@ -29,7 +29,7 @@ func (s *Service) CoverFromURL(ctx context.Context, id int64, url string) error 
 
 // CoverFromUpload makes an uploaded image the edition's cover.
 func (s *Service) CoverFromUpload(ctx context.Context, id int64, r io.ReadSeeker) error {
-	res, err := covers.Process(ctx, r)
+	res, err := s.Covers.Process(ctx, r)
 	if err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func (s *Service) RemoveCover(ctx context.Context, id int64) error {
 // coverIfNone fetches a cover a lookup found and keeps it only if the book still has none
 // when it is stored: the owner may have photographed one while it downloaded.
 func (s *Service) coverIfNone(ctx context.Context, id int64, url string) error {
-	res, err := covers.Download(ctx, s.HTTP, s.UserAgent, url)
+	res, err := s.Covers.Download(ctx, s.HTTP, s.UserAgent, url)
 	if err != nil {
 		return err
 	}

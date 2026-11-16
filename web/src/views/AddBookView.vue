@@ -11,20 +11,14 @@ import {
   faFileLines,
   faMagnifyingGlass,
 } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
-import {
-  api,
-  formData,
-  type BookInput,
-  type Candidate,
-  type Choices,
-  type CopyInput,
-  type CoverChoice,
-} from '@/api/client'
+import { api, formData } from '@/api/client'
+import type { BookInput, Candidate, Choices, CopyInput, CoverChoice } from '@/types'
 import { scanNote, type ScanNote } from '@/app/barcodes'
 import { bookFromProposal, emptyBook, emptyCopy, prepare } from '@/app/book'
 import { sourceLabel } from '@/app/format'
-import { messageOf, useNotice } from '@/app/problem'
-import { lastSectionKey, recall, remember } from '@/app/remember'
+import { messageOf } from '@/app/problem'
+import { useNotice } from '@/composables/useNotice'
+import { lastSectionKey, recall, remember } from '@/composables/useRemembered'
 import BarcodeScanner from '@/components/BarcodeScanner.vue'
 import BookCover from '@/components/BookCover.vue'
 import BookForm from '@/components/BookForm.vue'

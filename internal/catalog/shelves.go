@@ -14,7 +14,8 @@ import (
 
 // Bookcase is a bookcase with its shelves from the top down.
 type Bookcase struct {
-	ID       int64   `json:"id"`
+	ID int64 `json:"id"`
+	Stamp
 	Name     string  `json:"name"`
 	Position int64   `json:"position" doc:"In walking order, 1 up"`
 	Shelves  []Shelf `json:"shelves"`
@@ -29,6 +30,7 @@ type NewBookcase struct {
 
 // BookcaseInput renames a bookcase or moves it in the walking order.
 type BookcaseInput struct {
+	Stamp
 	Name     string `json:"name" minLength:"1" maxLength:"100"`
 	Position int64  `json:"position" minimum:"1" doc:"Where it comes in walking order"`
 }
@@ -83,7 +85,7 @@ func (s *Service) Bookcases(ctx context.Context) ([]Bookcase, error) {
 	}
 	out := make([]Bookcase, 0, len(cases))
 	for _, c := range cases {
-		b := Bookcase{ID: c.ID, Name: c.Name, Position: c.Position, Shelves: []Shelf{}}
+		b := Bookcase{ID: c.ID, Stamp: Stamp{UpdatedAt: c.UpdatedAt}, Name: c.Name, Position: c.Position, Shelves: []Shelf{}}
 		for _, sh := range shelves {
 			if sh.BookcaseID == c.ID {
 				b.Shelves = append(b.Shelves, shelfOf(sh))
@@ -96,7 +98,7 @@ func (s *Service) Bookcases(ctx context.Context) ([]Bookcase, error) {
 
 func shelfOf(r *db.ListShelvesRow) Shelf {
 	return Shelf{ID: r.ID, BookcaseID: r.BookcaseID, Bookcase: r.Bookcase, Position: r.Position, AreaID: r.AreaID, Area: r.Area,
-		ShelfInput: ShelfInput{WidthMM: r.WidthMm, HeightMM: r.HeightMm, DepthMM: r.DepthMm,
+		ShelfInput: ShelfInput{Stamp: Stamp{UpdatedAt: r.UpdatedAt}, WidthMM: r.WidthMm, HeightMM: r.HeightMm, DepthMM: r.DepthMm,
 			BraceHeightMM: r.BraceHeightMm, BraceWidthMM: r.BraceWidthMm}}
 }
 
@@ -144,6 +146,15 @@ func (s *Service) UpdateBookcase(ctx context.Context, id int64, in BookcaseInput
 		return &FieldError{"name", "a bookcase needs a name"}
 	}
 	return s.inTx(ctx, func(q *db.Queries) error {
+		kept, err := q.BookcaseStamp(ctx, id)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		} else if err != nil {
+			return err
+		}
+		if err := Unmoved(in.UpdatedAt, kept, "bookcase"); err != nil {
+			return err
+		}
 		n, err := q.RenameBookcase(ctx, db.RenameBookcaseParams{Name: in.Name, ID: id})
 		if err != nil {
 			return err
@@ -215,14 +226,25 @@ func (s *Service) UpdateShelf(ctx context.Context, id int64, in ShelfInput) erro
 	if err := in.check(); err != nil {
 		return err
 	}
-	n, err := db.New(s.DB.Write).UpdateShelf(ctx, shelfParams(id, in))
-	if err != nil {
-		return err
-	}
-	if n == 0 {
-		return ErrNotFound
-	}
-	return nil
+	return s.inTx(ctx, func(q *db.Queries) error {
+		sh, err := q.GetShelf(ctx, id)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		} else if err != nil {
+			return err
+		}
+		if err := Unmoved(in.UpdatedAt, sh.UpdatedAt, "shelf"); err != nil {
+			return err
+		}
+		n, err := q.UpdateShelf(ctx, shelfParams(id, in))
+		if err != nil {
+			return err
+		}
+		if n == 0 {
+			return ErrNotFound
+		}
+		return nil
+	})
 }
 
 // DeleteShelf removes a shelf; the shelves below it move up a number.
@@ -271,7 +293,7 @@ func (s *Service) Layout(ctx context.Context, suggest bool) (*Layout, error) {
 	if err != nil {
 		return nil, err
 	}
-	out := &Layout{FillPercent: settings.FillPercent, AppliedAt: settings.AppliedAt, Shelves: make([]ShelfPlan, 0, len(rows)),
+	out := &Layout{FillPercent: settings.FillPercent, AppliedAt: settings.AppliedAt.String, Shelves: make([]ShelfPlan, 0, len(rows)),
 		NoArea: []ShelfBook{}, Unplaced: []ShelfBook{}, TooTall: []ShelfBook{}}
 	starts := map[int64]areaKey{}
 	for _, r := range rows {
@@ -282,7 +304,7 @@ func (s *Service) Layout(ctx context.Context, suggest bool) (*Layout, error) {
 			}
 		}
 	}
-	inUse := settings.AppliedAt != "" && len(starts) > 0
+	inUse := settings.AppliedAt.Valid && len(starts) > 0
 	if !suggest && !inUse {
 		finish(out.Shelves, areas)
 		return out, nil
@@ -362,7 +384,7 @@ func (s *Service) UseLayout(ctx context.Context) error {
 		if !used {
 			return &ConflictError{"No shelf has a book on it in the suggestion: give the areas shelves, and rules that take your books, first."}
 		}
-		return q.SetLayoutApplied(ctx, now())
+		return q.SetLayoutApplied(ctx, sql.NullString{String: now(), Valid: true})
 	})
 }
 
@@ -372,7 +394,7 @@ func (s *Service) StopLayout(ctx context.Context) error {
 		if err := q.ClearShelfStarts(ctx); err != nil {
 			return err
 		}
-		return q.SetLayoutApplied(ctx, "")
+		return q.SetLayoutApplied(ctx, sql.NullString{})
 	})
 }
 

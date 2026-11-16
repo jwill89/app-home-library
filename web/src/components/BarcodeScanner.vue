@@ -199,6 +199,13 @@ defineExpose({ start, stop })
   transition: border-color 0.15s;
 }
 
+/* Where the device asks for less motion, the frame takes the hit's colour at once. */
+@media (prefers-reduced-motion: reduce) {
+  .scanner__target {
+    transition: none;
+  }
+}
+
 .scanner__target--hit {
   border-color: var(--color-accent);
 }
@@ -244,6 +251,19 @@ defineExpose({ start, stop })
   from {
     opacity: 0;
     transform: translateY(-0.5rem);
+  }
+}
+
+/* Where the device asks for less motion, it fades in where it stands. */
+@media (prefers-reduced-motion: reduce) {
+  .scanner__note {
+    animation-name: scanner-appear;
+  }
+}
+
+@keyframes scanner-appear {
+  from {
+    opacity: 0;
   }
 }
 </style>

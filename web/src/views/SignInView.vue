@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import { faKey } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import { messageOf } from '@/app/problem'
-import { useSession } from '@/app/session'
+import { useSession } from '@/stores/session'
 import PublicPage from '@/components/PublicPage.vue'
 
 const session = useSession()

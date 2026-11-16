@@ -26,7 +26,7 @@ func GetCalendarLink(ctx context.Context, q *db.Queries) (CalendarLink, error) {
 	if err != nil {
 		return CalendarLink{}, err
 	}
-	return CalendarLink{Made: true, CreatedAt: c.CreatedAt, LastUsedAt: c.LastUsedAt}, nil
+	return CalendarLink{Made: true, CreatedAt: c.CreatedAt, LastUsedAt: c.LastUsedAt.String}, nil
 }
 
 // NewCalendarLink makes the calendar link, replacing any before it, and returns its token,

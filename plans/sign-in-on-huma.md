@@ -1,5 +1,7 @@
 # Plan: sign-in on huma
 
+Complete, 2026-11-10: Home Library's part shipped as 1.2.0. Discord sign-in, below, is notes for a later choice, not open work.
+
 Written 2026-11-09 against Home Library 1.1.2, on huma v2.40.0, with Senpan's release C (5.0.0, phase 2 being built now) as the reference. Home Library's part is built as 1.2.0 (2026-11-10).
 
 ## The decision
@@ -147,4 +149,4 @@ shared-tooling 2.7.0 puts these rules in `standards/api-and-realtime.md`: creden
 <!-- markdownlint-disable-next-line MD029 -->
 2. Home Library (1.2.0) next: six operations, most of them ports of Senpan's fresh `passkeys.go`; the session store, two views and the 401 handler; six server tests and the end-to-end ceremony. About a day, with nothing for the owner outside the app.
 
-Each ships as its own release, deployed on its owner's go; none waits on another but for the standard's edit. This project's `plans/shared-tooling-rollout.md` gains a line for the release when it's scheduled.
+Each ships as its own release, deployed on its owner's go; none waits on another but for the standard's edit. This project's `plans/shared-tooling-rollout.md` has the line for 1.2.0.

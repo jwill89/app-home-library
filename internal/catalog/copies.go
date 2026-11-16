@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"homelibrary/internal/civil"
 	"homelibrary/internal/db"
 )
 
@@ -38,9 +39,13 @@ func (s *Service) UpdateCopy(ctx context.Context, id int64, in CopyInput) (*Copy
 		return nil, err
 	}
 	err := s.inTx(ctx, func(q *db.Queries) error {
-		if _, err := q.GetCopy(ctx, id); errors.Is(err, sql.ErrNoRows) {
+		c, err := q.GetCopy(ctx, id)
+		if errors.Is(err, sql.ErrNoRows) {
 			return ErrNotFound
 		} else if err != nil {
+			return err
+		}
+		if err := Unmoved(in.UpdatedAt, c.UpdatedAt, "copy"); err != nil {
 			return err
 		}
 		section, err := upsertSection(ctx, q, in.Section)
@@ -48,7 +53,7 @@ func (s *Service) UpdateCopy(ctx context.Context, id int64, in CopyInput) (*Copy
 			return err
 		}
 		return q.UpdateCopy(ctx, db.UpdateCopyParams{
-			SectionID: section, AcquiredAs: storedChoice(in.AcquiredAs), AcquiredOn: in.AcquiredOn,
+			SectionID: section, AcquiredAs: storedChoice(in.AcquiredAs), AcquiredOn: civil.Date(in.AcquiredOn),
 			AcquiredFrom: in.AcquiredFrom, PriceCents: price(in.PriceCents), Condition: storedChoice(in.Condition),
 			DustJacket: jacket(in.DustJacket), Signed: boolInt(in.Signed), Location: in.Location, Notes: in.Notes, ID: id,
 		})
@@ -127,7 +132,7 @@ func createCopy(ctx context.Context, q *db.Queries, editionID int64, in CopyInpu
 		return 0, err
 	}
 	id, err := q.CreateCopy(ctx, db.CreateCopyParams{
-		EditionID: editionID, SectionID: section, AcquiredAs: storedChoice(in.AcquiredAs), AcquiredOn: in.AcquiredOn,
+		EditionID: editionID, SectionID: section, AcquiredAs: storedChoice(in.AcquiredAs), AcquiredOn: civil.Date(in.AcquiredOn),
 		AcquiredFrom: in.AcquiredFrom, PriceCents: price(in.PriceCents), Condition: storedChoice(in.Condition),
 		DustJacket: jacket(in.DustJacket), Signed: boolInt(in.Signed), Location: in.Location, Notes: in.Notes,
 	})
@@ -158,9 +163,10 @@ func upsertSection(ctx context.Context, q *db.Queries, name string) (sql.NullInt
 func copyOf(c *db.ListEditionCopiesRow) Copy {
 	out := Copy{
 		ID: c.ID, Barcode: Barcode(c.ID), CreatedAt: c.CreatedAt, CallNumber: []string{}, Labels: []string{},
-		GoneAs: c.GoneAs, GoneOn: c.GoneOn, GoneNote: c.GoneNote, SeenOn: c.SeenOn,
+		GoneAs: c.GoneAs, GoneOn: string(c.GoneOn), GoneNote: c.GoneNote, SeenOn: string(c.SeenOn),
 		CopyInput: CopyInput{
-			Section: c.SectionName, AcquiredAs: shownChoice(c.AcquiredAs), AcquiredOn: c.AcquiredOn,
+			Stamp:   Stamp{UpdatedAt: c.UpdatedAt},
+			Section: c.SectionName, AcquiredAs: shownChoice(c.AcquiredAs), AcquiredOn: string(c.AcquiredOn),
 			AcquiredFrom: c.AcquiredFrom, PriceCents: -1, Condition: shownChoice(c.Condition),
 			DustJacket: "unknown", Signed: c.Signed == 1, Location: c.Location, Notes: c.Notes,
 		},
@@ -224,7 +230,7 @@ type GoneInput struct {
 // MarkGone records that a copy has left the library: it keeps its record and its history, and
 // leaves the shelves, the label queue, and the counts. A copy out on loan comes back first.
 func (s *Service) MarkGone(ctx context.Context, id int64, in GoneInput) (*Copy, error) {
-	if !dayRe.MatchString(in.On) {
+	if !isDay(in.On) {
 		return nil, &FieldError{"on", "give the day it went, as YYYY-MM-DD"}
 	}
 	err := s.inTx(ctx, func(q *db.Queries) error {
@@ -235,7 +241,7 @@ func (s *Service) MarkGone(ctx context.Context, id int64, in GoneInput) (*Copy, 
 		if !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
-		n, err := q.SetCopyGone(ctx, db.SetCopyGoneParams{GoneAs: in.As, GoneOn: in.On, GoneNote: strings.TrimSpace(in.Note), ID: id})
+		n, err := q.SetCopyGone(ctx, db.SetCopyGoneParams{GoneAs: in.As, GoneOn: civil.Date(in.On), GoneNote: strings.TrimSpace(in.Note), ID: id})
 		if err != nil {
 			return fmt.Errorf("mark gone: %w", err)
 		}
@@ -264,10 +270,10 @@ func (s *Service) BringBack(ctx context.Context, id int64) (*Copy, error) {
 
 // MarkSeen records the day a shelf check found a copy.
 func (s *Service) MarkSeen(ctx context.Context, id int64, on string) error {
-	if !dayRe.MatchString(on) {
+	if !isDay(on) {
 		return &FieldError{"on", "give the day, as YYYY-MM-DD"}
 	}
-	n, err := db.New(s.DB.Write).SetCopySeen(ctx, db.SetCopySeenParams{SeenOn: on, ID: id})
+	n, err := db.New(s.DB.Write).SetCopySeen(ctx, db.SetCopySeenParams{SeenOn: civil.Date(on), ID: id})
 	if err != nil {
 		return fmt.Errorf("mark seen: %w", err)
 	}

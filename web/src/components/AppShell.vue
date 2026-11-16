@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, useTemplateRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   faBarcodeRead,
@@ -9,7 +9,7 @@ import {
   faGraduationCap,
   faPlus,
 } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
-import { useSession } from '@/app/session'
+import { useSession } from '@/stores/session'
 
 const session = useSession()
 
@@ -31,11 +31,31 @@ const current = (p: (typeof places)[number]) =>
   p.to === '/'
     ? route.path === '/' || p.under.some((u) => route.path.startsWith(u))
     : route.path.startsWith(p.to)
+
+// The skip link puts the focus on the content itself, so the address gains no #main-content.
+const main = useTemplateRef<HTMLElement>('main')
+function skip() {
+  main.value?.focus()
+}
+
+// After moving to another page in the app, the focus goes to its content, as a page load puts
+// a screen reader at the top of the new page; a page that focused a field of its own keeps it.
+// The first page keeps the browser's own start, so the skip link stays the first stop.
+watch(
+  () => route.path,
+  () => {
+    void nextTick(() => {
+      if (main.value && !main.value.contains(document.activeElement)) {
+        main.value.focus({ preventScroll: true })
+      }
+    })
+  },
+)
 </script>
 
 <template>
   <div class="shell">
-    <a href="#main" class="shell__skip">Skip to the content</a>
+    <a href="#main-content" class="shell__skip" @click.prevent="skip">Skip to the content</a>
     <header class="shell__bar">
       <RouterLink to="/" class="shell__brand">
         <img src="/icons/icon.svg" alt="" class="size-7" />
@@ -64,7 +84,8 @@ const current = (p: (typeof places)[number]) =>
       to browse. Nothing here can be changed.
     </p>
     <main
-      id="main"
+      id="main-content"
+      ref="main"
       tabindex="-1"
       class="shell__main focus:outline-none"
       :class="{ 'shell__main--no-tabs': session.isVisitor }"

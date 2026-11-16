@@ -2,7 +2,8 @@
 import { useId } from 'vue'
 import { storeToRefs } from 'pinia'
 import SelectButton from 'primevue/selectbutton'
-import { unitOptions, useUnits } from '@/app/units'
+import { unitOptions } from '@/constants'
+import { useUnits } from '@/stores/units'
 import FormField from './FormField.vue'
 
 // The one choice of unit, imperial or metric, offered beside wherever lengths are typed.

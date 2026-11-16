@@ -77,11 +77,13 @@ func serve() (err error) {
 	if err != nil {
 		return err
 	}
-	logger := newLogger(cfg)
+	level := new(slog.LevelVar)
+	level.Set(cfg.LogLevel)
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
 	slog.SetDefault(logger)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	app, err := server.New(ctx, cfg, logger)
+	app, err := server.New(ctx, cfg, logger, level)
 	if err != nil {
 		return err
 	}
@@ -93,18 +95,10 @@ func serve() (err error) {
 	return nil
 }
 
-// newLogger is the one shape of log line: JSON on stdout, which journald captures.
+// newLogger is the one shape of log line: JSON on stdout, which journald captures. The
+// server's own logger has the same shape over a level the owner may change (serve).
 func newLogger(cfg config.Config) *slog.Logger {
 	return slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: cfg.LogLevel}))
-}
-
-// existingDB is for the commands that work on the live database: run from a shell without
-// the env file they would otherwise make an empty one at the default path and succeed.
-func existingDB(cfg config.Config) (*db.DB, error) {
-	if _, err := os.Stat(cfg.DBPath); err != nil {
-		return nil, fmt.Errorf("no database at %s; set HL_DB_PATH to the live one: %w", cfg.DBPath, err)
-	}
-	return db.Open(cfg.DBPath)
 }
 
 func migrate() (err error) {
@@ -131,7 +125,7 @@ func runBackup() (err error) {
 	if err != nil {
 		return err
 	}
-	database, err := existingDB(cfg)
+	database, err := db.Open(cfg.DBPath)
 	if err != nil {
 		return err
 	}
@@ -270,7 +264,7 @@ func readText() (err error) {
 	logger := newLogger(cfg).With("service", "text")
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	database, err := existingDB(cfg)
+	database, err := db.Open(cfg.DBPath)
 	if err != nil {
 		return err
 	}

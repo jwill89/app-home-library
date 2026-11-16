@@ -9,6 +9,11 @@ const extensions = ['.vue', '.ts', '.css', '.html']
 const literal =
   /#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})\b|\b(?:rgba?|hsla?|oklch|oklab|lab|lch|hwb)\(/gi
 
+/**
+ * Every source file under a folder.
+ * @param {string} dir
+ * @returns {Generator<string>}
+ */
 function* walk(dir) {
   for (const name of readdirSync(dir)) {
     const path = join(dir, name)
@@ -17,6 +22,7 @@ function* walk(dir) {
   }
 }
 
+/** @type {string[]} */
 const findings = []
 for (const path of walk(root)) {
   if (path.startsWith(exempt)) continue

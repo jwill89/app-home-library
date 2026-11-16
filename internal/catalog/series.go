@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"homelibrary/internal/civil"
 	"homelibrary/internal/db"
 	"homelibrary/internal/lookup"
 )
@@ -155,7 +156,7 @@ func (s *Service) RenameSeries(ctx context.Context, id int64, in SeriesInput) (i
 		if n == 0 {
 			return ErrNotFound
 		}
-		return nil
+		return q.TouchSeriesWorks(ctx, sql.NullInt64{Int64: id, Valid: true})
 	})
 	return keep, err
 }
@@ -208,7 +209,7 @@ func (s *Service) DismissSeries(ctx context.Context, id int64) (int64, error) {
 		if n == 0 {
 			return ErrNotFound
 		}
-		return q.SetSeriesDismissed(ctx, db.SetSeriesDismissedParams{DismissedOn: today(), ID: id})
+		return q.SetSeriesDismissed(ctx, db.SetSeriesDismissedParams{DismissedOn: civil.Date(today()), ID: id})
 	})
 	return n, err
 }

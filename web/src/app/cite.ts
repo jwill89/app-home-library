@@ -1,16 +1,10 @@
-import { listed } from './format'
+import { listed } from '@/app/format'
 
 // Citations in the three styles a school asks for, from a book or a document. A citation is a
 // list of pieces, each italic or not, so the page can show it and the clipboard can carry it
 // with its italics.
 
 export type CiteStyle = 'apa' | 'mla' | 'chicago'
-
-export const citeStyles: { value: CiteStyle; label: string }[] = [
-  { value: 'apa', label: 'APA' },
-  { value: 'mla', label: 'MLA' },
-  { value: 'chicago', label: 'Chicago' },
-]
 
 export interface CiteWork {
   kind: 'book' | 'article' | 'chapter' | 'document'

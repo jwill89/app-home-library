@@ -4,10 +4,12 @@ import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
-import { api, type Loan, type LoanInput } from '@/api/client'
+import { api } from '@/api/client'
+import type { Loan, LoanInput } from '@/types'
 import { addDays, today } from '@/app/format'
 import { loanInput } from '@/app/loans'
-import { useNotice } from '@/app/problem'
+import { useNotice } from '@/composables/useNotice'
+import { useStaleSave } from '@/composables/useStaleSave'
 import BookPicker from './BookPicker.vue'
 import FormField from './FormField.vue'
 
@@ -22,6 +24,7 @@ const props = defineProps<{
 const emit = defineEmits<{ saved: [loan: Loan] }>()
 const open = defineModel<boolean>('visible', { required: true })
 const notice = useNotice()
+const stale = useStaleSave()
 const id = useId()
 const f = (name: string) => `${id}-${name}`
 
@@ -72,7 +75,25 @@ async function save() {
       })
   busy.value = false
   if (error) {
-    notice.failed(error)
+    const was = props.loan
+    const refused =
+      was &&
+      stale(error, {
+        latest: async () => {
+          const { data: list, error: failed } = await api.GET('/loans')
+          return { data: list?.loans?.find((l) => l.id === was.id), error: failed }
+        },
+        load: (l) => {
+          input.value = loanInput(l)
+        },
+        overwrite: (updatedAt) => {
+          input.value.updatedAt = updatedAt
+          return save()
+        },
+      })
+    if (!refused) {
+      notice.failed(error)
+    }
     return
   }
   open.value = false

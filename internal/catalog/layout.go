@@ -24,6 +24,7 @@ type Shelf struct {
 
 // ShelfInput is a shelf as the owner measures it.
 type ShelfInput struct {
+	Stamp
 	WidthMM  int64 `json:"widthMm" minimum:"100" maximum:"5000" doc:"Inside the sides"`
 	HeightMM int64 `json:"heightMm" minimum:"50" maximum:"1000" doc:"Clear space above the shelf"`
 	DepthMM  int64 `json:"depthMm" minimum:"50" maximum:"1000"`

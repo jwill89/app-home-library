@@ -21,6 +21,7 @@ import (
 	"homelibrary/internal/catalog"
 	"homelibrary/internal/config"
 	"homelibrary/internal/db"
+	"homelibrary/internal/db/dbtest"
 	"homelibrary/internal/events"
 )
 
@@ -31,11 +32,12 @@ func newApp(t *testing.T) *App {
 	dir := t.TempDir()
 	cfg := config.Config{
 		Origins:  []string{"http://" + host},
-		DBPath:   filepath.Join(dir, "test.sqlite"),
+		DBPath:   dbtest.Path(t),
 		MediaDir: filepath.Join(dir, "media"),
 		DocsDir:  filepath.Join(dir, "documents"),
 	}
-	a, err := New(context.Background(), cfg, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	level := new(slog.LevelVar)
+	a, err := New(context.Background(), cfg, slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: level})), level)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,6 +54,11 @@ type client struct {
 
 func (c *client) do(method, path, body string) *httptest.ResponseRecorder {
 	c.t.Helper()
+	return c.serve(c.request(method, path, body))
+}
+
+// request is a request as this browser makes it, with its cookie.
+func (c *client) request(method, path, body string) *http.Request {
 	r := httptest.NewRequest(method, "http://"+host+path, strings.NewReader(body))
 	if body != "" {
 		r.Header.Set("Content-Type", "application/json")
@@ -59,6 +66,11 @@ func (c *client) do(method, path, body string) *httptest.ResponseRecorder {
 	if c.cookie != "" {
 		r.AddCookie(&http.Cookie{Name: "hl_session", Value: c.cookie})
 	}
+	return r
+}
+
+// serve answers r, keeping the session cookie the server sets.
+func (c *client) serve(r *http.Request) *httptest.ResponseRecorder {
 	w := httptest.NewRecorder()
 	c.a.Handler().ServeHTTP(w, r)
 	for _, ck := range w.Result().Cookies() {
@@ -237,7 +249,10 @@ func TestShareLinks(t *testing.T) {
 	if again.Share.ID != made.Share.ID {
 		t.Logf("the new link has number %d, the revoked %d", again.Share.ID, made.Share.ID)
 	}
-	mom.expect(http.MethodGet, "/api/v1/books", "", http.StatusUnauthorized)
+	// The first answer after the link went tells the browser to let go of what it kept.
+	if w := mom.expect(http.MethodGet, "/api/v1/books", "", http.StatusUnauthorized); w.Header().Get("Clear-Site-Data") != `"cache"` {
+		t.Errorf("revoked visitor's first answer: Clear-Site-Data %q", w.Header().Get("Clear-Site-Data"))
+	}
 	if who := decode[struct{ Role string }](t, mom.expect(http.MethodGet, "/api/v1/me", "", http.StatusOK)); who.Role != "none" {
 		t.Fatalf("revoked visitor is %s", who.Role)
 	}

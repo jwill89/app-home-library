@@ -8,6 +8,8 @@ package db
 import (
 	"context"
 	"database/sql"
+
+	"homelibrary/internal/civil"
 )
 
 const createReading = `-- name: CreateReading :exec
@@ -16,8 +18,8 @@ INSERT INTO readings (work_id, started_on, finished_on) VALUES (?, ?, ?)
 
 type CreateReadingParams struct {
 	WorkID     int64
-	StartedOn  string
-	FinishedOn string
+	StartedOn  civil.Date
+	FinishedOn civil.Date
 }
 
 func (q *Queries) CreateReading(ctx context.Context, arg CreateReadingParams) error {
@@ -44,7 +46,7 @@ SELECT
     CAST(COALESCE((SELECT e.title FROM editions e WHERE e.work_id = w.id ORDER BY e.id LIMIT 1), w.title) AS TEXT) AS title,
     CAST(COALESCE((SELECT e.pages FROM editions e WHERE e.work_id = w.id ORDER BY e.id LIMIT 1), 0) AS INTEGER) AS pages
 FROM works w
-WHERE w.read_status = 'read' AND w.finished_on <> ''
+WHERE w.read_status = 'read' AND w.finished_on IS NOT NULL
 UNION ALL
 SELECT
     r.work_id, r.finished_on,
@@ -52,13 +54,13 @@ SELECT
     CAST(COALESCE((SELECT e.title FROM editions e WHERE e.work_id = r.work_id ORDER BY e.id LIMIT 1), '') AS TEXT) AS title,
     CAST(COALESCE((SELECT e.pages FROM editions e WHERE e.work_id = r.work_id ORDER BY e.id LIMIT 1), 0) AS INTEGER) AS pages
 FROM readings r
-WHERE r.finished_on <> ''
+WHERE r.finished_on IS NOT NULL
 ORDER BY finished_on DESC
 `
 
 type ListFinishedReadsRow struct {
 	WorkID     int64
-	FinishedOn string
+	FinishedOn civil.Date
 	BookID     int64
 	Title      string
 	Pages      int64
@@ -96,7 +98,8 @@ func (q *Queries) ListFinishedReads(ctx context.Context) ([]*ListFinishedReadsRo
 }
 
 const listWorkReadings = `-- name: ListWorkReadings :many
-SELECT id, work_id, started_on, finished_on, created_at FROM readings WHERE work_id = ? ORDER BY finished_on DESC, id DESC
+SELECT id, work_id, started_on, finished_on, created_at
+FROM readings WHERE work_id = ? ORDER BY finished_on DESC, id DESC
 `
 
 func (q *Queries) ListWorkReadings(ctx context.Context, workID int64) ([]*Reading, error) {
@@ -130,13 +133,13 @@ func (q *Queries) ListWorkReadings(ctx context.Context, workID int64) ([]*Readin
 
 const readAgain = `-- name: ReadAgain :exec
 UPDATE works
-SET read_status = 'reading', current_page = NULL, started_on = ?, finished_on = '',
-    updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+SET read_status = 'reading', current_page = NULL, started_on = ?, finished_on = NULL,
+    updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE id = ?
 `
 
 type ReadAgainParams struct {
-	StartedOn string
+	StartedOn civil.Date
 	ID        int64
 }
 
@@ -149,14 +152,14 @@ func (q *Queries) ReadAgain(ctx context.Context, arg ReadAgainParams) error {
 const setReadStatus = `-- name: SetReadStatus :exec
 UPDATE works
 SET read_status = ?, started_on = ?, finished_on = ?,
-    updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+    updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE id = ?
 `
 
 type SetReadStatusParams struct {
 	ReadStatus string
-	StartedOn  string
-	FinishedOn string
+	StartedOn  civil.Date
+	FinishedOn civil.Date
 	ID         int64
 }
 
@@ -173,9 +176,9 @@ func (q *Queries) SetReadStatus(ctx context.Context, arg SetReadStatusParams) er
 
 const setSeriesReadStatus = `-- name: SetSeriesReadStatus :execrows
 UPDATE works
-SET read_status = ?1, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+SET read_status = ?1, updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE series_id = ?2 AND read_status <> ?3
-    AND EXISTS (SELECT 1 FROM editions e WHERE e.work_id = works.id AND e.wanted_on = '')
+    AND EXISTS (SELECT 1 FROM editions e WHERE e.work_id = works.id AND e.wanted_on IS NULL)
 `
 
 type SetSeriesReadStatusParams struct {

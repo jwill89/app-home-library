@@ -153,6 +153,11 @@
             "description": "Words one of a book's subject headings has; empty for any",
             "maxLength": 100,
             "type": "string"
+          },
+          "updatedAt": {
+            "description": "When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked",
+            "maxLength": 20,
+            "type": "string"
           }
         },
         "required": [
@@ -263,6 +268,11 @@
           "subject": {
             "description": "Words one of a book's subject headings has; empty for any",
             "maxLength": 100,
+            "type": "string"
+          },
+          "updatedAt": {
+            "description": "When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked",
+            "maxLength": 20,
             "type": "string"
           }
         },
@@ -745,6 +755,11 @@
             "minLength": 1,
             "type": "string"
           },
+          "updatedAt": {
+            "description": "When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked",
+            "maxLength": 20,
+            "type": "string"
+          },
           "widthMm": {
             "format": "int64",
             "maximum": 2000,
@@ -932,6 +947,11 @@
               "$ref": "#/components/schemas/Shelf"
             },
             "type": ["array", "null"]
+          },
+          "updatedAt": {
+            "description": "When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked",
+            "maxLength": 20,
+            "type": "string"
           }
         },
         "required": ["id", "name", "position", "shelves"],
@@ -950,6 +970,11 @@
             "format": "int64",
             "minimum": 1,
             "type": "integer"
+          },
+          "updatedAt": {
+            "description": "When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked",
+            "maxLength": 20,
+            "type": "string"
           }
         },
         "required": ["name", "position"],
@@ -998,6 +1023,11 @@
             "description": "Copies they have now",
             "format": "int64",
             "type": "integer"
+          },
+          "updatedAt": {
+            "description": "When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked",
+            "maxLength": 20,
+            "type": "string"
           }
         },
         "required": ["id", "out", "loans", "name", "contact", "notes"],
@@ -1018,6 +1048,11 @@
           },
           "notes": {
             "maxLength": 2000,
+            "type": "string"
+          },
+          "updatedAt": {
+            "description": "When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked",
+            "maxLength": 20,
             "type": "string"
           }
         },
@@ -1283,6 +1318,11 @@
           },
           "signed": {
             "type": "boolean"
+          },
+          "updatedAt": {
+            "description": "When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked",
+            "maxLength": 20,
+            "type": "string"
           }
         },
         "required": [
@@ -1352,6 +1392,11 @@
           },
           "signed": {
             "type": "boolean"
+          },
+          "updatedAt": {
+            "description": "When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked",
+            "maxLength": 20,
+            "type": "string"
           }
         },
         "required": [
@@ -1418,6 +1463,11 @@
           },
           "title": {
             "maxLength": 300,
+            "type": "string"
+          },
+          "updatedAt": {
+            "description": "When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked",
+            "maxLength": 20,
             "type": "string"
           },
           "year": {
@@ -1549,6 +1599,11 @@
             "maxLength": 300,
             "type": "string"
           },
+          "updatedAt": {
+            "description": "When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked",
+            "maxLength": 20,
+            "type": "string"
+          },
           "year": {
             "description": "0 when not known",
             "format": "int64",
@@ -1616,6 +1671,11 @@
           },
           "title": {
             "maxLength": 300,
+            "type": "string"
+          },
+          "updatedAt": {
+            "description": "When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked",
+            "maxLength": 20,
             "type": "string"
           },
           "year": {
@@ -1936,6 +1996,8 @@
             "type": "string"
           },
           "updatedAt": {
+            "description": "When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked",
+            "maxLength": 20,
             "type": "string"
           },
           "url": {
@@ -1952,7 +2014,6 @@
           "course",
           "files",
           "createdAt",
-          "updatedAt",
           "kind",
           "title",
           "authors",
@@ -2121,6 +2182,11 @@
           "title": {
             "maxLength": 500,
             "minLength": 1,
+            "type": "string"
+          },
+          "updatedAt": {
+            "description": "When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked",
+            "maxLength": 20,
             "type": "string"
           },
           "url": {
@@ -2904,6 +2970,11 @@
           },
           "title": {
             "type": "string"
+          },
+          "updatedAt": {
+            "description": "When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked",
+            "maxLength": 20,
+            "type": "string"
           }
         },
         "required": [
@@ -2946,9 +3017,31 @@
           "returnedOn": {
             "description": "YYYY-MM-DD, or empty while the copy is out",
             "type": "string"
+          },
+          "updatedAt": {
+            "description": "When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked",
+            "maxLength": 20,
+            "type": "string"
           }
         },
         "required": ["borrower", "lentOn", "dueOn", "returnedOn", "notes"],
+        "type": "object"
+      },
+      "LogLevelBody": {
+        "additionalProperties": false,
+        "properties": {
+          "level": {
+            "description": "What the server logs now: debug for everything, info for what it does, warn for problems, error for failures alone.",
+            "enum": ["debug", "info", "warn", "error"],
+            "type": "string"
+          },
+          "started": {
+            "description": "What it logged when it started, HL_LOG_LEVEL's level, which a restart goes back to.",
+            "enum": ["debug", "info", "warn", "error"],
+            "type": "string"
+          }
+        },
+        "required": ["level", "started"],
         "type": "object"
       },
       "Lookup-citationRequest": {
@@ -3817,6 +3910,18 @@
         "required": ["changed"],
         "type": "object"
       },
+      "SetLogLevelInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "level": {
+            "description": "What the server logs from now until it restarts.",
+            "enum": ["debug", "info", "warn", "error"],
+            "type": "string"
+          }
+        },
+        "required": ["level"],
+        "type": "object"
+      },
       "SetupCodeInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -3861,6 +3966,11 @@
           },
           "scope": {
             "$ref": "#/components/schemas/Scope"
+          },
+          "updatedAt": {
+            "description": "When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked",
+            "maxLength": 20,
+            "type": "string"
           }
         },
         "required": ["name", "expiresAt", "scope"],
@@ -3890,6 +4000,11 @@
           "scope": {
             "$ref": "#/components/schemas/Scope",
             "description": "What the link shows"
+          },
+          "updatedAt": {
+            "description": "When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked",
+            "maxLength": 20,
+            "type": "string"
           }
         },
         "required": ["id", "name", "expiresAt", "createdAt", "lastUsedAt", "scope"],
@@ -3962,6 +4077,11 @@
             "description": "From the top, 1 up",
             "format": "int64",
             "type": "integer"
+          },
+          "updatedAt": {
+            "description": "When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked",
+            "maxLength": 20,
+            "type": "string"
           },
           "widthMm": {
             "description": "Inside the sides",
@@ -4078,6 +4198,11 @@
             "maximum": 1000,
             "minimum": 50,
             "type": "integer"
+          },
+          "updatedAt": {
+            "description": "When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked",
+            "maxLength": 20,
+            "type": "string"
           },
           "widthMm": {
             "description": "Inside the sides",
@@ -4225,6 +4350,11 @@
             "description": "From the top, 1 up",
             "format": "int64",
             "type": "integer"
+          },
+          "updatedAt": {
+            "description": "When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked",
+            "maxLength": 20,
+            "type": "string"
           },
           "usedMm": {
             "description": "How far along the shelf the books reach, a gap at the start included",
@@ -4412,6 +4542,7 @@
     }
   },
   "info": {
+    "description": "Each operation's description opens with its guard. public: anyone. auth: anyone signed in, the owner or a share link's visitor, who sees only what the link shows. admin: the owner alone.",
     "title": "Home Library",
     "version": "1"
   },
@@ -4419,6 +4550,7 @@
   "paths": {
     "/areas": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "list-areas",
         "responses": {
           "200": {
@@ -4450,6 +4582,7 @@
         "summary": "The areas of shelves, in the order a book tries them, with their rules and shelves"
       },
       "post": {
+        "description": "Guard: admin.",
         "operationId": "create-area",
         "requestBody": {
           "content": {
@@ -4493,6 +4626,7 @@
     },
     "/areas/{id}": {
       "delete": {
+        "description": "Guard: admin.",
         "operationId": "delete-area",
         "parameters": [
           {
@@ -4528,6 +4662,7 @@
         "summary": "Remove an area; its shelves are left in none"
       },
       "put": {
+        "description": "Guard: admin.",
         "operationId": "update-area",
         "parameters": [
           {
@@ -4582,10 +4717,19 @@
     },
     "/auth/logout": {
       "post": {
+        "description": "Guard: public.",
         "operationId": "sign-out",
         "responses": {
           "204": {
-            "description": "No Content"
+            "description": "No Content",
+            "headers": {
+              "Clear-Site-Data": {
+                "schema": {
+                  "description": "\"cache\": the lists the browser kept go with the session",
+                  "type": "string"
+                }
+              }
+            }
           },
           "default": {
             "content": {
@@ -4603,7 +4747,7 @@
     },
     "/auth/passkey/begin": {
       "post": {
-        "description": "Answers the options the browser offers a passkey made on this name from. Each address has ten quick tries at signing in, then one every three seconds (429, with Retry-After).",
+        "description": "Guard: public. Answers the options the browser offers a passkey made on this name from. Each address has ten quick tries at signing in, then one every three seconds (429, with Retry-After).",
         "operationId": "begin-passkey-sign-in",
         "responses": {
           "200": {
@@ -4642,7 +4786,7 @@
     },
     "/auth/passkey/finish": {
       "post": {
-        "description": "Answers who is now signed in, as get-me does. Each address has ten quick tries at signing in, then one every three seconds (429, with Retry-After).",
+        "description": "Guard: public. Answers who is now signed in, as get-me does. Each address has ten quick tries at signing in, then one every three seconds (429, with Retry-After).",
         "operationId": "finish-passkey-sign-in",
         "requestBody": {
           "content": {
@@ -4721,7 +4865,7 @@
     },
     "/auth/setup": {
       "post": {
-        "description": "Spends the code: for the next ten minutes this device may make one passkey on this name (begin-passkey, then add-passkey), which signs it in. Each address has ten quick tries at signing in, then one every three seconds (429, with Retry-After).",
+        "description": "Guard: public. Spends the code: for the next ten minutes this device may make one passkey on this name (begin-passkey, then add-passkey), which signs it in. Each address has ten quick tries at signing in, then one every three seconds (429, with Retry-After).",
         "operationId": "redeem-setup-code",
         "requestBody": {
           "content": {
@@ -4783,6 +4927,7 @@
     },
     "/bookcases": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "list-bookcases",
         "responses": {
           "200": {
@@ -4814,6 +4959,7 @@
         "summary": "The bookcases in walking order, with their shelves"
       },
       "post": {
+        "description": "Guard: admin.",
         "operationId": "create-bookcase",
         "requestBody": {
           "content": {
@@ -4857,6 +5003,7 @@
     },
     "/bookcases/{id}": {
       "delete": {
+        "description": "Guard: admin.",
         "operationId": "delete-bookcase",
         "parameters": [
           {
@@ -4892,6 +5039,7 @@
         "summary": "Remove a bookcase and its shelves; the books are only planned again"
       },
       "put": {
+        "description": "Guard: admin.",
         "operationId": "update-bookcase",
         "parameters": [
           {
@@ -4946,6 +5094,7 @@
     },
     "/bookcases/{id}/shelves": {
       "post": {
+        "description": "Guard: admin.",
         "operationId": "create-shelf",
         "parameters": [
           {
@@ -5000,6 +5149,7 @@
     },
     "/books": {
       "get": {
+        "description": "Guard: auth.",
         "operationId": "list-books",
         "parameters": [
           {
@@ -5048,6 +5198,7 @@
         "summary": "Every book in the library, or those asked for"
       },
       "post": {
+        "description": "Guard: admin.",
         "operationId": "create-book",
         "requestBody": {
           "content": {
@@ -5091,6 +5242,7 @@
     },
     "/books/{id}": {
       "delete": {
+        "description": "Guard: admin.",
         "operationId": "delete-book",
         "parameters": [
           {
@@ -5126,6 +5278,7 @@
         "summary": "Remove a book and its copies"
       },
       "get": {
+        "description": "Guard: auth.",
         "operationId": "get-book",
         "parameters": [
           {
@@ -5168,6 +5321,7 @@
         "summary": "A book with its copies; a visitor's leaves out what is the owner's alone"
       },
       "put": {
+        "description": "Guard: admin.",
         "operationId": "update-book",
         "parameters": [
           {
@@ -5222,6 +5376,7 @@
     },
     "/books/{id}/copies": {
       "post": {
+        "description": "Guard: admin.",
         "operationId": "create-copy",
         "parameters": [
           {
@@ -5276,6 +5431,7 @@
     },
     "/books/{id}/cover": {
       "delete": {
+        "description": "Guard: admin.",
         "operationId": "delete-cover",
         "parameters": [
           {
@@ -5318,6 +5474,7 @@
         "summary": "Leave the book without a cover"
       },
       "post": {
+        "description": "Guard: admin.",
         "operationId": "fetch-cover",
         "parameters": [
           {
@@ -5370,6 +5527,7 @@
         "summary": "Fetch a cover from a link"
       },
       "put": {
+        "description": "Guard: admin.",
         "operationId": "upload-cover",
         "parameters": [
           {
@@ -5438,6 +5596,7 @@
     },
     "/books/{id}/declined-suggestions": {
       "post": {
+        "description": "Guard: admin.",
         "operationId": "decline-suggestions",
         "parameters": [
           {
@@ -5485,6 +5644,7 @@
     },
     "/books/{id}/read-again": {
       "post": {
+        "description": "Guard: admin.",
         "operationId": "read-again",
         "parameters": [
           {
@@ -5539,6 +5699,7 @@
     },
     "/books/{id}/read-status": {
       "put": {
+        "description": "Guard: admin.",
         "operationId": "set-read-status",
         "parameters": [
           {
@@ -5593,6 +5754,7 @@
     },
     "/books/{id}/refresh": {
       "post": {
+        "description": "Guard: admin.",
         "operationId": "refresh-book",
         "parameters": [
           {
@@ -5637,6 +5799,7 @@
     },
     "/books/{id}/suggestions": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "get-suggestions",
         "parameters": [
           {
@@ -5681,6 +5844,7 @@
     },
     "/borrowers": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "list-borrowers",
         "responses": {
           "200": {
@@ -5714,6 +5878,7 @@
     },
     "/borrowers/{id}": {
       "delete": {
+        "description": "Guard: admin.",
         "operationId": "delete-borrower",
         "parameters": [
           {
@@ -5749,6 +5914,7 @@
         "summary": "Remove a borrower and their loans from the history"
       },
       "put": {
+        "description": "Guard: admin.",
         "operationId": "update-borrower",
         "parameters": [
           {
@@ -5803,6 +5969,7 @@
     },
     "/calendar-link": {
       "delete": {
+        "description": "Guard: admin.",
         "operationId": "delete-calendar-link",
         "responses": {
           "204": {
@@ -5827,6 +5994,7 @@
         "summary": "Turn the calendar link off"
       },
       "get": {
+        "description": "Guard: admin.",
         "operationId": "get-calendar-link",
         "responses": {
           "200": {
@@ -5858,6 +6026,7 @@
         "summary": "Whether there is a calendar link for the loans' due dates"
       },
       "post": {
+        "description": "Guard: admin.",
         "operationId": "create-calendar-link",
         "responses": {
           "201": {
@@ -5891,7 +6060,7 @@
     },
     "/changes": {
       "get": {
-        "description": "Server-Sent Events: each change names a record to fetch again over REST. Send Last-Event-ID (the browser does, on its own reconnect) or since to go on from a change.",
+        "description": "Guard: admin. Server-Sent Events: each change names a record to fetch again over REST. Send Last-Event-ID (the browser does, on its own reconnect) or since to go on from a change.",
         "operationId": "stream-changes",
         "parameters": [
           {
@@ -6042,6 +6211,7 @@
     },
     "/choices": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "get-choices",
         "responses": {
           "200": {
@@ -6075,6 +6245,7 @@
     },
     "/codes/{code}": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "identify-code",
         "parameters": [
           {
@@ -6119,6 +6290,7 @@
     },
     "/copies/{id}": {
       "delete": {
+        "description": "Guard: admin.",
         "operationId": "delete-copy",
         "parameters": [
           {
@@ -6154,6 +6326,7 @@
         "summary": "Remove one copy recorded by mistake; the book stays"
       },
       "put": {
+        "description": "Guard: admin.",
         "operationId": "update-copy",
         "parameters": [
           {
@@ -6208,6 +6381,7 @@
     },
     "/copies/{id}/gone": {
       "delete": {
+        "description": "Guard: admin.",
         "operationId": "bring-copy-back",
         "parameters": [
           {
@@ -6250,6 +6424,7 @@
         "summary": "Put a copy that had gone back in the library"
       },
       "put": {
+        "description": "Guard: admin.",
         "operationId": "mark-copy-gone",
         "parameters": [
           {
@@ -6304,6 +6479,7 @@
     },
     "/copies/{id}/loans": {
       "post": {
+        "description": "Guard: admin.",
         "operationId": "create-loan",
         "parameters": [
           {
@@ -6358,6 +6534,7 @@
     },
     "/copies/{id}/place": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "get-copy-place",
         "parameters": [
           {
@@ -6402,6 +6579,7 @@
     },
     "/copies/{id}/seen": {
       "put": {
+        "description": "Guard: admin.",
         "operationId": "mark-copy-seen",
         "parameters": [
           {
@@ -6449,6 +6627,7 @@
     },
     "/courses": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "list-courses",
         "responses": {
           "200": {
@@ -6480,6 +6659,7 @@
         "summary": "Every course, latest first"
       },
       "post": {
+        "description": "Guard: admin.",
         "operationId": "create-course",
         "requestBody": {
           "content": {
@@ -6523,6 +6703,7 @@
     },
     "/courses/{id}": {
       "delete": {
+        "description": "Guard: admin.",
         "operationId": "delete-course",
         "parameters": [
           {
@@ -6558,6 +6739,7 @@
         "summary": "Remove a course; its books stay"
       },
       "get": {
+        "description": "Guard: admin.",
         "operationId": "get-course",
         "parameters": [
           {
@@ -6600,6 +6782,7 @@
         "summary": "A course with its books"
       },
       "put": {
+        "description": "Guard: admin.",
         "operationId": "update-course",
         "parameters": [
           {
@@ -6654,6 +6837,7 @@
     },
     "/courses/{id}/copies/{copyId}": {
       "delete": {
+        "description": "Guard: admin.",
         "operationId": "delete-course-copy",
         "parameters": [
           {
@@ -6698,6 +6882,7 @@
         "summary": "Take a copy off a course's list; the copy stays"
       },
       "put": {
+        "description": "Guard: admin.",
         "operationId": "put-course-copy",
         "parameters": [
           {
@@ -6761,6 +6946,7 @@
     },
     "/documents": {
       "get": {
+        "description": "Guard: auth.",
         "operationId": "list-documents",
         "parameters": [
           {
@@ -6805,6 +6991,7 @@
         "summary": "Every document, or those whose details or files have the words searched for"
       },
       "post": {
+        "description": "Guard: admin.",
         "operationId": "create-document",
         "requestBody": {
           "content": {
@@ -6848,6 +7035,7 @@
     },
     "/documents/{id}": {
       "delete": {
+        "description": "Guard: admin.",
         "operationId": "delete-document",
         "parameters": [
           {
@@ -6883,6 +7071,7 @@
         "summary": "Remove a document and its files"
       },
       "get": {
+        "description": "Guard: auth.",
         "operationId": "get-document",
         "parameters": [
           {
@@ -6925,6 +7114,7 @@
         "summary": "A document with its files"
       },
       "put": {
+        "description": "Guard: admin.",
         "operationId": "update-document",
         "parameters": [
           {
@@ -6979,6 +7169,7 @@
     },
     "/documents/{id}/files": {
       "post": {
+        "description": "Guard: admin.",
         "operationId": "add-document-file",
         "parameters": [
           {
@@ -7047,6 +7238,7 @@
     },
     "/documents/{id}/files/{fileId}": {
       "delete": {
+        "description": "Guard: admin.",
         "operationId": "delete-document-file",
         "parameters": [
           {
@@ -7098,6 +7290,7 @@
         "summary": "Remove one of a document's files"
       },
       "get": {
+        "description": "Guard: auth.",
         "operationId": "get-document-file",
         "parameters": [
           {
@@ -7144,6 +7337,7 @@
     },
     "/documents/{id}/files/{fileId}/text": {
       "put": {
+        "description": "Guard: admin.",
         "operationId": "set-file-text",
         "parameters": [
           {
@@ -7207,6 +7401,7 @@
     },
     "/documents/{id}/open-copy": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "get-open-copy",
         "parameters": [
           {
@@ -7249,6 +7444,7 @@
         "summary": "Where OpenAlex knows the document can be read without a subscription, asked afresh"
       },
       "post": {
+        "description": "Guard: admin.",
         "operationId": "add-open-copy",
         "parameters": [
           {
@@ -7293,6 +7489,7 @@
     },
     "/documents/{id}/refresh": {
       "post": {
+        "description": "Guard: admin.",
         "operationId": "refresh-document",
         "parameters": [
           {
@@ -7337,6 +7534,7 @@
     },
     "/enrichment": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "get-enrichment",
         "responses": {
           "200": {
@@ -7368,6 +7566,7 @@
         "summary": "How far the background lookup has got"
       },
       "post": {
+        "description": "Guard: admin.",
         "operationId": "queue-lookups",
         "requestBody": {
           "content": {
@@ -7411,6 +7610,7 @@
     },
     "/export/books.csv": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "export-books",
         "responses": {
           "200": {
@@ -7457,6 +7657,7 @@
     },
     "/export/library.json": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "export-library",
         "responses": {
           "200": {
@@ -7503,6 +7704,7 @@
     },
     "/gaps": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "list-gaps",
         "parameters": [
           {
@@ -7553,6 +7755,7 @@
     },
     "/imports": {
       "post": {
+        "description": "Guard: admin.",
         "operationId": "create-import",
         "parameters": [
           {
@@ -7624,6 +7827,7 @@
     },
     "/label-sheets": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "list-label-sheets",
         "responses": {
           "200": {
@@ -7657,6 +7861,7 @@
     },
     "/label-sheets/{kind}": {
       "put": {
+        "description": "Guard: admin.",
         "operationId": "set-label-sheet",
         "parameters": [
           {
@@ -7704,6 +7909,7 @@
     },
     "/label-sheets/{kind}/alignment": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "alignment-sheet",
         "parameters": [
           {
@@ -7761,6 +7967,7 @@
     },
     "/labels": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "list-labels",
         "responses": {
           "200": {
@@ -7794,6 +8001,7 @@
     },
     "/labels/{kind}": {
       "delete": {
+        "description": "Guard: admin.",
         "operationId": "unqueue-labels",
         "parameters": [
           {
@@ -7847,6 +8055,7 @@
     },
     "/labels/{kind}/sheets": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "print-labels",
         "parameters": [
           {
@@ -7918,6 +8127,7 @@
     },
     "/labels/{kind}/{copyId}": {
       "put": {
+        "description": "Guard: admin.",
         "operationId": "queue-label",
         "parameters": [
           {
@@ -7964,6 +8174,7 @@
     },
     "/layout": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "get-layout",
         "parameters": [
           {
@@ -8007,6 +8218,7 @@
         "summary": "The library on its shelves: the layout in use, a suggestion asked for, or the shelves with nothing on them"
       },
       "put": {
+        "description": "Guard: admin.",
         "operationId": "set-layout",
         "requestBody": {
           "content": {
@@ -8043,6 +8255,7 @@
     },
     "/layout/in-use": {
       "delete": {
+        "description": "Guard: admin.",
         "operationId": "stop-layout",
         "responses": {
           "204": {
@@ -8067,6 +8280,7 @@
         "summary": "Stop using the layout: no book has a place until another is put to use"
       },
       "put": {
+        "description": "Guard: admin.",
         "operationId": "use-layout",
         "responses": {
           "204": {
@@ -8093,6 +8307,7 @@
     },
     "/layout/labels": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "shelf-labels",
         "responses": {
           "200": {
@@ -8139,6 +8354,7 @@
     },
     "/loans": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "list-loans",
         "responses": {
           "200": {
@@ -8172,6 +8388,7 @@
     },
     "/loans/{id}": {
       "delete": {
+        "description": "Guard: admin.",
         "operationId": "delete-loan",
         "parameters": [
           {
@@ -8207,6 +8424,7 @@
         "summary": "Remove a loan from the history"
       },
       "put": {
+        "description": "Guard: admin.",
         "operationId": "update-loan",
         "parameters": [
           {
@@ -8259,8 +8477,85 @@
         "summary": "Replace a loan's details; a return date brings the copy back"
       }
     },
+    "/log-level": {
+      "get": {
+        "description": "Guard: admin.",
+        "operationId": "get-log-level",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogLevelBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "How much the server logs"
+      },
+      "put": {
+        "description": "Guard: admin. From now until the server restarts, which goes back to HL_LOG_LEVEL's level.",
+        "operationId": "set-log-level",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetLogLevelInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogLevelBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Set how much the server logs"
+      }
+    },
     "/lookup/citation": {
       "post": {
+        "description": "Guard: admin.",
         "operationId": "lookup-citation",
         "requestBody": {
           "content": {
@@ -8304,6 +8599,7 @@
     },
     "/lookup/doi": {
       "post": {
+        "description": "Guard: admin.",
         "operationId": "lookup-doi",
         "requestBody": {
           "content": {
@@ -8347,6 +8643,7 @@
     },
     "/lookup/dois": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "find-dois",
         "parameters": [
           {
@@ -8404,6 +8701,7 @@
     },
     "/lookup/isbn/{isbn}": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "lookup-isbn",
         "parameters": [
           {
@@ -8458,6 +8756,7 @@
     },
     "/lookup/search": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "lookup-search",
         "parameters": [
           {
@@ -8503,6 +8802,7 @@
     },
     "/me": {
       "get": {
+        "description": "Guard: public.",
         "operationId": "get-me",
         "responses": {
           "200": {
@@ -8531,6 +8831,7 @@
     },
     "/passkeys": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "list-passkeys",
         "responses": {
           "200": {
@@ -8562,7 +8863,7 @@
         "summary": "The owner's passkeys on every name"
       },
       "post": {
-        "description": "Finishes begin-passkey. A device that redeemed a setup code is signed in by it.",
+        "description": "Guard: admin. Finishes begin-passkey. A device that redeemed a setup code is signed in by it.",
         "operationId": "add-passkey",
         "requestBody": {
           "content": {
@@ -8656,7 +8957,7 @@
     },
     "/passkeys/begin": {
       "post": {
-        "description": "For the owner, or a device that has redeemed a setup code (redeem-setup-code); a visitor by a share link is refused.",
+        "description": "Guard: admin. For the owner, or a device that has redeemed a setup code (redeem-setup-code); a visitor by a share link is refused.",
         "operationId": "begin-passkey",
         "responses": {
           "200": {
@@ -8710,6 +9011,7 @@
     },
     "/passkeys/{id}": {
       "delete": {
+        "description": "Guard: admin.",
         "operationId": "delete-passkey",
         "parameters": [
           {
@@ -8747,6 +9049,7 @@
     },
     "/reading": {
       "get": {
+        "description": "Guard: auth.",
         "operationId": "get-reading",
         "responses": {
           "200": {
@@ -8780,6 +9083,7 @@
     },
     "/readings/{id}": {
       "delete": {
+        "description": "Guard: admin.",
         "operationId": "delete-reading",
         "parameters": [
           {
@@ -8817,6 +9121,7 @@
     },
     "/scans": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "list-scans",
         "responses": {
           "200": {
@@ -8848,6 +9153,7 @@
         "summary": "The scans not yet marked done"
       },
       "post": {
+        "description": "Guard: admin.",
         "operationId": "create-scan",
         "requestBody": {
           "content": {
@@ -8891,6 +9197,7 @@
     },
     "/scans/add": {
       "post": {
+        "description": "Guard: admin.",
         "operationId": "add-scans",
         "requestBody": {
           "content": {
@@ -8934,6 +9241,7 @@
     },
     "/scans/done": {
       "post": {
+        "description": "Guard: admin.",
         "operationId": "finish-scans",
         "responses": {
           "204": {
@@ -8960,6 +9268,7 @@
     },
     "/scans/{id}": {
       "delete": {
+        "description": "Guard: admin.",
         "operationId": "delete-scan",
         "parameters": [
           {
@@ -9007,6 +9316,7 @@
     },
     "/scans/{id}/done": {
       "post": {
+        "description": "Guard: admin.",
         "operationId": "finish-scan",
         "parameters": [
           {
@@ -9044,6 +9354,7 @@
     },
     "/sections": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "list-sections",
         "responses": {
           "200": {
@@ -9077,6 +9388,7 @@
     },
     "/sections/{id}": {
       "put": {
+        "description": "Guard: admin.",
         "operationId": "set-shelving",
         "parameters": [
           {
@@ -9131,6 +9443,7 @@
     },
     "/series": {
       "get": {
+        "description": "Guard: auth.",
         "operationId": "list-series",
         "responses": {
           "200": {
@@ -9164,6 +9477,7 @@
     },
     "/series/{id}": {
       "delete": {
+        "description": "Guard: admin.",
         "operationId": "dismiss-series",
         "parameters": [
           {
@@ -9206,6 +9520,7 @@
         "summary": "Say a series is none: its books leave it, and no lookup or import puts a book in it again"
       },
       "get": {
+        "description": "Guard: auth.",
         "operationId": "get-series",
         "parameters": [
           {
@@ -9248,6 +9563,7 @@
         "summary": "One series with the volumes had and wanted, the gaps, and the next number"
       },
       "put": {
+        "description": "Guard: admin.",
         "operationId": "rename-series",
         "parameters": [
           {
@@ -9302,6 +9618,7 @@
     },
     "/series/{id}/books/{bookId}": {
       "delete": {
+        "description": "Guard: admin.",
         "operationId": "leave-series",
         "parameters": [
           {
@@ -9348,6 +9665,7 @@
     },
     "/series/{id}/read-status": {
       "put": {
+        "description": "Guard: admin.",
         "operationId": "set-series-read",
         "parameters": [
           {
@@ -9402,6 +9720,7 @@
     },
     "/setup-codes": {
       "post": {
+        "description": "Guard: admin.",
         "operationId": "create-setup-code",
         "responses": {
           "200": {
@@ -9435,6 +9754,7 @@
     },
     "/shares": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "list-shares",
         "responses": {
           "200": {
@@ -9466,6 +9786,7 @@
         "summary": "The read-only share links, newest first"
       },
       "post": {
+        "description": "Guard: admin.",
         "operationId": "create-share",
         "requestBody": {
           "content": {
@@ -9509,6 +9830,7 @@
     },
     "/shares/{id}": {
       "delete": {
+        "description": "Guard: admin.",
         "operationId": "delete-share",
         "parameters": [
           {
@@ -9544,6 +9866,7 @@
         "summary": "Revoke a share link at once"
       },
       "put": {
+        "description": "Guard: admin.",
         "operationId": "update-share",
         "parameters": [
           {
@@ -9598,6 +9921,7 @@
     },
     "/shelves/{id}": {
       "delete": {
+        "description": "Guard: admin.",
         "operationId": "delete-shelf",
         "parameters": [
           {
@@ -9633,6 +9957,7 @@
         "summary": "Remove a shelf; the shelves below move up a number"
       },
       "put": {
+        "description": "Guard: admin.",
         "operationId": "update-shelf",
         "parameters": [
           {
@@ -9687,6 +10012,7 @@
     },
     "/suggestions": {
       "get": {
+        "description": "Guard: admin.",
         "operationId": "list-suggestions",
         "parameters": [
           {

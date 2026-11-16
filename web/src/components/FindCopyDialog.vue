@@ -6,9 +6,10 @@ import {
 } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
-import { api, type Document, type OpenCopy } from '@/api/client'
+import { api } from '@/api/client'
+import type { Document, OpenCopy } from '@/types'
 import { librarySearch, librarySearchLink, workWords } from '@/app/libraryLink'
-import { useNotice } from '@/app/problem'
+import { useNotice } from '@/composables/useNotice'
 
 // Where a document can be read: an open copy OpenAlex knows (an author's manuscript in a
 // repository, or the publisher's open version), the owner's library, where they sign in with

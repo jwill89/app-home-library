@@ -2,9 +2,10 @@
 import { computed, onMounted, ref } from 'vue'
 import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'
-import { api, type Series } from '@/api/client'
+import { api } from '@/api/client'
+import type { Series } from '@/types'
 import { numberRanges } from '@/app/format'
-import { useNotice } from '@/app/problem'
+import { useNotice } from '@/composables/useNotice'
 import LibraryTabs from '@/components/LibraryTabs.vue'
 import PageHeader from '@/components/PageHeader.vue'
 

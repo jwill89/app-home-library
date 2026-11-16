@@ -520,7 +520,7 @@ func day(s string) string {
 		return ""
 	}
 	d := strings.ReplaceAll(s[:10], "/", "-")
-	if dayRe.MatchString(d) {
+	if isDay(d) {
 		return d
 	}
 	return ""

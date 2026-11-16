@@ -4,11 +4,11 @@ import (
 	"context"
 	"io"
 	"log/slog"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"homelibrary/internal/db"
+	"homelibrary/internal/db/dbtest"
 )
 
 // sink is a stream as a test reads it.
@@ -47,14 +47,7 @@ func (s *sink) quiet(t *testing.T) {
 
 func newFeed(t *testing.T) (*Feed, *db.DB) {
 	t.Helper()
-	database, err := db.Open(filepath.Join(t.TempDir(), "feed.sqlite"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = database.Close() })
-	if _, err := db.Migrate(context.Background(), database.Write); err != nil {
-		t.Fatal(err)
-	}
+	database := dbtest.Open(t)
 	f := New(database.Read, database.Write, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	f.Poll = 10 * time.Millisecond
 	f.Lookback = 0
@@ -126,7 +119,7 @@ func TestFollow(t *testing.T) {
 func TestFollowLooksBack(t *testing.T) {
 	f, d := newFeed(t)
 	exec(t, d, `INSERT INTO documents (kind, title) VALUES ('other', 'Long ago')`)
-	exec(t, d, `UPDATE changes SET at = '2000-01-01T00:00:00.000Z'`)
+	exec(t, d, `UPDATE changes SET at = '2000-01-01T00:00:00Z'`)
 	exec(t, d, `INSERT INTO documents (kind, title) VALUES ('other', 'Just now')`)
 	f.Lookback = time.Minute
 	late := follow(t, f, 0)

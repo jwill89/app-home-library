@@ -12,11 +12,12 @@ import {
   faMagnifyingGlass,
   faPlus,
 } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
-import { api, type DocumentRow, type DocumentSuggestions } from '@/api/client'
-import { useFeed } from '@/app/feed'
+import { api } from '@/api/client'
+import type { DocumentRow, DocumentSuggestions } from '@/types'
+import { useFeed } from '@/composables/useFeed'
 import { count, documentKindLabel } from '@/app/format'
-import { useNotice } from '@/app/problem'
-import { useSession } from '@/app/session'
+import { useNotice } from '@/composables/useNotice'
+import { useSession } from '@/stores/session'
 import LibraryTabs from '@/components/LibraryTabs.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import SuggestedChanges from '@/components/SuggestedChanges.vue'

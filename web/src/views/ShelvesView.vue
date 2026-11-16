@@ -9,19 +9,18 @@ import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
 import ToggleSwitch from 'primevue/toggleswitch'
 import { faPlus, faTags } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
-import {
-  api,
-  apiURL,
-  type Area,
-  type AreaInput,
-  type Bookcase,
-  type Layout,
-  type ShelfBook,
-  type ShelfInput,
-  type ShelfPlace,
-  type ShelfPlan,
-} from '@/api/client'
-import { useConfirmAction } from '@/app/confirm'
+import { api, apiURL } from '@/api/client'
+import type {
+  Area,
+  AreaInput,
+  Bookcase,
+  Layout,
+  ShelfBook,
+  ShelfInput,
+  ShelfPlace,
+  ShelfPlan,
+} from '@/types'
+import { useConfirmAction } from '@/composables/useConfirmAction'
 import {
   areaOrderText,
   areaRulesText,
@@ -33,8 +32,9 @@ import {
   shelfNumbers,
   shelfSize,
 } from '@/app/format'
-import { useNotice } from '@/app/problem'
-import { useUnits } from '@/app/units'
+import { useNotice } from '@/composables/useNotice'
+import { useStaleSave } from '@/composables/useStaleSave'
+import { useUnits } from '@/stores/units'
 import AreaDialog from '@/components/AreaDialog.vue'
 import BookPicker from '@/components/BookPicker.vue'
 import FormField from '@/components/FormField.vue'
@@ -46,6 +46,7 @@ import UnitChoice from '@/components/UnitChoice.vue'
 
 const ask = useConfirmAction()
 const notice = useNotice()
+const stale = useStaleSave()
 const id = useId()
 
 const bookcases = ref<Bookcase[]>([])
@@ -180,6 +181,7 @@ const areaInput = (a: Area, position: number): AreaInput => ({
   maxHeightMm: a.maxHeightMm,
   order: a.order ?? [],
   shelfIds: a.shelfIds ?? [],
+  updatedAt: a.updatedAt,
 })
 async function moveArea(a: Area, by: -1 | 1) {
   const { error } = await api.PUT('/areas/{id}', {
@@ -187,7 +189,17 @@ async function moveArea(a: Area, by: -1 | 1) {
     body: areaInput(a, a.position + by),
   })
   if (error) {
-    notice.failed(error)
+    const refused = stale(error, {
+      latest: async () => {
+        const { data, error: failed } = await api.GET('/areas')
+        return { data: data?.areas?.find((x) => x.id === a.id), error: failed }
+      },
+      load,
+      overwrite: (updatedAt) => moveArea({ ...a, updatedAt }, by),
+    })
+    if (!refused) {
+      notice.failed(error)
+    }
     return
   }
   await load()
@@ -288,23 +300,52 @@ async function createCase() {
   await load()
 }
 
-const editingCase = ref<{ id: number; name: string; position: number } | null>(null)
+const caseForm = (b: Bookcase) => ({
+  id: b.id,
+  name: b.name,
+  position: b.position,
+  updatedAt: b.updatedAt,
+})
+const editingCase = ref<ReturnType<typeof caseForm> | null>(null)
 const caseOpen = ref(false)
 function editCase(b: Bookcase) {
-  editingCase.value = { id: b.id, name: b.name, position: b.position }
+  editingCase.value = caseForm(b)
   caseOpen.value = true
+}
+// The bookcases and their shelves as the server has them now, for a save refused because one
+// changed since its form opened.
+async function latestBookcases() {
+  const { data, error } = await api.GET('/bookcases')
+  return { cases: data?.bookcases ?? [], error }
 }
 async function saveCase() {
   if (!editingCase.value) {
     return
   }
-  const { id: bid, name, position } = editingCase.value
+  const { id: bid, name, position, updatedAt } = editingCase.value
   const { error } = await api.PUT('/bookcases/{id}', {
     params: { path: { id: bid } },
-    body: { name, position },
+    body: { name, position, updatedAt },
   })
   if (error) {
-    notice.failed(error)
+    const refused = stale(error, {
+      latest: async () => {
+        const { cases, error: failed } = await latestBookcases()
+        return { data: cases.find((b) => b.id === bid), error: failed }
+      },
+      load: (b) => {
+        editingCase.value = caseForm(b)
+      },
+      overwrite: (stamp) => {
+        if (editingCase.value) {
+          editingCase.value.updatedAt = stamp
+          return saveCase()
+        }
+      },
+    })
+    if (!refused) {
+      notice.failed(error)
+    }
     return
   }
   caseOpen.value = false
@@ -354,7 +395,7 @@ function editShelf(p: ShelfPlan) {
     shelfId: p.id,
     bookcaseId: p.bookcaseId,
     title: `${p.bookcase}, shelf ${p.position}`,
-    shelf: measurementsOf(p),
+    shelf: { ...measurementsOf(p), updatedAt: p.updatedAt },
   }
   shelfOpen.value = true
 }
@@ -370,7 +411,29 @@ async function saveShelf() {
         body: shelf,
       })
   if (error) {
-    notice.failed(error)
+    const refused =
+      shelfId > 0 &&
+      stale(error, {
+        latest: async () => {
+          const { cases, error: failed } = await latestBookcases()
+          const shelves = cases.flatMap((b) => b.shelves ?? [])
+          return { data: shelves.find((x) => x.id === shelfId), error: failed }
+        },
+        load: (latest) => {
+          if (shelfEdit.value) {
+            shelfEdit.value.shelf = { ...measurementsOf(latest), updatedAt: latest.updatedAt }
+          }
+        },
+        overwrite: (updatedAt) => {
+          if (shelfEdit.value) {
+            shelfEdit.value.shelf.updatedAt = updatedAt
+            return saveShelf()
+          }
+        },
+      })
+    if (!refused) {
+      notice.failed(error)
+    }
     return
   }
   shelfOpen.value = false

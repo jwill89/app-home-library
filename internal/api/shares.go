@@ -21,6 +21,7 @@ type sharesOutput struct {
 
 // shareInput is a link as the owner names it, ends it, and chooses what it shows.
 type shareInput struct {
+	catalog.Stamp
 	Name      string        `json:"name" minLength:"1" maxLength:"80" doc:"Who or what the link is for"`
 	ExpiresAt string        `json:"expiresAt" maxLength:"40" doc:"When the link stops working, RFC 3339; empty for never"`
 	Scope     catalog.Scope `json:"scope"`
@@ -87,7 +88,7 @@ func (h *handlers) registerShares() {
 			if err != nil {
 				return nil, err
 			}
-			s, err := auth.UpdateShare(ctx, h.DB, in.ID, in.Body.Name, expires, in.Body.Scope)
+			s, err := auth.UpdateShare(ctx, h.DB, in.ID, in.Body.UpdatedAt, in.Body.Name, expires, in.Body.Scope)
 			if errors.Is(err, auth.ErrNoShare) {
 				return nil, huma.Error404NotFound("no such share link")
 			}

@@ -67,6 +67,18 @@ func (q *Queries) AddAreaSeries(ctx context.Context, arg AddAreaSeriesParams) er
 	return err
 }
 
+const areaStamp = `-- name: AreaStamp :one
+SELECT updated_at FROM areas WHERE id = ?
+`
+
+// When an area last changed, which a save of its form must have read.
+func (q *Queries) AreaStamp(ctx context.Context, id int64) (string, error) {
+	row := q.db.QueryRowContext(ctx, areaStamp, id)
+	var updated_at string
+	err := row.Scan(&updated_at)
+	return updated_at, err
+}
+
 const clearAreaAuthors = `-- name: ClearAreaAuthors :exec
 DELETE FROM area_authors WHERE area_id = ?
 `
@@ -222,7 +234,7 @@ func (q *Queries) ListAreaRules(ctx context.Context) ([]*ListAreaRulesRow, error
 }
 
 const listAreas = `-- name: ListAreas :many
-SELECT id, name, position, dewey_from, dewey_to, subject, min_height_mm, max_height_mm
+SELECT id, name, position, dewey_from, dewey_to, subject, min_height_mm, max_height_mm, updated_at
 FROM areas ORDER BY position, id
 `
 
@@ -245,6 +257,7 @@ func (q *Queries) ListAreas(ctx context.Context) ([]*Area, error) {
 			&i.Subject,
 			&i.MinHeightMm,
 			&i.MaxHeightMm,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -290,7 +303,8 @@ func (q *Queries) ListAuthorNames(ctx context.Context) ([]string, error) {
 }
 
 const setAreaPosition = `-- name: SetAreaPosition :exec
-UPDATE areas SET position = ? WHERE id = ?
+UPDATE areas SET position = ?1, updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
+WHERE id = ?2 AND position <> ?1
 `
 
 type SetAreaPositionParams struct {
@@ -320,9 +334,26 @@ func (q *Queries) SetShelfArea(ctx context.Context, arg SetShelfAreaParams) (int
 	return result.RowsAffected()
 }
 
+const touchAreaOfShelf = `-- name: TouchAreaOfShelf :exec
+UPDATE areas SET updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
+WHERE areas.id = (SELECT s.area_id FROM shelves s WHERE s.id = ?1) AND areas.id <> ?2
+`
+
+type TouchAreaOfShelfParams struct {
+	ShelfID int64
+	AreaID  int64
+}
+
+// A shelf taken by another area is a change to the area that had it, whose form lists it.
+func (q *Queries) TouchAreaOfShelf(ctx context.Context, arg TouchAreaOfShelfParams) error {
+	_, err := q.db.ExecContext(ctx, touchAreaOfShelf, arg.ShelfID, arg.AreaID)
+	return err
+}
+
 const updateArea = `-- name: UpdateArea :execrows
 UPDATE areas
-SET name = ?, dewey_from = ?, dewey_to = ?, subject = ?, min_height_mm = ?, max_height_mm = ?
+SET name = ?, dewey_from = ?, dewey_to = ?, subject = ?, min_height_mm = ?, max_height_mm = ?,
+    updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE id = ?
 `
 

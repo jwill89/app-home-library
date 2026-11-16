@@ -1,0 +1,12 @@
+{
+  "extends": "@jwill89/lint-web/tsconfig.node.json",
+  "compilerOptions": {
+    // The end-to-end tests hand functions to page.evaluate, which run in the page.
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    // They build their books from the app's own shapes (e2e/library.ts).
+    "paths": { "@/*": ["./src/*"] },
+    "allowJs": true,
+    "checkJs": true
+  },
+  "include": ["vite.config.ts", "playwright.config.ts", "e2e", "scripts"]
+}

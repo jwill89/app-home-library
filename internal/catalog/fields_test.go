@@ -87,3 +87,14 @@ func TestValueListsAreTheirEnums(t *testing.T) {
 		}
 	}
 }
+
+func TestIsDay(t *testing.T) {
+	for s, want := range map[string]bool{
+		"2026-11-07": true, "2024-02-29": true, "2026-02-30": false, "2026-11-7": false,
+		"2026-13-01": false, "2026-11-07T00:00:00Z": false, "": false,
+	} {
+		if got := isDay(s); got != want {
+			t.Errorf("isDay(%q) = %v", s, got)
+		}
+	}
+}

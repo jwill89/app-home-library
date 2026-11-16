@@ -331,6 +331,7 @@ func (b *Book) Input() BookInput {
 		sources[k] = v
 	}
 	return BookInput{
+		Stamp: Stamp{UpdatedAt: b.UpdatedAt},
 		Title: b.Title, Subtitle: b.Subtitle, Contributors: b.Contributors, Series: b.Series,
 		SeriesNumber: b.SeriesNumber, Category: b.Category, ReadStatus: b.ReadStatus, CurrentPage: b.CurrentPage,
 		StartedOn: b.StartedOn, FinishedOn: b.FinishedOn, Rating: b.Rating, Notes: b.Notes,

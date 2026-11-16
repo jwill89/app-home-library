@@ -2,7 +2,7 @@
 import Button from 'primevue/button'
 import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'
-import type { Scan } from '@/api/client'
+import type { Scan } from '@/types'
 import { scanStatusLabel } from '@/app/format'
 import BookCover from './BookCover.vue'
 

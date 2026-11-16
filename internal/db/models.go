@@ -6,6 +6,8 @@ package db
 
 import (
 	"database/sql"
+
+	"homelibrary/internal/civil"
 )
 
 type Area struct {
@@ -17,6 +19,7 @@ type Area struct {
 	Subject     string
 	MinHeightMm int64
 	MaxHeightMm int64
+	UpdatedAt   string
 }
 
 type AreaAuthor struct {
@@ -45,6 +48,7 @@ type Bookcase struct {
 	Name      string
 	Position  int64
 	CreatedAt string
+	UpdatedAt string
 }
 
 type Borrower struct {
@@ -53,13 +57,14 @@ type Borrower struct {
 	Contact   string
 	Notes     string
 	CreatedAt string
+	UpdatedAt string
 }
 
 type CalendarLink struct {
 	ID         int64
 	TokenHash  string
 	CreatedAt  string
-	LastUsedAt string
+	LastUsedAt sql.NullString
 }
 
 type Change struct {
@@ -74,7 +79,7 @@ type Copy struct {
 	EditionID    int64
 	SectionID    sql.NullInt64
 	AcquiredAs   string
-	AcquiredOn   string
+	AcquiredOn   civil.Date
 	AcquiredFrom string
 	PriceCents   sql.NullInt64
 	Condition    string
@@ -85,9 +90,9 @@ type Copy struct {
 	CreatedAt    string
 	UpdatedAt    string
 	GoneAs       string
-	GoneOn       string
+	GoneOn       civil.Date
 	GoneNote     string
-	SeenOn       string
+	SeenOn       civil.Date
 }
 
 type CopyShelving struct {
@@ -209,7 +214,7 @@ type Edition struct {
 	Sources          string
 	CreatedAt        string
 	UpdatedAt        string
-	WantedOn         string
+	WantedOn         civil.Date
 }
 
 type EditionAuthor struct {
@@ -262,18 +267,19 @@ type LabelQueue struct {
 type LayoutSetting struct {
 	ID          int64
 	FillPercent int64
-	AppliedAt   string
+	AppliedAt   sql.NullString
 }
 
 type Loan struct {
 	ID         int64
 	CopyID     int64
 	BorrowerID int64
-	LentOn     string
-	DueOn      string
-	ReturnedOn string
+	LentOn     civil.Date
+	DueOn      civil.Date
+	ReturnedOn civil.Date
 	Notes      string
 	CreatedAt  string
+	UpdatedAt  string
 }
 
 type LoanRow struct {
@@ -281,10 +287,11 @@ type LoanRow struct {
 	CopyID     int64
 	BorrowerID int64
 	Borrower   string
-	LentOn     string
-	DueOn      string
-	ReturnedOn string
+	LentOn     civil.Date
+	DueOn      civil.Date
+	ReturnedOn civil.Date
 	Notes      string
+	UpdatedAt  string
 	EditionID  int64
 	Title      string
 	Cover      string
@@ -323,8 +330,8 @@ type Person struct {
 type Reading struct {
 	ID         int64
 	WorkID     int64
-	StartedOn  string
-	FinishedOn string
+	StartedOn  civil.Date
+	FinishedOn civil.Date
 	CreatedAt  string
 }
 
@@ -370,13 +377,13 @@ type Section struct {
 type Series struct {
 	ID          int64
 	Name        string
-	DismissedOn string
+	DismissedOn civil.Date
 }
 
 type Session struct {
 	Token  string
 	Data   []byte
-	Expiry float64
+	Expiry string
 }
 
 type SetupCode struct {
@@ -389,12 +396,13 @@ type Share struct {
 	ID         int64
 	Name       string
 	TokenHash  string
-	ExpiresAt  string
+	ExpiresAt  sql.NullString
 	CreatedAt  string
-	LastUsedAt string
+	LastUsedAt sql.NullString
 	Books      string
 	Wishlist   int64
 	Papers     string
+	UpdatedAt  string
 }
 
 type ShareBook struct {
@@ -429,6 +437,7 @@ type Shelf struct {
 	BraceHeightMm int64
 	BraceWidthMm  int64
 	AreaID        sql.NullInt64
+	UpdatedAt     string
 }
 
 type User struct {
@@ -444,8 +453,8 @@ type Work struct {
 	SeriesNumber string
 	ReadStatus   string
 	CurrentPage  sql.NullInt64
-	StartedOn    string
-	FinishedOn   string
+	StartedOn    civil.Date
+	FinishedOn   civil.Date
 	Rating       sql.NullInt64
 	Notes        string
 	CreatedAt    string

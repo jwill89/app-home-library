@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import { messageOf } from '@/app/problem'
-import { deviceName, useSession } from '@/app/session'
+import { deviceName, useSession } from '@/stores/session'
 import FormField from '@/components/FormField.vue'
 import PublicPage from '@/components/PublicPage.vue'
 

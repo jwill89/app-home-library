@@ -16,7 +16,7 @@ See [PLAN.md](PLAN.md) for the decisions, the data model, and the phases, and [d
 ```bash
 task setup   # frontend dependencies
 task dev     # Vite on :5173, the server on :8130
-task check   # what CI runs: lint, the tests with their coverage floors, the end-to-end suite
+task check   # what CI runs: lint, the docs, the tests with their floors, the end-to-end suite, the generated code
 ```
 
-Go 1.27.4, Node 26, Task, sqlc, PowerShell 7 with PSScriptAnalyzer. A fresh clone runs `git submodule update --init` first, for the shared tooling in `shared/`. Copy `.env.example` to `.env`. [AGENTS.md](AGENTS.md) is the guide to working on it, and [shared/standards/README.md](shared/standards/README.md) the standards it follows.
+Go 1.27.4, Node 26, Task, sqlc, PowerShell 7 with PSScriptAnalyzer. A fresh clone runs `git submodule update --init` first, for the shared tooling in `shared/`. Copy `.env.example` to `.env`. The server never makes a database: a deploy's pull brings `devdata/homelibrary.sqlite`, or an empty file there starts a new library, which the server migrates. [AGENTS.md](AGENTS.md) is the guide to working on it, and [shared/standards/README.md](shared/standards/README.md) the standards it follows.

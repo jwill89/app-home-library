@@ -25,8 +25,18 @@ func pngOf(t *testing.T, w, h int) *bytes.Reader {
 	return bytes.NewReader(b.Bytes())
 }
 
+func newStore(t *testing.T) *Store {
+	t.Helper()
+	store, err := NewStore(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return store
+}
+
 func TestProcess(t *testing.T) {
-	res, err := Process(context.Background(), pngOf(t, 600, 900))
+	store := newStore(t)
+	res, err := store.Process(context.Background(), pngOf(t, 600, 900))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,10 +52,6 @@ func TestProcess(t *testing.T) {
 		t.Error("a rendition wider than the master")
 	}
 
-	store, err := NewStore(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
 	name, err := store.Save(res)
 	if err != nil {
 		t.Fatal(err)
@@ -56,10 +62,11 @@ func TestProcess(t *testing.T) {
 }
 
 func TestProcessRefusesPlaceholders(t *testing.T) {
-	if _, err := Process(context.Background(), pngOf(t, 1, 1)); !errors.Is(err, ErrTooSmall) {
+	store := newStore(t)
+	if _, err := store.Process(context.Background(), pngOf(t, 1, 1)); !errors.Is(err, ErrTooSmall) {
 		t.Errorf("a 1x1 placeholder: %v", err)
 	}
-	if _, err := Process(context.Background(), bytes.NewReader([]byte("not an image"))); !errors.Is(err, ErrUnsupported) {
+	if _, err := store.Process(context.Background(), bytes.NewReader([]byte("not an image"))); !errors.Is(err, ErrUnsupported) {
 		t.Errorf("text: %v", err)
 	}
 }

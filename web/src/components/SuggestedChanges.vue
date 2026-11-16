@@ -6,15 +6,15 @@ import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'
 import Dialog from 'primevue/dialog'
 import SelectButton from 'primevue/selectbutton'
-import {
-  api,
-  type Book,
-  type BookInput,
-  type Document,
-  type DocumentInput,
-  type DocumentSuggestions,
-  type Suggestions,
-} from '@/api/client'
+import { api } from '@/api/client'
+import type {
+  Book,
+  BookInput,
+  Document,
+  DocumentInput,
+  DocumentSuggestions,
+  Suggestions,
+} from '@/types'
 import { bookToInput } from '@/app/book'
 import { documentToInput } from '@/app/documents'
 import {
@@ -25,8 +25,9 @@ import {
   paperDetailText,
   sourceLabel,
 } from '@/app/format'
-import { useNotice } from '@/app/problem'
-import { useUnits } from '@/app/units'
+import { useNotice } from '@/composables/useNotice'
+import { useStaleSave } from '@/composables/useStaleSave'
+import { useUnits } from '@/stores/units'
 import FormField from '@/components/FormField.vue'
 
 // What a lookup the owner asked for would change, for one book or paper or many: each detail
@@ -38,6 +39,7 @@ const props = defineProps<{ suggestions?: Suggestions[]; papers?: DocumentSugges
 const emit = defineEmits<{ saved: [books: Book[]]; savedPapers: [papers: Document[]] }>()
 const open = defineModel<boolean>('visible', { required: true })
 const notice = useNotice()
+const stale = useStaleSave()
 const id = useId()
 const { unit } = storeToRefs(useUnits())
 
@@ -60,27 +62,38 @@ const noun = computed(() => (papers.value.length ? 'paper' : 'book'))
 const remembers = computed(() => !papers.value.length)
 const many = computed(() => books.value.length + papers.value.length > 1)
 
+// Each record as this dialog last had it from the server: the one it was opened with, the
+// latest where a refused save loaded it, or the one a save answered with. A record saved here
+// is not sent again by a later save from the same dialog.
+const latestBooks = ref(new Map<number, Book>())
+const latestPapers = ref(new Map<number, Document>())
+const bookOf = (s: Suggestions) => latestBooks.value.get(s.book.id) ?? s.book
+const paperOf = (p: DocumentSuggestions) => latestPapers.value.get(p.document.id) ?? p.document
+const done = ref(new Set<string>())
+
 const rows = computed<Row[]>(() => [
   ...books.value.flatMap((s) => {
-    const now = bookToInput(s.book)
+    const book = bookOf(s)
+    const now = bookToInput(book)
     return (s.fields ?? []).map((field) => ({
-      key: `${s.book.id}:${field}`,
-      recordId: s.book.id,
-      record: s.book.title,
+      key: `${book.id}:${field}`,
+      recordId: book.id,
+      record: book.title,
       field,
       label: detailLabel(field),
       now: detailText(now, field, unit.value),
-      nowFrom: sourceLabel(s.book.sources[field]),
+      nowFrom: sourceLabel(book.sources[field]),
       then: detailText(s.suggested, field, unit.value),
       thenFrom: sourceLabel(s.suggested.sources[field]),
     }))
   }),
   ...papers.value.flatMap((p) => {
-    const now = documentToInput(p.document)
+    const paper = paperOf(p)
+    const now = documentToInput(paper)
     return (p.fields ?? []).map((field) => ({
-      key: `${p.document.id}:${field}`,
-      recordId: p.document.id,
-      record: p.document.title,
+      key: `${paper.id}:${field}`,
+      recordId: paper.id,
+      record: paper.title,
       field,
       label: paperDetailLabel(field, now.kind),
       now: paperDetailText(now, field),
@@ -104,6 +117,9 @@ const busy = ref(false)
 watch(open, (v) => {
   if (v) {
     decided.value = new Map()
+    latestBooks.value = new Map()
+    latestPapers.value = new Map()
+    done.value = new Set()
   }
 })
 
@@ -155,7 +171,14 @@ async function decline(
 
 const as = (n: number) => (n === 1 ? 'it was' : 'they were')
 
-// Each record decided saves on its own; one that fails stops the rest, and says why.
+// A record's decisions undone, for the owner to make again on its latest details.
+function undecide(id: number) {
+  decided.value = new Map([...decided.value].filter(([key]) => !key.startsWith(`${id}:`)))
+}
+
+// Each record decided saves on its own; one that fails stops the rest, and says why. One
+// refused because it changed since the dialog opened waits, with the dialog open, on the
+// owner's choice: its latest details to decide again, or the decisions saved over them.
 async function save() {
   busy.value = true
   const chose = (id: number, field: string) => decided.value.get(`${id}:${field}`)
@@ -163,17 +186,22 @@ async function save() {
   const savedPapers: Document[] = []
   let made = 0
   let kept = 0
+  let waiting = false
   for (const s of books.value) {
-    const fields = (s.fields ?? []).filter((f) => chose(s.book.id, f) === 'take')
-    const keep = (s.fields ?? []).filter((f) => chose(s.book.id, f) === 'keep')
-    if (!(await decline(s, keep))) {
-      break
+    const book = bookOf(s)
+    const fields = (s.fields ?? []).filter((f) => chose(book.id, f) === 'take')
+    const keep = (s.fields ?? []).filter((f) => chose(book.id, f) === 'keep')
+    if (!done.value.has(`declined:${book.id}`)) {
+      if (!(await decline(s, keep))) {
+        break
+      }
+      done.value.add(`declined:${book.id}`)
+      kept += keep.length
     }
-    kept += keep.length
-    if (!fields.length) {
+    if (!fields.length || done.value.has(`book:${book.id}`)) {
       continue
     }
-    const input = bookToInput(s.book)
+    const input = bookToInput(book)
     const sources = { ...input.sources }
     for (const field of fields) {
       copyField<BookInput>(input, s.suggested, field)
@@ -185,39 +213,79 @@ async function save() {
     }
     input.sources = sources
     const { data, error } = await api.PUT('/books/{id}', {
-      params: { path: { id: s.book.id } },
+      params: { path: { id: book.id } },
       body: input,
     })
     if (error) {
-      notice.failed(error)
+      waiting = stale(error, {
+        latest: () => api.GET('/books/{id}', { params: { path: { id: book.id } } }),
+        load: (latest) => {
+          latestBooks.value.set(book.id, latest)
+          undecide(book.id)
+        },
+        overwrite: (updatedAt) => {
+          latestBooks.value.set(book.id, { ...book, updatedAt: updatedAt ?? book.updatedAt })
+          return save()
+        },
+      })
+      if (!waiting) {
+        notice.failed(error)
+      }
       break
     }
+    latestBooks.value.set(book.id, data)
+    done.value.add(`book:${book.id}`)
     saved.push(data)
     made += fields.length
   }
-  for (const p of papers.value) {
-    const fields = (p.fields ?? []).filter((f) => chose(p.document.id, f) === 'take')
+  for (const p of waiting ? [] : papers.value) {
+    const paper = paperOf(p)
+    const fields = (p.fields ?? []).filter((f) => chose(paper.id, f) === 'take')
     // A paper's detail kept is simply left: nothing is sent for it.
-    kept += (p.fields ?? []).filter((f) => chose(p.document.id, f) === 'keep').length
-    if (!fields.length) {
+    kept += (p.fields ?? []).filter((f) => chose(paper.id, f) === 'keep').length
+    if (!fields.length || done.value.has(`paper:${paper.id}`)) {
       continue
     }
-    const input = documentToInput(p.document)
+    const input = documentToInput(paper)
     for (const field of fields) {
       copyField<DocumentInput>(input, p.suggested, field)
     }
     const { data, error } = await api.PUT('/documents/{id}', {
-      params: { path: { id: p.document.id } },
+      params: { path: { id: paper.id } },
       body: input,
     })
     if (error) {
-      notice.failed(error)
+      waiting = stale(error, {
+        latest: () => api.GET('/documents/{id}', { params: { path: { id: paper.id } } }),
+        load: (latest) => {
+          latestPapers.value.set(paper.id, latest)
+          undecide(paper.id)
+        },
+        overwrite: (updatedAt) => {
+          latestPapers.value.set(paper.id, { ...paper, updatedAt })
+          return save()
+        },
+      })
+      if (!waiting) {
+        notice.failed(error)
+      }
       break
     }
+    latestPapers.value.set(paper.id, data)
+    done.value.add(`paper:${paper.id}`)
     savedPapers.push(data)
     made += fields.length
   }
   busy.value = false
+  if (waiting) {
+    if (saved.length) {
+      emit('saved', saved)
+    }
+    if (savedPapers.length) {
+      emit('savedPapers', savedPapers)
+    }
+    return
+  }
   const records = saved.length + savedPapers.length
   if (!records && !kept) {
     return

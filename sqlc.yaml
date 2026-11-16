@@ -1,7 +1,9 @@
 version: "2"
 sql:
   - engine: "sqlite"
-    schema: "internal/db/migrations"
+    # What the migrations build, which TestSchema keeps current: sqlc can't read a table
+    # rebuild's temp tables.
+    schema: "internal/db/schema.sql"
     queries: "internal/db/queries"
     gen:
       go:
@@ -9,3 +11,21 @@ sql:
         out: "internal/db"
         emit_empty_slices: true
         emit_result_struct_pointers: true
+        # A timestamp travels as its RFC 3339 text, and a day as Date: the driver reads both
+        # as a time.Time, which database/sql turns back into the same text for a timestamp,
+        # and Date keeps only the day of.
+        overrides:
+          - db_type: "DATETIME"
+            go_type: "string"
+          - db_type: "DATETIME"
+            nullable: true
+            go_type: "database/sql.NullString"
+          - db_type: "DATE"
+            go_type:
+              import: "homelibrary/internal/civil"
+              type: "Date"
+          - db_type: "DATE"
+            nullable: true
+            go_type:
+              import: "homelibrary/internal/civil"
+              type: "Date"

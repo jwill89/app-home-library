@@ -2,11 +2,12 @@
 import { onMounted, ref } from 'vue'
 import Button from 'primevue/button'
 import { faCalendarPlus, faCopy } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
-import { api, type CalendarLink } from '@/api/client'
+import { api } from '@/api/client'
+import type { CalendarLink } from '@/types'
 import { copyText } from '@/app/clipboard'
-import { useConfirmAction } from '@/app/confirm'
+import { useConfirmAction } from '@/composables/useConfirmAction'
 import { day } from '@/app/format'
-import { useNotice } from '@/app/problem'
+import { useNotice } from '@/composables/useNotice'
 import PagePanel from './PagePanel.vue'
 
 // The loans' due dates as a calendar the owner's phone subscribes to: each copy still out with

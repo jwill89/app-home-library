@@ -192,18 +192,20 @@ if ($Preview) {
     $version = $release.Tag
 }
 
-# The binary and its directory are root's, so the service runs the one and cannot change it;
-# the data and the backups are the service's, and nobody else's to read.
+# The binary and its directory are the service's own user's, which its unit's ProtectSystem=strict
+# keeps read-only to the running service. The data and the backups are the service's too, and
+# nobody else's to read: the backups closed to all but it.
 $layout = Format-RemoteScript -Value @{ DIR = $remoteDir; USER = $serviceUser } -Template @'
-chown root:root '__DIR__'
+chown '__USER__:__USER__' '__DIR__'
 chmod 755 '__DIR__'
-chmod 750 '__DIR__/data' '__DIR__/backups'
+chmod 750 '__DIR__/data'
+chmod 700 '__DIR__/backups'
 find '__DIR__/backups' -maxdepth 1 -type f ! -perm 600 -exec chmod 600 {} +
 install -d -o '__USER__' -g '__USER__' -m 750 '__DIR__/data/documents'
 '@
 
 $restore = {
-    Restore-ServiceBinary -ServiceName $services -Binary "$remoteDir/homelibrary" -Owner 'root' -Unit $units `
+    Restore-ServiceBinary -ServiceName $services -Binary "$remoteDir/homelibrary" -Owner $serviceUser -Unit $units `
         -Database $remoteDb -SnapshotPrefix $snapshotPrefix -SnapshotSuffix '.sqlite'
 }
 
@@ -282,7 +284,7 @@ try {
 
     Invoke-DeployBundle -Archive 'homelibrary-deploy.tgz' -Sha256 $archive.Sha256 -ExpectedFileCount $archive.FileCount -Step @(
         $layout
-        Install-ServiceBinary -AsStep -ServiceName $services -Binary "$remoteDir/homelibrary" -Owner 'root' `
+        Install-ServiceBinary -AsStep -ServiceName $services -Binary "$remoteDir/homelibrary" -Owner $serviceUser `
             -Unit $units -Vhost 'apache-vhost.conf' -Umask '077' `
             -Database $remoteDb -SnapshotPrefix $snapshotPrefix -SnapshotSuffix '.sqlite' -RestoreDatabaseOnRollback `
             -HealthUrl "http://127.0.0.1:$($settings.AppPort)/healthz" -HealthTimeoutSeconds 30

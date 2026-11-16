@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"path/filepath"
 
 	_ "modernc.org/sqlite" // the driver, which registers itself as "sqlite"
 )
@@ -24,13 +23,14 @@ type DB struct {
 	Read  *sql.DB
 }
 
-// Open opens the database file with the pragmas the app relies on, creating it
-// and its directory if needed.
+// Open opens the database file with the pragmas the app relies on. It never makes one: a
+// missing file is a path set wrong, and a new database is an empty file, then migrated.
 func Open(path string) (*DB, error) {
-	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
-		return nil, fmt.Errorf("database dir: %w", err)
+	if _, err := os.Stat(path); err != nil {
+		return nil, fmt.Errorf("no database at %s: set HL_DB_PATH to the library's, or make an empty file there for a new one: %w", path, err)
 	}
 	dsn := "file:" + path + "?" + url.Values{
+		"mode":    {"rw"},
 		"_pragma": {"busy_timeout(5000)", "journal_mode(WAL)", "foreign_keys(1)", "synchronous(NORMAL)"},
 	}.Encode()
 

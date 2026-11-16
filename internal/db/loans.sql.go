@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+
+	"homelibrary/internal/civil"
 )
 
 const borrowerNamed = `-- name: BorrowerNamed :one
@@ -23,7 +25,7 @@ func (q *Queries) BorrowerNamed(ctx context.Context, name string) (int64, error)
 const copyOutTo = `-- name: CopyOutTo :one
 SELECT b.name
 FROM loans l JOIN borrowers b ON b.id = l.borrower_id
-WHERE l.copy_id = ?1 AND l.returned_on = '' AND l.id <> ?2
+WHERE l.copy_id = ?1 AND l.returned_on IS NULL AND l.id <> ?2
 LIMIT 1
 `
 
@@ -49,9 +51,9 @@ RETURNING id
 type CreateLoanParams struct {
 	CopyID     int64
 	BorrowerID int64
-	LentOn     string
-	DueOn      string
-	ReturnedOn string
+	LentOn     civil.Date
+	DueOn      civil.Date
+	ReturnedOn civil.Date
 	Notes      string
 }
 
@@ -92,7 +94,7 @@ SELECT l.copy_id, b.name
 FROM loans l
 JOIN borrowers b ON b.id = l.borrower_id
 JOIN copies c ON c.id = l.copy_id
-WHERE c.edition_id = ? AND l.returned_on = ''
+WHERE c.edition_id = ? AND l.returned_on IS NULL
 ORDER BY l.copy_id
 LIMIT 1
 `
@@ -111,8 +113,8 @@ func (q *Queries) EditionOutTo(ctx context.Context, editionID int64) (*EditionOu
 
 const getBorrower = `-- name: GetBorrower :one
 SELECT
-    b.id, b.name, b.contact, b.notes, b.created_at,
-    (SELECT count(*) FROM loans l WHERE l.borrower_id = b.id AND l.returned_on = '') AS out_count,
+    b.id, b.name, b.contact, b.notes, b.created_at, b.updated_at,
+    (SELECT count(*) FROM loans l WHERE l.borrower_id = b.id AND l.returned_on IS NULL) AS out_count,
     (SELECT count(*) FROM loans l WHERE l.borrower_id = b.id) AS loan_count
 FROM borrowers b
 WHERE b.id = ?
@@ -124,6 +126,7 @@ type GetBorrowerRow struct {
 	Contact   string
 	Notes     string
 	CreatedAt string
+	UpdatedAt string
 	OutCount  int64
 	LoanCount int64
 }
@@ -137,6 +140,7 @@ func (q *Queries) GetBorrower(ctx context.Context, id int64) (*GetBorrowerRow, e
 		&i.Contact,
 		&i.Notes,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 		&i.OutCount,
 		&i.LoanCount,
 	)
@@ -144,7 +148,10 @@ func (q *Queries) GetBorrower(ctx context.Context, id int64) (*GetBorrowerRow, e
 }
 
 const getLoan = `-- name: GetLoan :one
-SELECT id, copy_id, borrower_id, borrower, lent_on, due_on, returned_on, notes, edition_id, title, cover, authors FROM loan_rows WHERE id = ?
+SELECT
+    id, copy_id, borrower_id, borrower, lent_on, due_on, returned_on, notes, updated_at,
+    edition_id, title, cover, authors
+FROM loan_rows WHERE id = ?
 `
 
 func (q *Queries) GetLoan(ctx context.Context, id int64) (*LoanRow, error) {
@@ -159,6 +166,7 @@ func (q *Queries) GetLoan(ctx context.Context, id int64) (*LoanRow, error) {
 		&i.DueOn,
 		&i.ReturnedOn,
 		&i.Notes,
+		&i.UpdatedAt,
 		&i.EditionID,
 		&i.Title,
 		&i.Cover,
@@ -196,8 +204,8 @@ func (q *Queries) ListBorrowerNames(ctx context.Context) ([]string, error) {
 
 const listBorrowers = `-- name: ListBorrowers :many
 SELECT
-    b.id, b.name, b.contact, b.notes, b.created_at,
-    (SELECT count(*) FROM loans l WHERE l.borrower_id = b.id AND l.returned_on = '') AS out_count,
+    b.id, b.name, b.contact, b.notes, b.created_at, b.updated_at,
+    (SELECT count(*) FROM loans l WHERE l.borrower_id = b.id AND l.returned_on IS NULL) AS out_count,
     (SELECT count(*) FROM loans l WHERE l.borrower_id = b.id) AS loan_count
 FROM borrowers b
 ORDER BY b.name
@@ -209,6 +217,7 @@ type ListBorrowersRow struct {
 	Contact   string
 	Notes     string
 	CreatedAt string
+	UpdatedAt string
 	OutCount  int64
 	LoanCount int64
 }
@@ -228,6 +237,7 @@ func (q *Queries) ListBorrowers(ctx context.Context) ([]*ListBorrowersRow, error
 			&i.Contact,
 			&i.Notes,
 			&i.CreatedAt,
+			&i.UpdatedAt,
 			&i.OutCount,
 			&i.LoanCount,
 		); err != nil {
@@ -245,7 +255,10 @@ func (q *Queries) ListBorrowers(ctx context.Context) ([]*ListBorrowersRow, error
 }
 
 const listEditionLoansOut = `-- name: ListEditionLoansOut :many
-SELECT id, copy_id, borrower_id, borrower, lent_on, due_on, returned_on, notes, edition_id, title, cover, authors FROM loan_rows WHERE edition_id = ? AND returned_on = '' ORDER BY copy_id
+SELECT
+    id, copy_id, borrower_id, borrower, lent_on, due_on, returned_on, notes, updated_at,
+    edition_id, title, cover, authors
+FROM loan_rows WHERE edition_id = ? AND returned_on IS NULL ORDER BY copy_id
 `
 
 func (q *Queries) ListEditionLoansOut(ctx context.Context, editionID int64) ([]*LoanRow, error) {
@@ -266,6 +279,7 @@ func (q *Queries) ListEditionLoansOut(ctx context.Context, editionID int64) ([]*
 			&i.DueOn,
 			&i.ReturnedOn,
 			&i.Notes,
+			&i.UpdatedAt,
 			&i.EditionID,
 			&i.Title,
 			&i.Cover,
@@ -285,8 +299,11 @@ func (q *Queries) ListEditionLoansOut(ctx context.Context, editionID int64) ([]*
 }
 
 const listLoans = `-- name: ListLoans :many
-SELECT id, copy_id, borrower_id, borrower, lent_on, due_on, returned_on, notes, edition_id, title, cover, authors FROM loan_rows
-ORDER BY returned_on <> '', COALESCE(NULLIF(returned_on, ''), lent_on) DESC, id DESC
+SELECT
+    id, copy_id, borrower_id, borrower, lent_on, due_on, returned_on, notes, updated_at,
+    edition_id, title, cover, authors
+FROM loan_rows
+ORDER BY returned_on IS NOT NULL, COALESCE(returned_on, lent_on) DESC, id DESC
 `
 
 // Every loan: the ones out first, then the history, latest first.
@@ -308,6 +325,7 @@ func (q *Queries) ListLoans(ctx context.Context) ([]*LoanRow, error) {
 			&i.DueOn,
 			&i.ReturnedOn,
 			&i.Notes,
+			&i.UpdatedAt,
 			&i.EditionID,
 			&i.Title,
 			&i.Cover,
@@ -327,7 +345,7 @@ func (q *Queries) ListLoans(ctx context.Context) ([]*LoanRow, error) {
 }
 
 const updateBorrower = `-- name: UpdateBorrower :exec
-UPDATE borrowers SET name = ?, contact = ?, notes = ? WHERE id = ?
+UPDATE borrowers SET name = ?, contact = ?, notes = ?, updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second')) WHERE id = ?
 `
 
 type UpdateBorrowerParams struct {
@@ -349,15 +367,15 @@ func (q *Queries) UpdateBorrower(ctx context.Context, arg UpdateBorrowerParams) 
 
 const updateLoan = `-- name: UpdateLoan :exec
 UPDATE loans
-SET borrower_id = ?, lent_on = ?, due_on = ?, returned_on = ?, notes = ?
+SET borrower_id = ?, lent_on = ?, due_on = ?, returned_on = ?, notes = ?, updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE id = ?
 `
 
 type UpdateLoanParams struct {
 	BorrowerID int64
-	LentOn     string
-	DueOn      string
-	ReturnedOn string
+	LentOn     civil.Date
+	DueOn      civil.Date
+	ReturnedOn civil.Date
 	Notes      string
 	ID         int64
 }

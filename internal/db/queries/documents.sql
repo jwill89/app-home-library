@@ -7,14 +7,18 @@ RETURNING id;
 UPDATE documents
 SET kind = ?, title = ?, authors = ?, container = ?, volume = ?, issue = ?, pages = ?, published = ?,
     publisher = ?, doi = ?, url = ?, course_id = ?, notes = ?, subjects = ?, abstract = ?,
-    editors = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+    editors = ?, updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE id = ?;
 
 -- name: DeleteDocument :exec
 DELETE FROM documents WHERE id = ?;
 
 -- name: GetDocument :one
-SELECT d.*, CAST(COALESCE(c.department || ' ' || c.number || ' ' || c.title, '') AS TEXT) AS course_name
+SELECT
+    d.id, d.kind, d.title, d.authors, d.container, d.volume, d.issue, d.pages, d.published,
+    d.publisher, d.doi, d.url, d.course_id, d.notes, d.created_at, d.updated_at, d.subjects,
+    d.abstract, d.editors,
+    CAST(COALESCE(c.department || ' ' || c.number || ' ' || c.title, '') AS TEXT) AS course_name
 FROM documents d LEFT JOIN courses c ON c.id = d.course_id
 WHERE d.id = ?;
 
@@ -47,10 +51,16 @@ RETURNING id;
 SELECT CAST(COALESCE(max(position), 0) + 1 AS INTEGER) FROM document_files WHERE document_id = ?;
 
 -- name: ListDocumentFiles :many
-SELECT * FROM document_files WHERE document_id = ? ORDER BY position, id;
+SELECT
+    id, document_id, name, stored, content_type, size, position, text, text_status, text_attempts,
+    text_error, created_at
+FROM document_files WHERE document_id = ? ORDER BY position, id;
 
 -- name: GetDocumentFile :one
-SELECT * FROM document_files WHERE id = ? AND document_id = ?;
+SELECT
+    id, document_id, name, stored, content_type, size, position, text, text_status, text_attempts,
+    text_error, created_at
+FROM document_files WHERE id = ? AND document_id = ?;
 
 -- name: DeleteDocumentFile :exec
 DELETE FROM document_files WHERE id = ?;
@@ -60,7 +70,10 @@ UPDATE document_files SET text = ?, text_status = ?, text_error = ? WHERE id = ?
 
 -- name: NextFileForText :one
 -- The oldest file still waiting to be read that has tries left.
-SELECT * FROM document_files
+SELECT
+    id, document_id, name, stored, content_type, size, position, text, text_status, text_attempts,
+    text_error, created_at
+FROM document_files
 WHERE text_status = 'pending' AND text_attempts < 3
 ORDER BY id
 LIMIT 1;

@@ -1,13 +1,16 @@
 -- name: CreateShare :one
 INSERT INTO shares (name, token_hash, expires_at, books, wishlist, papers) VALUES (?, ?, ?, ?, ?, ?)
-RETURNING *;
+RETURNING id, name, token_hash, expires_at, created_at, last_used_at, books, wishlist, papers, updated_at;
 
 -- name: UpdateShare :one
-UPDATE shares SET name = ?, expires_at = ?, books = ?, wishlist = ?, papers = ? WHERE id = ?
-RETURNING *;
+UPDATE shares SET name = ?, expires_at = ?, books = ?, wishlist = ?, papers = ?,
+    updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second')) WHERE id = ?
+RETURNING id, name, token_hash, expires_at, created_at, last_used_at, books, wishlist, papers, updated_at;
 
 -- name: ListShares :many
-SELECT * FROM shares ORDER BY id DESC;
+SELECT
+    id, name, token_hash, expires_at, created_at, last_used_at, books, wishlist, papers, updated_at
+FROM shares ORDER BY id DESC;
 
 -- name: ListShareScope :many
 -- A link's choices, a row each: a category by its name, or a book, course, or paper by number.
@@ -55,8 +58,10 @@ DELETE FROM shares WHERE id = ?;
 
 -- name: ShareByToken :one
 -- A link still running: not removed, and not past its end, if it has one.
-SELECT * FROM shares
-WHERE token_hash = sqlc.arg(token_hash) AND (expires_at = '' OR expires_at > sqlc.arg(now));
+SELECT
+    id, name, token_hash, expires_at, created_at, last_used_at, books, wishlist, papers, updated_at
+FROM shares
+WHERE token_hash = sqlc.arg(token_hash) AND (expires_at IS NULL OR expires_at > CAST(sqlc.arg(now) AS TEXT));
 
 
 -- name: TouchShare :exec
@@ -66,13 +71,17 @@ UPDATE shares SET last_used_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id 
 DELETE FROM calendar_links;
 
 -- name: CreateCalendarLink :one
-INSERT INTO calendar_links (token_hash) VALUES (?) RETURNING *;
+INSERT INTO calendar_links (token_hash) VALUES (?) RETURNING id, token_hash, created_at, last_used_at;
 
 -- name: GetCalendarLink :one
-SELECT * FROM calendar_links ORDER BY id DESC LIMIT 1;
+SELECT id, token_hash, created_at, last_used_at FROM calendar_links ORDER BY id DESC LIMIT 1;
 
 -- name: CalendarLinkByToken :one
-SELECT * FROM calendar_links WHERE token_hash = ?;
+SELECT id, token_hash, created_at, last_used_at FROM calendar_links WHERE token_hash = ?;
 
 -- name: TouchCalendarLink :exec
 UPDATE calendar_links SET last_used_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = ?;
+
+-- name: ShareStamp :one
+-- When a link last changed, which a save of its form must have read.
+SELECT updated_at FROM shares WHERE id = ?;

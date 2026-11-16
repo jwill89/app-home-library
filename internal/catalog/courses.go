@@ -12,6 +12,7 @@ import (
 
 // CourseInput is a course as the owner records it.
 type CourseInput struct {
+	Stamp
 	School     string `json:"school" maxLength:"200"`
 	Level      string `json:"level" enum:"unknown,high_school,undergraduate,graduate,professional,other"`
 	Department string `json:"department" maxLength:"40" doc:"MATH, ENGL"`
@@ -95,9 +96,13 @@ func (s *Service) UpdateCourse(ctx context.Context, id int64, in CourseInput) (*
 		return nil, err
 	}
 	err := s.inTx(ctx, func(q *db.Queries) error {
-		if _, err := q.GetCourse(ctx, id); errors.Is(err, sql.ErrNoRows) {
+		c, err := q.GetCourse(ctx, id)
+		if errors.Is(err, sql.ErrNoRows) {
 			return ErrNotFound
 		} else if err != nil {
+			return err
+		}
+		if err := Unmoved(in.UpdatedAt, c.UpdatedAt, "course"); err != nil {
 			return err
 		}
 		p := in.params()
@@ -219,6 +224,7 @@ func courseOf(c *db.GetCourseRow) Course {
 	return Course{
 		ID: c.ID, BookCount: c.BookCount,
 		CourseInput: CourseInput{
+			Stamp:  Stamp{UpdatedAt: c.UpdatedAt},
 			School: c.School, Level: shownChoice(c.Level), Department: c.Department, Number: c.Number,
 			Title: c.Title, Term: shownChoice(c.Term), Year: c.Year.Int64, Instructor: c.Instructor,
 			Notes: c.Notes,

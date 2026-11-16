@@ -1,5 +1,7 @@
 # shared-tooling rollout
 
+Rollout complete, 2026-11-15.
+
 The passages of shared-tooling's cross-project plan (`PLAN.md` at v2.6.0) that name this project, moved here word for word on 2026-11-10 when shared-tooling became project-agnostic. The portfolio-wide rest is in `PLAN.md` beside the project folders.
 
 ## Summary
@@ -10,7 +12,7 @@ Four follow-up questions are answered below. Vue's Vapor mode is still a release
 
 The standardization work starts from these, so it doesn't reopen them. All were decided on November 5, 2026.
 
-- Home Library moves from polling to an SSE stream.
+- Home Library moves from polling to an SSE stream. Done in 1.0.0 (2026-11-05).
 
 Decided later the same day, while seeding shared-tooling:
 
@@ -50,11 +52,11 @@ The projects that need WebSockets already use them. Only Home Library would gain
 | --- | --- | --- | --- |
 | Home Library | REST, polling every 2.5–10 s while background work runs | SSE (reuse Kindred's feed) | Scan, queue and text-reading progress only flows to the browser |
 
-For Home Library the switch is a nice-to-have: one owner, polling only while work runs, so the requests saved are few. The gain is progress that shows the moment it happens.
+For Home Library the switch was a nice-to-have: one owner, polling only while work runs, so the requests saved are few. The gain is progress that shows the moment it happens. It shipped with 1.0.0 (2026-11-05).
 
 **WebSockets won't shrink Home Library's list.** It sends the whole library in one response (a decision from November 4). WebSockets change how bytes travel, not how many. If the list grows large:
 
-- Add an ETag, so an unchanged list costs an empty 304 response. The Go server sets none today.
+- Add an ETag, so an unchanged list costs an empty 304 response. Done 2026-11-16: every list the browser receives whole carries one, kept in the browser's private cache and asked for again each time.
 - Or keep a copy in the browser (IndexedDB) and fetch only rows changed since the last version, with the SSE feed saying when.
 - Check the response is compressed in transit; JSON like this usually shrinks by most of its size.
 
@@ -80,7 +82,7 @@ The material exists but is scattered: about 8,600 lines across 24 files, includi
 
 | Project | Missing | Note |
 | --- | --- | --- |
-| Home Library | First commit and a remote, changelog | Nothing is committed until 1.0.0 by your choice, so its CI has never run |
+| Home Library | None | Committed with 1.0.0 (2026-11-05) and on CI since; its last gaps against the standards closed 2026-11-15 (AGENTS.md) |
 
 ## Where to start
 
@@ -106,7 +108,7 @@ The material exists but is scattered: about 8,600 lines across 24 files, includi
      - The deploy on SharedDeploy: both services, with its units and vhost; a compressed snapshot; a smoke check through Cloudflare with `?deploy=` that rolls back; `Install-BackupTimer` running `homelibrary backup`; and the database and files pull. `pull-backup.ps1` moved onto the module too.
      - The nightly backup now compresses the database, and the files snapshot stays as hard links.
      - `noUncheckedIndexedAccess` found 7 places, and the shared ESLint rules about 530 findings (385 `curly`). Axe found two links in text told apart by colour alone.
-     - No OSV job yet: a moderate minimatch advisory in the shared lint tooling (through ESLint and typescript-eslint) would fail it, and `npm audit fix` can't lift it.
+     - No OSV job yet: a moderate minimatch advisory in the shared lint tooling (through ESLint and typescript-eslint) would fail it, and `npm audit fix` can't lift it. The job came later, with `web/osv-scanner.toml` passing over what reaches only the tooling.
    - **Release tags from CI** (2026-11-07). The standard has CI tag each release, but Kindred, Marxbot and Home Library still tagged by hand or not at all; Kindred's standards pass had recorded it as a departure instead of adopting it, and its deploy then refused an untagged HEAD. All three now have the Dossier's `release` job and `release.sh`, reading `web/package.json` (Kindred 0.30.1, Home Library 1.1.0) or a `VERSION` file (Marxbot 1.0.0, which the bot embeds and logs), and each deploy fetches the tags and refuses a HEAD whose tag isn't that version. Kindred's hand tags had gone backwards (v0.29.5 and v0.29.6 after v0.30.0). The Gallery's, TarotGen.io's and the Dossier's deploys then took the same check (their CI already tagged releases; the Gallery hadn't recorded the gap as a departure), with `-Preview` for an untagged try. Senpan's waits for its move to one app version, since CI still tags its parts separately.
    - **Newest-release deploys** (2026-11-09). A deploy that required HEAD to carry the tag stopped as soon as a tooling update landed after a release (Home Library's v2.3.2 commit after v1.1.2), and checking the tag out by hand meant matching its submodule too. `task deploy` now ships the newest release CI tagged on main, built in its own checkout with clean installs from its lockfiles, and skips a release the host already runs (a record in `~/.shared-deploy/` on the host, written only by a deploy that passed its checks; `-Force` deploys it again). All six rolled-out projects moved to it with shared-tooling 2.4.0; Senpan takes it with its overhaul.
 7. **Then the migrations, in this order:**
@@ -122,6 +124,6 @@ The material exists but is scattered: about 8,600 lines across 24 files, includi
 
    <!-- -->
 
-   4. Home Library's event stream, with its 1.0 work. It's small and touches nothing else.
+   4. Home Library's event stream, with its 1.0 work. It's small and touches nothing else. Done in 1.0.0 (2026-11-05).
 
 <!-- markdownlint-enable MD029 -->

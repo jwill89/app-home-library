@@ -19,6 +19,9 @@ type Store struct {
 	// The widths each cover has, by name: a name's files never change, so they are looked
 	// for once, not three times for every book each time the library is listed.
 	sizes sync.Map
+	// gate lets one image be decoded and encoded at a time: a decoded photo is its whole
+	// bitmap, and the droplet has little memory to spare.
+	gate chan struct{}
 }
 
 // NewStore creates the directory if needed.
@@ -26,7 +29,7 @@ func NewStore(dir string) (*Store, error) {
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return nil, fmt.Errorf("media dir: %w", err)
 	}
-	return &Store{Dir: dir}, nil
+	return &Store{Dir: dir, gate: make(chan struct{}, 1)}, nil
 }
 
 // NewName is a random name, so a cover's address says nothing and is never reused: a new

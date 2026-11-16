@@ -23,6 +23,7 @@ const FileLimit = 40 << 20
 
 // DocumentInput is a document as the owner records it.
 type DocumentInput struct {
+	Stamp
 	Kind      string   `json:"kind" enum:"article,chapter,review,handout,syllabus,notes,exam,other"`
 	Title     string   `json:"title" minLength:"1" maxLength:"500"`
 	Authors   []string `json:"authors" maxItems:"40"`
@@ -62,7 +63,6 @@ type Document struct {
 	Course    string         `json:"course"`
 	Files     []DocumentFile `json:"files"`
 	CreatedAt string         `json:"createdAt"`
-	UpdatedAt string         `json:"updatedAt"`
 }
 
 // DocumentRow is one document in the list. Snippet is set for a search: the words around
@@ -209,9 +209,13 @@ func (s *Service) UpdateDocument(ctx context.Context, id int64, in DocumentInput
 		return nil, err
 	}
 	err := s.inTx(ctx, func(q *db.Queries) error {
-		if _, err := q.GetDocument(ctx, id); errors.Is(err, sql.ErrNoRows) {
+		d, err := q.GetDocument(ctx, id)
+		if errors.Is(err, sql.ErrNoRows) {
 			return ErrNotFound
 		} else if err != nil {
+			return err
+		}
+		if err := Unmoved(in.UpdatedAt, d.UpdatedAt, "paper"); err != nil {
 			return err
 		}
 		if err := checkDocument(ctx, q, id, in); err != nil {
@@ -280,9 +284,10 @@ func (s *Service) GetDocument(ctx context.Context, id int64) (*Document, error) 
 		return nil, err
 	}
 	out := &Document{
-		ID: d.ID, Course: tidyName(d.CourseName), CreatedAt: d.CreatedAt, UpdatedAt: d.UpdatedAt, Files: []DocumentFile{},
+		ID: d.ID, Course: tidyName(d.CourseName), CreatedAt: d.CreatedAt, Files: []DocumentFile{},
 		DocumentInput: DocumentInput{
-			Kind: d.Kind, Title: d.Title, Authors: names(d.Authors), Container: d.Container, Volume: d.Volume,
+			Stamp: Stamp{UpdatedAt: d.UpdatedAt},
+			Kind:  d.Kind, Title: d.Title, Authors: names(d.Authors), Container: d.Container, Volume: d.Volume,
 			Issue: d.Issue, Pages: d.Pages, Published: d.Published, Publisher: d.Publisher, DOI: d.Doi, URL: d.Url,
 			CourseID: d.CourseID.Int64, Notes: d.Notes, Subjects: names(d.Subjects), Abstract: d.Abstract, Editors: names(d.Editors),
 		},

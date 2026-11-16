@@ -26,7 +26,7 @@ SELECT name FROM genres ORDER BY name;
 
 -- name: ListSeriesNames :many
 -- The names the form offers: not one put aside as no series.
-SELECT name FROM series WHERE dismissed_on = '' ORDER BY name;
+SELECT name FROM series WHERE dismissed_on IS NULL ORDER BY name;
 
 -- name: CreateWork :one
 INSERT INTO works (title, series_id, series_number, read_status, current_page, started_on, finished_on, rating, notes, category)
@@ -37,11 +37,14 @@ RETURNING id;
 UPDATE works
 SET title = ?, series_id = ?, series_number = ?, read_status = ?, current_page = ?,
     started_on = ?, finished_on = ?, rating = ?, notes = ?, category = ?,
-    updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+    updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE id = ?;
 
 -- name: GetWork :one
-SELECT w.*, COALESCE(s.name, '') AS series_name
+SELECT
+    w.id, w.title, w.series_id, w.series_number, w.read_status, w.current_page, w.started_on,
+    w.finished_on, w.rating, w.notes, w.created_at, w.updated_at, w.category,
+    COALESCE(s.name, '') AS series_name
 FROM works w LEFT JOIN series s ON s.id = w.series_id
 WHERE w.id = ?;
 
@@ -71,19 +74,27 @@ UPDATE editions
 SET isbn13 = ?, isbn10 = ?, lccn = ?, title = ?, subtitle = ?, publisher = ?, publish_place = ?,
     published = ?, edition_statement = ?, format = ?, pages = ?, height_mm = ?, width_mm = ?,
     thickness_mm = ?, language = ?, ddc = ?, lcc = ?, subjects = ?, description = ?, sources = ?,
-    updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+    updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE id = ?;
 
 -- name: SetEditionCover :exec
 UPDATE editions
-SET cover = ?, sources = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+SET cover = ?, sources = ?, updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE id = ?;
 
 -- name: GetEdition :one
-SELECT * FROM editions WHERE id = ?;
+SELECT
+    id, work_id, isbn13, isbn10, lccn, title, subtitle, publisher, publish_place, published,
+    edition_statement, format, pages, height_mm, width_mm, thickness_mm, language, ddc, lcc,
+    subjects, description, cover, sources, created_at, updated_at, wanted_on
+FROM editions WHERE id = ?;
 
 -- name: GetEditionByISBN :one
-SELECT * FROM editions WHERE isbn13 = ?;
+SELECT
+    id, work_id, isbn13, isbn10, lccn, title, subtitle, publisher, publish_place, published,
+    edition_statement, format, pages, height_mm, width_mm, thickness_mm, language, ddc, lcc,
+    subjects, description, cover, sources, created_at, updated_at, wanted_on
+FROM editions WHERE isbn13 = ?;
 
 -- name: DeleteEdition :exec
 DELETE FROM editions WHERE id = ?;
@@ -111,7 +122,7 @@ LIMIT 1;
 
 -- name: SetCopyGone :execrows
 UPDATE copies SET gone_as = ?, gone_on = ?, gone_note = ?,
-    updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+    updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE id = ?;
 
 -- name: SetCopySeen :execrows
@@ -130,11 +141,14 @@ RETURNING id;
 UPDATE copies
 SET section_id = ?, acquired_as = ?, acquired_on = ?, acquired_from = ?, price_cents = ?,
     condition = ?, dust_jacket = ?, signed = ?, location = ?, notes = ?,
-    updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+    updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE id = ?;
 
 -- name: GetCopy :one
-SELECT c.*, COALESCE(s.name, '') AS section_name
+SELECT
+    c.id, c.edition_id, c.section_id, c.acquired_as, c.acquired_on, c.acquired_from, c.price_cents,
+    c.condition, c.dust_jacket, c.signed, c.location, c.notes, c.created_at, c.updated_at,
+    c.gone_as, c.gone_on, c.gone_note, c.seen_on, COALESCE(s.name, '') AS section_name
 FROM copies c LEFT JOIN sections s ON s.id = c.section_id
 WHERE c.id = ?;
 
@@ -142,7 +156,10 @@ WHERE c.id = ?;
 DELETE FROM copies WHERE id = ?;
 
 -- name: ListEditionCopies :many
-SELECT c.*, COALESCE(s.name, '') AS section_name
+SELECT
+    c.id, c.edition_id, c.section_id, c.acquired_as, c.acquired_on, c.acquired_from, c.price_cents,
+    c.condition, c.dust_jacket, c.signed, c.location, c.notes, c.created_at, c.updated_at,
+    c.gone_as, c.gone_on, c.gone_note, c.seen_on, COALESCE(s.name, '') AS section_name
 FROM copies c LEFT JOIN sections s ON s.id = c.section_id
 WHERE c.edition_id = ?
 ORDER BY c.id;
@@ -202,5 +219,5 @@ SELECT
     CAST(COALESCE(ea.authors, '') AS TEXT) AS authors
 FROM editions e
 LEFT JOIN edition_authors ea ON ea.edition_id = e.id
-WHERE e.wanted_on = ''
+WHERE e.wanted_on IS NULL
 ORDER BY e.title COLLATE NOCASE, e.id;

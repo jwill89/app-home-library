@@ -47,6 +47,8 @@ export default async function setup(): Promise<() => Promise<void>> {
     HL_GOOGLE_BOOKS_KEY: '',
     HL_HARDCOVER_TOKEN: '',
   }
+  // The server never makes a database: a new one is an empty file, then migrated.
+  writeFileSync(env.HL_DB_PATH, '')
   execFileSync(bin, ['migrate'], { env })
   const line = execFileSync(bin, ['dev-session'], { env }).toString().trim().split('\n').pop() ?? ''
   const value = line.replace(/^hl_session=/, '').trim()

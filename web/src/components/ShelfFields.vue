@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ShelfInput } from '@/api/client'
+import type { ShelfInput } from '@/types'
 import LengthField from './LengthField.vue'
 import PagePanel from './PagePanel.vue'
 import UnitChoice from './UnitChoice.vue'

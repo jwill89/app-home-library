@@ -7,8 +7,8 @@ import {
   faGift,
   faLayerGroup,
 } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
-import type { Sees } from '@/api/client'
-import { useSession } from '@/app/session'
+import type { Sees } from '@/types'
+import { useSession } from '@/stores/session'
 
 // The library's books, the ones wanted, its series, its reading, and the papers, under the
 // one Library place in the navigation: those a visitor's link has anything for.

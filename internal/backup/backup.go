@@ -54,7 +54,12 @@ func Run(ctx context.Context, write *sql.DB, o Options) (string, error) {
 	if o.Logger == nil {
 		o.Logger = slog.Default()
 	}
-	if err := os.MkdirAll(o.Dir, 0o750); err != nil {
+	// The backups are the whole library, so only the service's own user may open the folder,
+	// one made before this held to it as well.
+	if err := os.MkdirAll(o.Dir, 0o700); err != nil {
+		return "", fmt.Errorf("backup dir: %w", err)
+	}
+	if err := os.Chmod(o.Dir, 0o700); err != nil { //nolint:gosec // a folder, which its owner needs the execute bit to open
 		return "", fmt.Errorf("backup dir: %w", err)
 	}
 	day := o.Now.Format(dayForm)
@@ -262,7 +267,7 @@ func snapshotFiles(dest string, dirs map[string]string) (int, error) {
 				return err
 			}
 			to := filepath.Join(dest, name, rel)
-			if err := os.MkdirAll(filepath.Dir(to), 0o750); err != nil {
+			if err := os.MkdirAll(filepath.Dir(to), 0o700); err != nil {
 				return err
 			}
 			if err := os.Link(p, to); err != nil { //nolint:gosec // the library's own directories, written by the service alone; only regular files reach here

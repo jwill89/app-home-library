@@ -8,18 +8,25 @@ RETURNING id;
 
 -- name: UpdateArea :execrows
 UPDATE areas
-SET name = ?, dewey_from = ?, dewey_to = ?, subject = ?, min_height_mm = ?, max_height_mm = ?
+SET name = ?, dewey_from = ?, dewey_to = ?, subject = ?, min_height_mm = ?, max_height_mm = ?,
+    updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE id = ?;
 
 -- name: SetAreaPosition :exec
-UPDATE areas SET position = ? WHERE id = ?;
+UPDATE areas SET position = sqlc.arg(position), updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
+WHERE id = sqlc.arg(id) AND position <> sqlc.arg(position);
+
+-- name: TouchAreaOfShelf :exec
+-- A shelf taken by another area is a change to the area that had it, whose form lists it.
+UPDATE areas SET updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
+WHERE areas.id = (SELECT s.area_id FROM shelves s WHERE s.id = sqlc.arg(shelf_id)) AND areas.id <> sqlc.arg(area_id);
 
 -- name: DeleteArea :execrows
 DELETE FROM areas WHERE id = ?;
 
 -- name: ListAreas :many
 -- The areas in the order a book tries them.
-SELECT id, name, position, dewey_from, dewey_to, subject, min_height_mm, max_height_mm
+SELECT id, name, position, dewey_from, dewey_to, subject, min_height_mm, max_height_mm, updated_at
 FROM areas ORDER BY position, id;
 
 -- name: ListAreaRules :many
@@ -73,3 +80,7 @@ SELECT id, name FROM people WHERE name = ? COLLATE NOCASE;
 SELECT DISTINCT p.name
 FROM people p JOIN edition_contributors ec ON ec.person_id = p.id AND ec.role = 'author'
 ORDER BY p.name COLLATE NOCASE;
+
+-- name: AreaStamp :one
+-- When an area last changed, which a save of its form must have read.
+SELECT updated_at FROM areas WHERE id = ?;

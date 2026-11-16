@@ -14,14 +14,9 @@ import {
   faPen,
   faTrash,
 } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
-import {
-  api,
-  fileURL,
-  type Document,
-  type DocumentFile,
-  type DocumentSuggestions,
-} from '@/api/client'
-import { useConfirmAction } from '@/app/confirm'
+import { api, fileURL } from '@/api/client'
+import type { Document, DocumentFile, DocumentSuggestions } from '@/types'
+import { useConfirmAction } from '@/composables/useConfirmAction'
 import { addDocumentFile, documentCite, documentFileTypes } from '@/app/documents'
 import {
   calendarDate,
@@ -31,10 +26,10 @@ import {
   paperDetailLabel,
   textStatusLabel,
 } from '@/app/format'
-import { useFeed } from '@/app/feed'
+import { useFeed } from '@/composables/useFeed'
 import { goBack } from '@/app/navigation'
-import { useNotice } from '@/app/problem'
-import { useSession } from '@/app/session'
+import { useNotice } from '@/composables/useNotice'
+import { useSession } from '@/stores/session'
 import CitationBox from '@/components/CitationBox.vue'
 import CoverPhoto from '@/components/CoverPhoto.vue'
 import FindCopyDialog from '@/components/FindCopyDialog.vue'

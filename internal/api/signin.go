@@ -99,11 +99,16 @@ func (h *handlers) redeemSetupCode(ctx context.Context, in *setupCodeInput) (*st
 	return nil, nil
 }
 
-func (h *handlers) signOut(ctx context.Context, _ *struct{}) (*struct{}, error) {
+// signedOut tells the browser to let go of the lists it kept while signed in.
+type signedOut struct {
+	ClearSiteData string `header:"Clear-Site-Data" doc:"\"cache\": the lists the browser kept go with the session"`
+}
+
+func (h *handlers) signOut(ctx context.Context, _ *struct{}) (*signedOut, error) {
 	// Signed out either way: a session the store couldn't delete has already lost its cookie,
 	// and expires on its own.
 	if err := h.Sessions.Destroy(ctx); err != nil {
 		h.Logger.Error("end a session", "err", err)
 	}
-	return nil, nil
+	return &signedOut{ClearSiteData: auth.ClearCache}, nil
 }

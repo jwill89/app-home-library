@@ -39,6 +39,7 @@ type AreaRules struct {
 
 // AreaInput is an area as the owner sets it up.
 type AreaInput struct {
+	Stamp
 	Name     string `json:"name" minLength:"1" maxLength:"100"`
 	Position int64  `json:"position" minimum:"0" doc:"Where it comes in the order books try the areas, 1 first; 0 keeps its place, or puts a new one last"`
 	AreaRules
@@ -77,7 +78,8 @@ func areasOf(ctx context.Context, q *db.Queries) ([]Area, error) {
 	for _, r := range rows {
 		at[r.ID] = len(out)
 		out = append(out, Area{ID: r.ID, AreaInput: AreaInput{
-			Name: r.Name, Position: r.Position, Order: []string{}, ShelfIDs: []int64{},
+			Stamp: Stamp{UpdatedAt: r.UpdatedAt},
+			Name:  r.Name, Position: r.Position, Order: []string{}, ShelfIDs: []int64{},
 			AreaRules: AreaRules{
 				Categories: []string{}, DeweyFrom: r.DeweyFrom, DeweyTo: r.DeweyTo, Subject: r.Subject,
 				Authors: []string{}, Series: []string{}, MinHeightMM: r.MinHeightMm, MaxHeightMM: r.MaxHeightMm,
@@ -136,6 +138,15 @@ func (s *Service) UpdateArea(ctx context.Context, id int64, in AreaInput) error 
 		return err
 	}
 	return s.inTx(ctx, func(q *db.Queries) error {
+		kept, err := q.AreaStamp(ctx, id)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		} else if err != nil {
+			return err
+		}
+		if err := Unmoved(in.UpdatedAt, kept, "area"); err != nil {
+			return err
+		}
 		if err := uniqueAreaName(ctx, q, id, in.Name); err != nil {
 			return err
 		}
@@ -265,6 +276,9 @@ func writeArea(ctx context.Context, q *db.Queries, id int64, in AreaInput) error
 		}
 	}
 	for _, sh := range in.ShelfIDs {
+		if err := q.TouchAreaOfShelf(ctx, db.TouchAreaOfShelfParams{ShelfID: sh, AreaID: id}); err != nil {
+			return fmt.Errorf("shelf's area: %w", err)
+		}
 		n, err := q.SetShelfArea(ctx, db.SetShelfAreaParams{AreaID: sql.NullInt64{Int64: id, Valid: true}, ID: sh})
 		if err != nil {
 			return fmt.Errorf("shelf area: %w", err)

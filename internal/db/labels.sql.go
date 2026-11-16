@@ -46,7 +46,9 @@ func (q *Queries) CountLabelQueue(ctx context.Context) ([]*CountLabelQueueRow, e
 }
 
 const getShelvingRule = `-- name: GetShelvingRule :one
-SELECT s.id, s.name, s.shelving, s.label_prefix, (SELECT count(*) FROM copies c WHERE c.section_id = s.id) AS copies
+SELECT
+    s.id, s.name, s.shelving, s.label_prefix,
+    (SELECT count(*) FROM copies c WHERE c.section_id = s.id) AS copies
 FROM sections s
 WHERE s.id = ?
 `
@@ -111,7 +113,10 @@ func (q *Queries) ListEditionLabels(ctx context.Context, editionID int64) ([]*Li
 }
 
 const listEditionShelving = `-- name: ListEditionShelving :many
-SELECT copy_id, edition_id, section, shelving, label_prefix, ddc, title, series, series_number, author_sort FROM copy_shelving WHERE edition_id = ? ORDER BY copy_id
+SELECT
+    copy_id, edition_id, section, shelving, label_prefix, ddc, title, series, series_number,
+    author_sort
+FROM copy_shelving WHERE edition_id = ? ORDER BY copy_id
 `
 
 func (q *Queries) ListEditionShelving(ctx context.Context, editionID int64) ([]*CopyShelving, error) {
@@ -181,7 +186,9 @@ func (q *Queries) ListLabelOffsets(ctx context.Context) ([]*LabelOffset, error) 
 }
 
 const listLabelQueue = `-- name: ListLabelQueue :many
-SELECT q.kind, q.queued_at, cs.copy_id, cs.edition_id, cs.section, cs.shelving, cs.label_prefix, cs.ddc, cs.title, cs.series, cs.series_number, cs.author_sort
+SELECT
+    q.kind, q.queued_at, cs.copy_id, cs.edition_id, cs.section, cs.shelving, cs.label_prefix,
+    cs.ddc, cs.title, cs.series, cs.series_number, cs.author_sort
 FROM label_queue q
 JOIN copy_shelving cs ON cs.copy_id = q.copy_id
 ORDER BY q.copy_id
@@ -239,7 +246,9 @@ func (q *Queries) ListLabelQueue(ctx context.Context) ([]*ListLabelQueueRow, err
 }
 
 const listShelvingRules = `-- name: ListShelvingRules :many
-SELECT s.id, s.name, s.shelving, s.label_prefix, (SELECT count(*) FROM copies c WHERE c.section_id = s.id) AS copies
+SELECT
+    s.id, s.name, s.shelving, s.label_prefix,
+    (SELECT count(*) FROM copies c WHERE c.section_id = s.id) AS copies
 FROM sections s
 ORDER BY s.name
 `

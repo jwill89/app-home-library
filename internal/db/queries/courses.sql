@@ -6,20 +6,26 @@ RETURNING id;
 -- name: UpdateCourse :exec
 UPDATE courses
 SET school = ?, level = ?, department = ?, number = ?, title = ?, term = ?, year = ?,
-    instructor = ?, notes = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+    instructor = ?, notes = ?, updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE id = ?;
 
 -- name: DeleteCourse :execrows
 DELETE FROM courses WHERE id = ?;
 
 -- name: GetCourse :one
-SELECT c.*, (SELECT count(*) FROM course_copies cc WHERE cc.course_id = c.id) AS book_count
+SELECT
+    c.id, c.school, c.level, c.department, c.number, c.title, c.term, c.year, c.instructor, c.notes,
+    c.created_at, c.updated_at,
+    (SELECT count(*) FROM course_copies cc WHERE cc.course_id = c.id) AS book_count
 FROM courses c
 WHERE c.id = ?;
 
 -- name: ListCourses :many
 -- Latest first: by year, then the season within it.
-SELECT c.*, (SELECT count(*) FROM course_copies cc WHERE cc.course_id = c.id) AS book_count
+SELECT
+    c.id, c.school, c.level, c.department, c.number, c.title, c.term, c.year, c.instructor, c.notes,
+    c.created_at, c.updated_at,
+    (SELECT count(*) FROM course_copies cc WHERE cc.course_id = c.id) AS book_count
 FROM courses c
 ORDER BY COALESCE(c.year, 0) DESC,
     CASE c.term WHEN 'fall' THEN 4 WHEN 'summer' THEN 3 WHEN 'spring' THEN 2 WHEN 'winter' THEN 1 ELSE 0 END DESC,

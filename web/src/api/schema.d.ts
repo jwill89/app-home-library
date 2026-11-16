@@ -11,10 +11,16 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** The areas of shelves, in the order a book tries them, with their rules and shelves */
+    /**
+     * The areas of shelves, in the order a book tries them, with their rules and shelves
+     * @description Guard: admin.
+     */
     get: operations['list-areas']
     put?: never
-    /** Add an area of shelves, with the rules for which books it takes and their order */
+    /**
+     * Add an area of shelves, with the rules for which books it takes and their order
+     * @description Guard: admin.
+     */
     post: operations['create-area']
     delete?: never
     options?: never
@@ -30,10 +36,16 @@ export interface paths {
       cookie?: never
     }
     get?: never
-    /** Change an area's name, place in the order, rules, order of books, or shelves */
+    /**
+     * Change an area's name, place in the order, rules, order of books, or shelves
+     * @description Guard: admin.
+     */
     put: operations['update-area']
     post?: never
-    /** Remove an area; its shelves are left in none */
+    /**
+     * Remove an area; its shelves are left in none
+     * @description Guard: admin.
+     */
     delete: operations['delete-area']
     options?: never
     head?: never
@@ -49,7 +61,10 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Sign out */
+    /**
+     * Sign out
+     * @description Guard: public.
+     */
     post: operations['sign-out']
     delete?: never
     options?: never
@@ -68,7 +83,7 @@ export interface paths {
     put?: never
     /**
      * Start signing in with a passkey
-     * @description Answers the options the browser offers a passkey made on this name from. Each address has ten quick tries at signing in, then one every three seconds (429, with Retry-After).
+     * @description Guard: public. Answers the options the browser offers a passkey made on this name from. Each address has ten quick tries at signing in, then one every three seconds (429, with Retry-After).
      */
     post: operations['begin-passkey-sign-in']
     delete?: never
@@ -88,7 +103,7 @@ export interface paths {
     put?: never
     /**
      * Sign in with the passkey the browser offered
-     * @description Answers who is now signed in, as get-me does. Each address has ten quick tries at signing in, then one every three seconds (429, with Retry-After).
+     * @description Guard: public. Answers who is now signed in, as get-me does. Each address has ten quick tries at signing in, then one every three seconds (429, with Retry-After).
      */
     post: operations['finish-passkey-sign-in']
     delete?: never
@@ -108,7 +123,7 @@ export interface paths {
     put?: never
     /**
      * Take a setup code, so this device may make a passkey
-     * @description Spends the code: for the next ten minutes this device may make one passkey on this name (begin-passkey, then add-passkey), which signs it in. Each address has ten quick tries at signing in, then one every three seconds (429, with Retry-After).
+     * @description Guard: public. Spends the code: for the next ten minutes this device may make one passkey on this name (begin-passkey, then add-passkey), which signs it in. Each address has ten quick tries at signing in, then one every three seconds (429, with Retry-After).
      */
     post: operations['redeem-setup-code']
     delete?: never
@@ -124,10 +139,16 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** The bookcases in walking order, with their shelves */
+    /**
+     * The bookcases in walking order, with their shelves
+     * @description Guard: admin.
+     */
     get: operations['list-bookcases']
     put?: never
-    /** Add a bookcase with its shelves, from the top down */
+    /**
+     * Add a bookcase with its shelves, from the top down
+     * @description Guard: admin.
+     */
     post: operations['create-bookcase']
     delete?: never
     options?: never
@@ -143,10 +164,16 @@ export interface paths {
       cookie?: never
     }
     get?: never
-    /** Rename a bookcase or move it in the walking order */
+    /**
+     * Rename a bookcase or move it in the walking order
+     * @description Guard: admin.
+     */
     put: operations['update-bookcase']
     post?: never
-    /** Remove a bookcase and its shelves; the books are only planned again */
+    /**
+     * Remove a bookcase and its shelves; the books are only planned again
+     * @description Guard: admin.
+     */
     delete: operations['delete-bookcase']
     options?: never
     head?: never
@@ -162,7 +189,10 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Add a shelf at the bottom of a bookcase */
+    /**
+     * Add a shelf at the bottom of a bookcase
+     * @description Guard: admin.
+     */
     post: operations['create-shelf']
     delete?: never
     options?: never
@@ -177,10 +207,16 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Every book in the library, or those asked for */
+    /**
+     * Every book in the library, or those asked for
+     * @description Guard: auth.
+     */
     get: operations['list-books']
     put?: never
-    /** Add a book with its first copy, or to the wishlist without one */
+    /**
+     * Add a book with its first copy, or to the wishlist without one
+     * @description Guard: admin.
+     */
     post: operations['create-book']
     delete?: never
     options?: never
@@ -195,12 +231,21 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** A book with its copies; a visitor's leaves out what is the owner's alone */
+    /**
+     * A book with its copies; a visitor's leaves out what is the owner's alone
+     * @description Guard: auth.
+     */
     get: operations['get-book']
-    /** Replace a book's details */
+    /**
+     * Replace a book's details
+     * @description Guard: admin.
+     */
     put: operations['update-book']
     post?: never
-    /** Remove a book and its copies */
+    /**
+     * Remove a book and its copies
+     * @description Guard: admin.
+     */
     delete: operations['delete-book']
     options?: never
     head?: never
@@ -216,7 +261,10 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Record another copy of a book */
+    /**
+     * Record another copy of a book
+     * @description Guard: admin.
+     */
     post: operations['create-copy']
     delete?: never
     options?: never
@@ -232,11 +280,20 @@ export interface paths {
       cookie?: never
     }
     get?: never
-    /** Make a photo or an image file the cover */
+    /**
+     * Make a photo or an image file the cover
+     * @description Guard: admin.
+     */
     put: operations['upload-cover']
-    /** Fetch a cover from a link */
+    /**
+     * Fetch a cover from a link
+     * @description Guard: admin.
+     */
     post: operations['fetch-cover']
-    /** Leave the book without a cover */
+    /**
+     * Leave the book without a cover
+     * @description Guard: admin.
+     */
     delete: operations['delete-cover']
     options?: never
     head?: never
@@ -252,7 +309,10 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Keep the book as it is in these details: what the sources give for them is not offered again while they give it */
+    /**
+     * Keep the book as it is in these details: what the sources give for them is not offered again while they give it
+     * @description Guard: admin.
+     */
     post: operations['decline-suggestions']
     delete?: never
     options?: never
@@ -269,7 +329,10 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Begin a book again; the read it had is kept among its earlier reads */
+    /**
+     * Begin a book again; the read it had is kept among its earlier reads
+     * @description Guard: admin.
+     */
     post: operations['read-again']
     delete?: never
     options?: never
@@ -285,7 +348,10 @@ export interface paths {
       cookie?: never
     }
     get?: never
-    /** Change a book's reading status as it happens */
+    /**
+     * Change a book's reading status as it happens
+     * @description Guard: admin.
+     */
     put: operations['set-read-status']
     post?: never
     delete?: never
@@ -303,7 +369,10 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Look the book up again: fill its blanks, and suggest what the sources now give otherwise */
+    /**
+     * Look the book up again: fill its blanks, and suggest what the sources now give otherwise
+     * @description Guard: admin.
+     */
     post: operations['refresh-book']
     delete?: never
     options?: never
@@ -318,7 +387,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** What the book's last lookup the owner asked for offers to change now */
+    /**
+     * What the book's last lookup the owner asked for offers to change now
+     * @description Guard: admin.
+     */
     get: operations['get-suggestions']
     put?: never
     post?: never
@@ -335,7 +407,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Everyone the owner has lent to */
+    /**
+     * Everyone the owner has lent to
+     * @description Guard: admin.
+     */
     get: operations['list-borrowers']
     put?: never
     post?: never
@@ -353,10 +428,16 @@ export interface paths {
       cookie?: never
     }
     get?: never
-    /** Rename a borrower or change how to reach them */
+    /**
+     * Rename a borrower or change how to reach them
+     * @description Guard: admin.
+     */
     put: operations['update-borrower']
     post?: never
-    /** Remove a borrower and their loans from the history */
+    /**
+     * Remove a borrower and their loans from the history
+     * @description Guard: admin.
+     */
     delete: operations['delete-borrower']
     options?: never
     head?: never
@@ -370,12 +451,21 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Whether there is a calendar link for the loans' due dates */
+    /**
+     * Whether there is a calendar link for the loans' due dates
+     * @description Guard: admin.
+     */
     get: operations['get-calendar-link']
     put?: never
-    /** Make the calendar link, replacing the one before */
+    /**
+     * Make the calendar link, replacing the one before
+     * @description Guard: admin.
+     */
     post: operations['create-calendar-link']
-    /** Turn the calendar link off */
+    /**
+     * Turn the calendar link off
+     * @description Guard: admin.
+     */
     delete: operations['delete-calendar-link']
     options?: never
     head?: never
@@ -391,7 +481,7 @@ export interface paths {
     }
     /**
      * The library's changes as they are made
-     * @description Server-Sent Events: each change names a record to fetch again over REST. Send Last-Event-ID (the browser does, on its own reconnect) or since to go on from a change.
+     * @description Guard: admin. Server-Sent Events: each change names a record to fetch again over REST. Send Last-Event-ID (the browser does, on its own reconnect) or since to go on from a change.
      */
     get: operations['stream-changes']
     put?: never
@@ -409,7 +499,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Sections, genres, and series already in use */
+    /**
+     * Sections, genres, and series already in use
+     * @description Guard: admin.
+     */
     get: operations['get-choices']
     put?: never
     post?: never
@@ -426,7 +519,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** What a scanned barcode is, and whether the library has its book */
+    /**
+     * What a scanned barcode is, and whether the library has its book
+     * @description Guard: admin.
+     */
     get: operations['identify-code']
     put?: never
     post?: never
@@ -444,10 +540,16 @@ export interface paths {
       cookie?: never
     }
     get?: never
-    /** Replace a copy's details */
+    /**
+     * Replace a copy's details
+     * @description Guard: admin.
+     */
     put: operations['update-copy']
     post?: never
-    /** Remove one copy recorded by mistake; the book stays */
+    /**
+     * Remove one copy recorded by mistake; the book stays
+     * @description Guard: admin.
+     */
     delete: operations['delete-copy']
     options?: never
     head?: never
@@ -462,10 +564,16 @@ export interface paths {
       cookie?: never
     }
     get?: never
-    /** Record that a copy has left the library: lost, sold, donated, given away, or discarded */
+    /**
+     * Record that a copy has left the library: lost, sold, donated, given away, or discarded
+     * @description Guard: admin.
+     */
     put: operations['mark-copy-gone']
     post?: never
-    /** Put a copy that had gone back in the library */
+    /**
+     * Put a copy that had gone back in the library
+     * @description Guard: admin.
+     */
     delete: operations['bring-copy-back']
     options?: never
     head?: never
@@ -481,7 +589,10 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Lend a copy */
+    /**
+     * Lend a copy
+     * @description Guard: admin.
+     */
     post: operations['create-loan']
     delete?: never
     options?: never
@@ -496,7 +607,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Where a copy stands on the shelves */
+    /**
+     * Where a copy stands on the shelves
+     * @description Guard: admin.
+     */
     get: operations['get-copy-place']
     put?: never
     post?: never
@@ -514,7 +628,10 @@ export interface paths {
       cookie?: never
     }
     get?: never
-    /** Record the day a shelf check found a copy */
+    /**
+     * Record the day a shelf check found a copy
+     * @description Guard: admin.
+     */
     put: operations['mark-copy-seen']
     post?: never
     delete?: never
@@ -530,10 +647,16 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Every course, latest first */
+    /**
+     * Every course, latest first
+     * @description Guard: admin.
+     */
     get: operations['list-courses']
     put?: never
-    /** Record a course */
+    /**
+     * Record a course
+     * @description Guard: admin.
+     */
     post: operations['create-course']
     delete?: never
     options?: never
@@ -548,12 +671,21 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** A course with its books */
+    /**
+     * A course with its books
+     * @description Guard: admin.
+     */
     get: operations['get-course']
-    /** Replace a course's details */
+    /**
+     * Replace a course's details
+     * @description Guard: admin.
+     */
     put: operations['update-course']
     post?: never
-    /** Remove a course; its books stay */
+    /**
+     * Remove a course; its books stay
+     * @description Guard: admin.
+     */
     delete: operations['delete-course']
     options?: never
     head?: never
@@ -568,10 +700,16 @@ export interface paths {
       cookie?: never
     }
     get?: never
-    /** Put a copy on a course's list, or change whether it was required */
+    /**
+     * Put a copy on a course's list, or change whether it was required
+     * @description Guard: admin.
+     */
     put: operations['put-course-copy']
     post?: never
-    /** Take a copy off a course's list; the copy stays */
+    /**
+     * Take a copy off a course's list; the copy stays
+     * @description Guard: admin.
+     */
     delete: operations['delete-course-copy']
     options?: never
     head?: never
@@ -585,10 +723,16 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Every document, or those whose details or files have the words searched for */
+    /**
+     * Every document, or those whose details or files have the words searched for
+     * @description Guard: auth.
+     */
     get: operations['list-documents']
     put?: never
-    /** Record a document; its files come after */
+    /**
+     * Record a document; its files come after
+     * @description Guard: admin.
+     */
     post: operations['create-document']
     delete?: never
     options?: never
@@ -603,12 +747,21 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** A document with its files */
+    /**
+     * A document with its files
+     * @description Guard: auth.
+     */
     get: operations['get-document']
-    /** Replace a document's details; its files stay */
+    /**
+     * Replace a document's details; its files stay
+     * @description Guard: admin.
+     */
     put: operations['update-document']
     post?: never
-    /** Remove a document and its files */
+    /**
+     * Remove a document and its files
+     * @description Guard: admin.
+     */
     delete: operations['delete-document']
     options?: never
     head?: never
@@ -624,7 +777,10 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Add a PDF or a photo of a page to a document */
+    /**
+     * Add a PDF or a photo of a page to a document
+     * @description Guard: admin.
+     */
     post: operations['add-document-file']
     delete?: never
     options?: never
@@ -639,11 +795,17 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** One of a document's files, to view or download */
+    /**
+     * One of a document's files, to view or download
+     * @description Guard: auth.
+     */
     get: operations['get-document-file']
     put?: never
     post?: never
-    /** Remove one of a document's files */
+    /**
+     * Remove one of a document's files
+     * @description Guard: admin.
+     */
     delete: operations['delete-document-file']
     options?: never
     head?: never
@@ -658,7 +820,10 @@ export interface paths {
       cookie?: never
     }
     get?: never
-    /** Type a file's text yourself; empty hands it back to the text service */
+    /**
+     * Type a file's text yourself; empty hands it back to the text service
+     * @description Guard: admin.
+     */
     put: operations['set-file-text']
     post?: never
     delete?: never
@@ -674,10 +839,16 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Where OpenAlex knows the document can be read without a subscription, asked afresh */
+    /**
+     * Where OpenAlex knows the document can be read without a subscription, asked afresh
+     * @description Guard: admin.
+     */
     get: operations['get-open-copy']
     put?: never
-    /** Fetch the open copy's PDF and add it to the document's files */
+    /**
+     * Fetch the open copy's PDF and add it to the document's files
+     * @description Guard: admin.
+     */
     post: operations['add-open-copy']
     delete?: never
     options?: never
@@ -694,7 +865,10 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Look a paper up again by its DOI: its blanks filled, and what Crossref gives otherwise offered */
+    /**
+     * Look a paper up again by its DOI: its blanks filled, and what Crossref gives otherwise offered
+     * @description Guard: admin.
+     */
     post: operations['refresh-document']
     delete?: never
     options?: never
@@ -709,10 +883,16 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** How far the background lookup has got */
+    /**
+     * How far the background lookup has got
+     * @description Guard: admin.
+     */
     get: operations['get-enrichment']
     put?: never
-    /** Put books in the background lookup's queue, to fill what they lack, each source asked again */
+    /**
+     * Put books in the background lookup's queue, to fill what they lack, each source asked again
+     * @description Guard: admin.
+     */
     post: operations['queue-lookups']
     delete?: never
     options?: never
@@ -727,7 +907,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Every copy as a row of a CSV file, for a spreadsheet */
+    /**
+     * Every copy as a row of a CSV file, for a spreadsheet
+     * @description Guard: admin.
+     */
     get: operations['export-books']
     put?: never
     post?: never
@@ -744,7 +927,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** The whole library as one JSON file, to save */
+    /**
+     * The whole library as one JSON file, to save
+     * @description Guard: admin.
+     */
     get: operations['export-library']
     put?: never
     post?: never
@@ -761,7 +947,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** The books that lack a detail, with what each lacks */
+    /**
+     * The books that lack a detail, with what each lacks
+     * @description Guard: admin.
+     */
     get: operations['list-gaps']
     put?: never
     post?: never
@@ -780,7 +969,10 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Import another app's export: Bookshelf, Goodreads, or LibraryThing, told by its columns, or EndNote's XML */
+    /**
+     * Import another app's export: Bookshelf, Goodreads, or LibraryThing, told by its columns, or EndNote's XML
+     * @description Guard: admin.
+     */
     post: operations['create-import']
     delete?: never
     options?: never
@@ -795,7 +987,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** The two label sheets: layout, labels waiting, and this printer's offsets */
+    /**
+     * The two label sheets: layout, labels waiting, and this printer's offsets
+     * @description Guard: admin.
+     */
     get: operations['list-label-sheets']
     put?: never
     post?: never
@@ -813,7 +1008,10 @@ export interface paths {
       cookie?: never
     }
     get?: never
-    /** Turn a kind of label on or off, and move its printing to meet this printer's labels */
+    /**
+     * Turn a kind of label on or off, and move its printing to meet this printer's labels
+     * @description Guard: admin.
+     */
     put: operations['set-label-sheet']
     post?: never
     delete?: never
@@ -829,7 +1027,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Every label's outline on a sheet, to print on plain paper and hold over the labels */
+    /**
+     * Every label's outline on a sheet, to print on plain paper and hold over the labels
+     * @description Guard: admin.
+     */
     get: operations['alignment-sheet']
     put?: never
     post?: never
@@ -846,7 +1047,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** The labels waiting to be printed, each kind in shelf order */
+    /**
+     * The labels waiting to be printed, each kind in shelf order
+     * @description Guard: admin.
+     */
     get: operations['list-labels']
     put?: never
     post?: never
@@ -866,7 +1070,10 @@ export interface paths {
     get?: never
     put?: never
     post?: never
-    /** Take labels off the queue: printed, or not wanted */
+    /**
+     * Take labels off the queue: printed, or not wanted
+     * @description Guard: admin.
+     */
     delete: operations['unqueue-labels']
     options?: never
     head?: never
@@ -880,7 +1087,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** The queued labels of these copies, drawn on their sheets as a PDF */
+    /**
+     * The queued labels of these copies, drawn on their sheets as a PDF
+     * @description Guard: admin.
+     */
     get: operations['print-labels']
     put?: never
     post?: never
@@ -898,7 +1108,10 @@ export interface paths {
       cookie?: never
     }
     get?: never
-    /** Put a copy's label in the queue to print again */
+    /**
+     * Put a copy's label in the queue to print again
+     * @description Guard: admin.
+     */
     put: operations['queue-label']
     post?: never
     delete?: never
@@ -914,9 +1127,15 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** The library on its shelves: the layout in use, a suggestion asked for, or the shelves with nothing on them */
+    /**
+     * The library on its shelves: the layout in use, a suggestion asked for, or the shelves with nothing on them
+     * @description Guard: admin.
+     */
     get: operations['get-layout']
-    /** Set how full the planner fills a shelf */
+    /**
+     * Set how full the planner fills a shelf
+     * @description Guard: admin.
+     */
     put: operations['set-layout']
     post?: never
     delete?: never
@@ -933,10 +1152,16 @@ export interface paths {
       cookie?: never
     }
     get?: never
-    /** Put a fresh suggestion to use: each shelf keeps where it starts in its area's order */
+    /**
+     * Put a fresh suggestion to use: each shelf keeps where it starts in its area's order
+     * @description Guard: admin.
+     */
     put: operations['use-layout']
     post?: never
-    /** Stop using the layout: no book has a place until another is put to use */
+    /**
+     * Stop using the layout: no book has a place until another is put to use
+     * @description Guard: admin.
+     */
     delete: operations['stop-layout']
     options?: never
     head?: never
@@ -950,7 +1175,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** A label for the edge of every shelf with books, as a PDF on the spine-label sheet */
+    /**
+     * A label for the edge of every shelf with books, as a PDF on the spine-label sheet
+     * @description Guard: admin.
+     */
     get: operations['shelf-labels']
     put?: never
     post?: never
@@ -967,7 +1195,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Every loan: the copies out, then the history */
+    /**
+     * Every loan: the copies out, then the history
+     * @description Guard: admin.
+     */
     get: operations['list-loans']
     put?: never
     post?: never
@@ -985,11 +1216,41 @@ export interface paths {
       cookie?: never
     }
     get?: never
-    /** Replace a loan's details; a return date brings the copy back */
+    /**
+     * Replace a loan's details; a return date brings the copy back
+     * @description Guard: admin.
+     */
     put: operations['update-loan']
     post?: never
-    /** Remove a loan from the history */
+    /**
+     * Remove a loan from the history
+     * @description Guard: admin.
+     */
     delete: operations['delete-loan']
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/log-level': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * How much the server logs
+     * @description Guard: admin.
+     */
+    get: operations['get-log-level']
+    /**
+     * Set how much the server logs
+     * @description Guard: admin. From now until the server restarts, which goes back to HL_LOG_LEVEL's level.
+     */
+    put: operations['set-log-level']
+    post?: never
+    delete?: never
     options?: never
     head?: never
     patch?: never
@@ -1004,7 +1265,10 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** A paper's blanks filled from a citation exported from a library's database (RIS) */
+    /**
+     * A paper's blanks filled from a citation exported from a library's database (RIS)
+     * @description Guard: admin.
+     */
     post: operations['lookup-citation']
     delete?: never
     options?: never
@@ -1021,7 +1285,10 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** A paper's blanks filled from what Crossref says its DOI is */
+    /**
+     * A paper's blanks filled from what Crossref says its DOI is
+     * @description Guard: admin.
+     */
     post: operations['lookup-doi']
     delete?: never
     options?: never
@@ -1036,7 +1303,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Papers Crossref has that match a title and author, with their DOIs */
+    /**
+     * Papers Crossref has that match a title and author, with their DOIs
+     * @description Guard: admin.
+     */
     get: operations['find-dois']
     put?: never
     post?: never
@@ -1053,7 +1323,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Ask every source about an ISBN and merge the answers */
+    /**
+     * Ask every source about an ISBN and merge the answers
+     * @description Guard: admin.
+     */
     get: operations['lookup-isbn']
     put?: never
     post?: never
@@ -1070,7 +1343,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Find books by title or author words */
+    /**
+     * Find books by title or author words
+     * @description Guard: admin.
+     */
     get: operations['lookup-search']
     put?: never
     post?: never
@@ -1087,7 +1363,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Who is asking: the owner, a visitor by a share link, or no one */
+    /**
+     * Who is asking: the owner, a visitor by a share link, or no one
+     * @description Guard: public.
+     */
     get: operations['get-me']
     put?: never
     post?: never
@@ -1104,12 +1383,15 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** The owner's passkeys on every name */
+    /**
+     * The owner's passkeys on every name
+     * @description Guard: admin.
+     */
     get: operations['list-passkeys']
     put?: never
     /**
      * Keep the passkey the browser made
-     * @description Finishes begin-passkey. A device that redeemed a setup code is signed in by it.
+     * @description Guard: admin. Finishes begin-passkey. A device that redeemed a setup code is signed in by it.
      */
     post: operations['add-passkey']
     delete?: never
@@ -1129,7 +1411,7 @@ export interface paths {
     put?: never
     /**
      * Start making a passkey on this name
-     * @description For the owner, or a device that has redeemed a setup code (redeem-setup-code); a visitor by a share link is refused.
+     * @description Guard: admin. For the owner, or a device that has redeemed a setup code (redeem-setup-code); a visitor by a share link is refused.
      */
     post: operations['begin-passkey']
     delete?: never
@@ -1148,7 +1430,10 @@ export interface paths {
     get?: never
     put?: never
     post?: never
-    /** Remove a passkey */
+    /**
+     * Remove a passkey
+     * @description Guard: admin.
+     */
     delete: operations['delete-passkey']
     options?: never
     head?: never
@@ -1162,7 +1447,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Every read finished, and the books and pages each year */
+    /**
+     * Every read finished, and the books and pages each year
+     * @description Guard: auth.
+     */
     get: operations['get-reading']
     put?: never
     post?: never
@@ -1182,7 +1470,10 @@ export interface paths {
     get?: never
     put?: never
     post?: never
-    /** Remove an earlier read recorded by mistake */
+    /**
+     * Remove an earlier read recorded by mistake
+     * @description Guard: admin.
+     */
     delete: operations['delete-reading']
     options?: never
     head?: never
@@ -1196,10 +1487,16 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** The scans not yet marked done */
+    /**
+     * The scans not yet marked done
+     * @description Guard: admin.
+     */
     get: operations['list-scans']
     put?: never
-    /** Queue a scanned ISBN to be looked up and held for the owner */
+    /**
+     * Queue a scanned ISBN to be looked up and held for the owner
+     * @description Guard: admin.
+     */
     post: operations['create-scan']
     delete?: never
     options?: never
@@ -1216,7 +1513,10 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Add found books to the library, in the background */
+    /**
+     * Add found books to the library, in the background
+     * @description Guard: admin.
+     */
     post: operations['add-scans']
     delete?: never
     options?: never
@@ -1233,7 +1533,10 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Mark every settled scan done; a found book not added is let go */
+    /**
+     * Mark every settled scan done; a found book not added is let go
+     * @description Guard: admin.
+     */
     post: operations['finish-scans']
     delete?: never
     options?: never
@@ -1251,7 +1554,10 @@ export interface paths {
     get?: never
     put?: never
     post?: never
-    /** Remove a scan made by mistake, and the book it added when asked */
+    /**
+     * Remove a scan made by mistake, and the book it added when asked
+     * @description Guard: admin.
+     */
     delete: operations['delete-scan']
     options?: never
     head?: never
@@ -1267,7 +1573,10 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Mark one scan done; its book stays */
+    /**
+     * Mark one scan done; its book stays
+     * @description Guard: admin.
+     */
     post: operations['finish-scan']
     delete?: never
     options?: never
@@ -1282,7 +1591,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Each section and how it is shelved */
+    /**
+     * Each section and how it is shelved
+     * @description Guard: admin.
+     */
     get: operations['list-sections']
     put?: never
     post?: never
@@ -1300,7 +1612,10 @@ export interface paths {
       cookie?: never
     }
     get?: never
-    /** Change how a section is shelved, which its call numbers follow */
+    /**
+     * Change how a section is shelved, which its call numbers follow
+     * @description Guard: admin.
+     */
     put: operations['set-shelving']
     post?: never
     delete?: never
@@ -1316,7 +1631,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Every series with the volumes had and wanted, the gaps, and the next number */
+    /**
+     * Every series with the volumes had and wanted, the gaps, and the next number
+     * @description Guard: auth.
+     */
     get: operations['list-series']
     put?: never
     post?: never
@@ -1333,12 +1651,21 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** One series with the volumes had and wanted, the gaps, and the next number */
+    /**
+     * One series with the volumes had and wanted, the gaps, and the next number
+     * @description Guard: auth.
+     */
     get: operations['get-series']
-    /** Rename a series; another series' name merges the two */
+    /**
+     * Rename a series; another series' name merges the two
+     * @description Guard: admin.
+     */
     put: operations['rename-series']
     post?: never
-    /** Say a series is none: its books leave it, and no lookup or import puts a book in it again */
+    /**
+     * Say a series is none: its books leave it, and no lookup or import puts a book in it again
+     * @description Guard: admin.
+     */
     delete: operations['dismiss-series']
     options?: never
     head?: never
@@ -1355,7 +1682,10 @@ export interface paths {
     get?: never
     put?: never
     post?: never
-    /** Take a book out of a series; no lookup puts it in one again */
+    /**
+     * Take a book out of a series; no lookup puts it in one again
+     * @description Guard: admin.
+     */
     delete: operations['leave-series']
     options?: never
     head?: never
@@ -1370,7 +1700,10 @@ export interface paths {
       cookie?: never
     }
     get?: never
-    /** Mark every book of a series the house has read, or unread */
+    /**
+     * Mark every book of a series the house has read, or unread
+     * @description Guard: admin.
+     */
     put: operations['set-series-read']
     post?: never
     delete?: never
@@ -1388,7 +1721,10 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** A one-time code that adds a passkey on another device or name */
+    /**
+     * A one-time code that adds a passkey on another device or name
+     * @description Guard: admin.
+     */
     post: operations['create-setup-code']
     delete?: never
     options?: never
@@ -1403,10 +1739,16 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** The read-only share links, newest first */
+    /**
+     * The read-only share links, newest first
+     * @description Guard: admin.
+     */
     get: operations['list-shares']
     put?: never
-    /** Make a read-only share link */
+    /**
+     * Make a read-only share link
+     * @description Guard: admin.
+     */
     post: operations['create-share']
     delete?: never
     options?: never
@@ -1422,10 +1764,16 @@ export interface paths {
       cookie?: never
     }
     get?: never
-    /** Rename a share link, change its end, or change what it shows; its address stays */
+    /**
+     * Rename a share link, change its end, or change what it shows; its address stays
+     * @description Guard: admin.
+     */
     put: operations['update-share']
     post?: never
-    /** Revoke a share link at once */
+    /**
+     * Revoke a share link at once
+     * @description Guard: admin.
+     */
     delete: operations['delete-share']
     options?: never
     head?: never
@@ -1440,10 +1788,16 @@ export interface paths {
       cookie?: never
     }
     get?: never
-    /** Change a shelf's measurements, or whether it takes oversize books */
+    /**
+     * Change a shelf's measurements, or whether it takes oversize books
+     * @description Guard: admin.
+     */
     put: operations['update-shelf']
     post?: never
-    /** Remove a shelf; the shelves below move up a number */
+    /**
+     * Remove a shelf; the shelves below move up a number
+     * @description Guard: admin.
+     */
     delete: operations['delete-shelf']
     options?: never
     head?: never
@@ -1457,7 +1811,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** The books whose last lookup the owner asked for gives details otherwise, with which details */
+    /**
+     * The books whose last lookup the owner asked for gives details otherwise, with which details
+     * @description Guard: admin.
+     */
     get: operations['list-suggestions']
     put?: never
     post?: never
@@ -1530,6 +1887,8 @@ export interface components {
       shelfIds: number[] | null
       /** @description Words one of a book's subject headings has; empty for any */
       subject: string
+      /** @description When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked */
+      updatedAt?: string
     }
     AreaInput: {
       /** @description Books by any of these people; none for every author */
@@ -1566,6 +1925,8 @@ export interface components {
       shelfIds: number[] | null
       /** @description Words one of a book's subject headings has; empty for any */
       subject: string
+      /** @description When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked */
+      updatedAt?: string
     }
     AreasOutputBody: {
       areas: components['schemas']['Area'][] | null
@@ -1741,6 +2102,8 @@ export interface components {
       /** Format: int64 */
       thicknessMm: number
       title: string
+      /** @description When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked */
+      updatedAt?: string
       /** Format: int64 */
       widthMm: number
     }
@@ -1797,6 +2160,8 @@ export interface components {
        */
       position: number
       shelves: components['schemas']['Shelf'][] | null
+      /** @description When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked */
+      updatedAt?: string
     }
     BookcaseInput: {
       name: string
@@ -1805,6 +2170,8 @@ export interface components {
        * @description Where it comes in walking order
        */
       position: number
+      /** @description When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked */
+      updatedAt?: string
     }
     BookcasesBody: {
       bookcases: components['schemas']['Bookcase'][] | null
@@ -1826,12 +2193,16 @@ export interface components {
        * @description Copies they have now
        */
       out: number
+      /** @description When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked */
+      updatedAt?: string
     }
     BorrowerInput: {
       /** @description A phone number or an address to reach them by */
       contact: string
       name: string
       notes: string
+      /** @description When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked */
+      updatedAt?: string
     }
     CalendarLink: {
       createdAt: string
@@ -1924,6 +2295,8 @@ export interface components {
       /** @description YYYY-MM-DD a shelf check last found it, or empty */
       seenOn: string
       signed: boolean
+      /** @description When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked */
+      updatedAt?: string
     }
     CopyInput: {
       /** @enum {string} */
@@ -1944,6 +2317,8 @@ export interface components {
       priceCents: number
       section: string
       signed: boolean
+      /** @description When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked */
+      updatedAt?: string
     }
     Course: {
       /** Format: int64 */
@@ -1962,6 +2337,8 @@ export interface components {
       /** @enum {string} */
       term: 'unknown' | 'winter' | 'spring' | 'summer' | 'fall'
       title: string
+      /** @description When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked */
+      updatedAt?: string
       /**
        * Format: int64
        * @description 0 when not known
@@ -1999,6 +2376,8 @@ export interface components {
       /** @enum {string} */
       term: 'unknown' | 'winter' | 'spring' | 'summer' | 'fall'
       title: string
+      /** @description When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked */
+      updatedAt?: string
       /**
        * Format: int64
        * @description 0 when not known
@@ -2018,6 +2397,8 @@ export interface components {
       /** @enum {string} */
       term: 'unknown' | 'winter' | 'spring' | 'summer' | 'fall'
       title: string
+      /** @description When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked */
+      updatedAt?: string
       /**
        * Format: int64
        * @description 0 when not known
@@ -2129,7 +2510,8 @@ export interface components {
       /** @description What it is about, as a book's subjects are */
       subjects: string[] | null
       title: string
-      updatedAt: string
+      /** @description When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked */
+      updatedAt?: string
       url: string
       volume: string
     }
@@ -2196,6 +2578,8 @@ export interface components {
       /** @description What it is about, as a book's subjects are */
       subjects: string[] | null
       title: string
+      /** @description When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked */
+      updatedAt?: string
       url: string
       volume: string
     }
@@ -2526,6 +2910,8 @@ export interface components {
       /** @description YYYY-MM-DD, or empty while the copy is out */
       returnedOn: string
       title: string
+      /** @description When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked */
+      updatedAt?: string
     }
     LoanInput: {
       borrower: string
@@ -2536,6 +2922,20 @@ export interface components {
       notes: string
       /** @description YYYY-MM-DD, or empty while the copy is out */
       returnedOn: string
+      /** @description When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked */
+      updatedAt?: string
+    }
+    LogLevelBody: {
+      /**
+       * @description What the server logs now: debug for everything, info for what it does, warn for problems, error for failures alone.
+       * @enum {string}
+       */
+      level: 'debug' | 'info' | 'warn' | 'error'
+      /**
+       * @description What it logged when it started, HL_LOG_LEVEL's level, which a restart goes back to.
+       * @enum {string}
+       */
+      started: 'debug' | 'info' | 'warn' | 'error'
     }
     'Lookup-citationRequest': {
       /** @description The form as it stands */
@@ -2861,6 +3261,13 @@ export interface components {
        */
       changed: number
     }
+    SetLogLevelInputBody: {
+      /**
+       * @description What the server logs from now until it restarts.
+       * @enum {string}
+       */
+      level: 'debug' | 'info' | 'warn' | 'error'
+    }
     SetupCodeInputBody: {
       /** @description The setup code, as shown where it was made; case, spaces and the hyphen don't matter. */
       code: string
@@ -2875,6 +3282,8 @@ export interface components {
       /** @description Who or what the link is for */
       name: string
       scope: components['schemas']['Scope']
+      /** @description When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked */
+      updatedAt?: string
     }
     ShareLink: {
       createdAt: string
@@ -2887,6 +3296,8 @@ export interface components {
       name: string
       /** @description What the link shows */
       scope: components['schemas']['Scope']
+      /** @description When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked */
+      updatedAt?: string
     }
     SharesOutputBody: {
       shares: components['schemas']['ShareLink'][] | null
@@ -2926,6 +3337,8 @@ export interface components {
        * @description From the top, 1 up
        */
       position: number
+      /** @description When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked */
+      updatedAt?: string
       /**
        * Format: int64
        * @description Inside the sides
@@ -2971,6 +3384,8 @@ export interface components {
        * @description Clear space above the shelf
        */
       heightMm: number
+      /** @description When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked */
+      updatedAt?: string
       /**
        * Format: int64
        * @description Inside the sides
@@ -3051,6 +3466,8 @@ export interface components {
        * @description From the top, 1 up
        */
       position: number
+      /** @description When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked */
+      updatedAt?: string
       /**
        * Format: int64
        * @description How far along the shelf the books reach, a gap at the start included
@@ -3285,6 +3702,7 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          'Clear-Site-Data'?: string
           [name: string]: unknown
         }
         content?: never
@@ -5894,6 +6312,68 @@ export interface operations {
           [name: string]: unknown
         }
         content?: never
+      }
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+    }
+  }
+  'get-log-level': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['LogLevelBody']
+        }
+      }
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/problem+json': components['schemas']['ErrorModel']
+        }
+      }
+    }
+  }
+  'set-log-level': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SetLogLevelInputBody']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['LogLevelBody']
+        }
       }
       /** @description Error */
       default: {

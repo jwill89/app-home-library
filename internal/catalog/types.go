@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"homelibrary/internal/lookup"
 )
@@ -20,6 +21,7 @@ const subjectLimit = 40
 // BookInput is a book as the owner adds or edits it: the work, the edition, and, when
 // adding, the first copy.
 type BookInput struct {
+	Stamp
 	Title        string               `json:"title" minLength:"1" maxLength:"500"`
 	Subtitle     string               `json:"subtitle" maxLength:"500"`
 	Contributors []lookup.Contributor `json:"contributors" maxItems:"40"`
@@ -55,6 +57,7 @@ type BookInput struct {
 
 // CopyInput is one physical copy as the owner records it.
 type CopyInput struct {
+	Stamp
 	Section      string `json:"section" maxLength:"100"`
 	AcquiredAs   string `json:"acquiredAs" enum:"unknown,new,used"`
 	AcquiredOn   string `json:"acquiredOn" doc:"YYYY-MM-DD, or empty"`
@@ -239,6 +242,33 @@ func (e *ConflictError) Error() string {
 	return e.Message
 }
 
+// Stamp is when a record last changed. A record's answer carries it, and a form's save sends
+// back the one the form read, so a save made from a copy older than the record is refused
+// rather than undoing a change made since (MovedError, Unmoved). A save that sends none is not checked.
+type Stamp struct {
+	UpdatedAt string `json:"updatedAt,omitempty" required:"false" maxLength:"20" doc:"When it last changed, RFC 3339. A save sends back the one its form read, and is refused (409) when it has changed since; left out, nothing is checked"`
+}
+
+// MovedError is a save made from a copy of a record older than the one kept: it was changed
+// elsewhere since the form read it.
+type MovedError struct {
+	What string
+}
+
+func (e *MovedError) Error() string {
+	return "This " + e.What + " was changed on another device or page since you opened it. " +
+		"Load the latest to see the change, or save yours over it."
+}
+
+// Unmoved refuses a save whose form read the record before its last change: seen is the stamp
+// the save sent back, kept the record's own, and what names the record to the owner.
+func Unmoved(seen, kept, what string) error {
+	if seen != "" && seen != kept {
+		return &MovedError{What: what}
+	}
+	return nil
+}
+
 // FieldError is input refused for one field.
 type FieldError struct {
 	Field   string
@@ -249,10 +279,13 @@ func (e *FieldError) Error() string {
 	return e.Field + ": " + e.Message
 }
 
-var (
-	dayRe       = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
-	publishedRe = regexp.MustCompile(`^\d{4}(-\d{2}(-\d{2})?)?$`)
-)
+var publishedRe = regexp.MustCompile(`^\d{4}(-\d{2}(-\d{2})?)?$`)
+
+// isDay reports whether s is a day on the calendar, written 2026-11-07.
+func isDay(s string) bool {
+	t, err := time.Parse(time.DateOnly, s)
+	return err == nil && t.Format(time.DateOnly) == s
+}
 
 // normalize trims the input and checks what the schema cannot, returning the ISBN-13.
 func (in *BookInput) normalize() (isbn13 string, err error) {
@@ -280,7 +313,7 @@ func (in *BookInput) normalize() (isbn13 string, err error) {
 		return "", &FieldError{"published", "write it as YYYY, YYYY-MM, or YYYY-MM-DD"}
 	}
 	for field, v := range map[string]string{"startedOn": in.StartedOn, "finishedOn": in.FinishedOn} {
-		if v != "" && !dayRe.MatchString(v) {
+		if v != "" && !isDay(v) {
 			return "", &FieldError{field, "write it as YYYY-MM-DD"}
 		}
 	}
@@ -310,7 +343,7 @@ func (in *BookInput) normalize() (isbn13 string, err error) {
 }
 
 func (in *CopyInput) normalize() error {
-	if in.AcquiredOn != "" && !dayRe.MatchString(in.AcquiredOn) {
+	if in.AcquiredOn != "" && !isDay(in.AcquiredOn) {
 		return &FieldError{"acquiredOn", "write it as YYYY-MM-DD"}
 	}
 	in.Section = strings.TrimSpace(in.Section)

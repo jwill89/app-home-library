@@ -17,22 +17,21 @@ import {
   faPlus,
   faTrash,
 } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
-import {
-  api,
-  formData,
-  type Book,
-  type Copy,
-  type Reading,
-  type CopyInput,
-  type CourseUse,
-  type CoverChoice,
-  type Loan,
-  type ShelfPlace,
-  type ReadStatus,
-  type Suggestions,
-} from '@/api/client'
+import { api, formData } from '@/api/client'
+import type {
+  Book,
+  Copy,
+  Reading,
+  CopyInput,
+  CourseUse,
+  CoverChoice,
+  Loan,
+  ShelfPlace,
+  ReadStatus,
+  Suggestions,
+} from '@/types'
 import { bookCite, bookTrail, emptyCopy } from '@/app/book'
-import { useConfirmAction } from '@/app/confirm'
+import { useConfirmAction } from '@/composables/useConfirmAction'
 import {
   acquiredLabel,
   calendarDate,
@@ -46,22 +45,23 @@ import {
   money,
   names,
   placeLine,
-  readStatuses,
   readStatusLabel,
   roleLabel,
-  roles,
   seriesLine,
   sourceLabel,
   termLabel,
   today,
 } from '@/app/format'
-import { useFeed } from '@/app/feed'
-import { useLibrary } from '@/app/library'
-import { loanLine, overdueBy, useReturnLoan } from '@/app/loans'
+import { readStatuses, roles } from '@/constants'
+import { useFeed } from '@/composables/useFeed'
+import { useLibrary } from '@/stores/library'
+import { loanLine, overdueBy } from '@/app/loans'
+import { useReturnLoan } from '@/composables/useReturnLoan'
 import { goBack } from '@/app/navigation'
-import { useNotice } from '@/app/problem'
-import { useSession } from '@/app/session'
-import { useUnits } from '@/app/units'
+import { useNotice } from '@/composables/useNotice'
+import { useStaleSave } from '@/composables/useStaleSave'
+import { useSession } from '@/stores/session'
+import { useUnits } from '@/stores/units'
 import BookCover from '@/components/BookCover.vue'
 import CitationBox from '@/components/CitationBox.vue'
 import CopyFields from '@/components/CopyFields.vue'
@@ -80,6 +80,7 @@ const props = defineProps<{ id: number }>()
 const router = useRouter()
 const ask = useConfirmAction()
 const notice = useNotice()
+const stale = useStaleSave()
 const library = useLibrary()
 // A visitor by a share link reads the page; every control that changes the book is the owner's.
 const { isOwner: owner } = useSession()
@@ -308,7 +309,24 @@ async function saveCopy() {
     ? await api.PUT('/copies/{id}', { params: { path: { id } }, body: input })
     : await api.POST('/books/{id}/copies', { ...path.value, body: input })
   if (error) {
-    notice.failed(error)
+    const refused = stale(error, {
+      latest: async () => {
+        const { data, error: failed } = await api.GET('/books/{id}', path.value)
+        return { data: data?.copies?.find((c) => c.id === id), error: failed }
+      },
+      load: (c) => {
+        editing.value = { id, input: { ...c } }
+      },
+      overwrite: (updatedAt) => {
+        if (editing.value) {
+          editing.value.input.updatedAt = updatedAt
+          return saveCopy()
+        }
+      },
+    })
+    if (!refused) {
+      notice.failed(error)
+    }
     return
   }
   copyOpen.value = false
@@ -404,12 +422,7 @@ function removeReading(r: Reading) {
   )
 }
 
-const returnLoan = useReturnLoan()
-async function returned(l: Loan) {
-  if (await returnLoan(l)) {
-    await load()
-  }
-}
+const returned = useReturnLoan(load)
 
 const courseOpen = ref(false)
 function takeOff(u: CourseUse) {

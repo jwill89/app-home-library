@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { faBook } from '@awesome.me/kit-4f2bd9b614/icons/classic/regular'
-import type { Cover } from '@/api/client'
+import type { Cover } from '@/types'
 import { coverSrcset, coverURL } from '@/app/format'
 
 // A stored cover (by id), or a source's link before one is stored, or the plain spine of a

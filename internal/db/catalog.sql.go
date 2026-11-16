@@ -8,6 +8,8 @@ package db
 import (
 	"context"
 	"database/sql"
+
+	"homelibrary/internal/civil"
 )
 
 const addEditionContributor = `-- name: AddEditionContributor :exec
@@ -73,7 +75,7 @@ type CreateCopyParams struct {
 	EditionID    int64
 	SectionID    sql.NullInt64
 	AcquiredAs   string
-	AcquiredOn   string
+	AcquiredOn   civil.Date
 	AcquiredFrom string
 	PriceCents   sql.NullInt64
 	Condition    string
@@ -198,8 +200,8 @@ type CreateWorkParams struct {
 	SeriesNumber string
 	ReadStatus   string
 	CurrentPage  sql.NullInt64
-	StartedOn    string
-	FinishedOn   string
+	StartedOn    civil.Date
+	FinishedOn   civil.Date
 	Rating       sql.NullInt64
 	Notes        string
 	Category     string
@@ -252,7 +254,10 @@ func (q *Queries) DeleteWorkWithoutEditions(ctx context.Context, workID int64) e
 }
 
 const getCopy = `-- name: GetCopy :one
-SELECT c.id, c.edition_id, c.section_id, c.acquired_as, c.acquired_on, c.acquired_from, c.price_cents, c.condition, c.dust_jacket, c.signed, c.location, c.notes, c.created_at, c.updated_at, c.gone_as, c.gone_on, c.gone_note, c.seen_on, COALESCE(s.name, '') AS section_name
+SELECT
+    c.id, c.edition_id, c.section_id, c.acquired_as, c.acquired_on, c.acquired_from, c.price_cents,
+    c.condition, c.dust_jacket, c.signed, c.location, c.notes, c.created_at, c.updated_at,
+    c.gone_as, c.gone_on, c.gone_note, c.seen_on, COALESCE(s.name, '') AS section_name
 FROM copies c LEFT JOIN sections s ON s.id = c.section_id
 WHERE c.id = ?
 `
@@ -262,7 +267,7 @@ type GetCopyRow struct {
 	EditionID    int64
 	SectionID    sql.NullInt64
 	AcquiredAs   string
-	AcquiredOn   string
+	AcquiredOn   civil.Date
 	AcquiredFrom string
 	PriceCents   sql.NullInt64
 	Condition    string
@@ -273,9 +278,9 @@ type GetCopyRow struct {
 	CreatedAt    string
 	UpdatedAt    string
 	GoneAs       string
-	GoneOn       string
+	GoneOn       civil.Date
 	GoneNote     string
-	SeenOn       string
+	SeenOn       civil.Date
 	SectionName  string
 }
 
@@ -307,7 +312,11 @@ func (q *Queries) GetCopy(ctx context.Context, id int64) (*GetCopyRow, error) {
 }
 
 const getEdition = `-- name: GetEdition :one
-SELECT id, work_id, isbn13, isbn10, lccn, title, subtitle, publisher, publish_place, published, edition_statement, format, pages, height_mm, width_mm, thickness_mm, language, ddc, lcc, subjects, description, cover, sources, created_at, updated_at, wanted_on FROM editions WHERE id = ?
+SELECT
+    id, work_id, isbn13, isbn10, lccn, title, subtitle, publisher, publish_place, published,
+    edition_statement, format, pages, height_mm, width_mm, thickness_mm, language, ddc, lcc,
+    subjects, description, cover, sources, created_at, updated_at, wanted_on
+FROM editions WHERE id = ?
 `
 
 func (q *Queries) GetEdition(ctx context.Context, id int64) (*Edition, error) {
@@ -345,7 +354,11 @@ func (q *Queries) GetEdition(ctx context.Context, id int64) (*Edition, error) {
 }
 
 const getEditionByISBN = `-- name: GetEditionByISBN :one
-SELECT id, work_id, isbn13, isbn10, lccn, title, subtitle, publisher, publish_place, published, edition_statement, format, pages, height_mm, width_mm, thickness_mm, language, ddc, lcc, subjects, description, cover, sources, created_at, updated_at, wanted_on FROM editions WHERE isbn13 = ?
+SELECT
+    id, work_id, isbn13, isbn10, lccn, title, subtitle, publisher, publish_place, published,
+    edition_statement, format, pages, height_mm, width_mm, thickness_mm, language, ddc, lcc,
+    subjects, description, cover, sources, created_at, updated_at, wanted_on
+FROM editions WHERE isbn13 = ?
 `
 
 func (q *Queries) GetEditionByISBN(ctx context.Context, isbn13 sql.NullString) (*Edition, error) {
@@ -399,7 +412,10 @@ func (q *Queries) GetImportRef(ctx context.Context, arg GetImportRefParams) (int
 }
 
 const getWork = `-- name: GetWork :one
-SELECT w.id, w.title, w.series_id, w.series_number, w.read_status, w.current_page, w.started_on, w.finished_on, w.rating, w.notes, w.created_at, w.updated_at, w.category, COALESCE(s.name, '') AS series_name
+SELECT
+    w.id, w.title, w.series_id, w.series_number, w.read_status, w.current_page, w.started_on,
+    w.finished_on, w.rating, w.notes, w.created_at, w.updated_at, w.category,
+    COALESCE(s.name, '') AS series_name
 FROM works w LEFT JOIN series s ON s.id = w.series_id
 WHERE w.id = ?
 `
@@ -411,8 +427,8 @@ type GetWorkRow struct {
 	SeriesNumber string
 	ReadStatus   string
 	CurrentPage  sql.NullInt64
-	StartedOn    string
-	FinishedOn   string
+	StartedOn    civil.Date
+	FinishedOn   civil.Date
 	Rating       sql.NullInt64
 	Notes        string
 	CreatedAt    string
@@ -453,7 +469,7 @@ SELECT
     CAST(COALESCE(ea.authors, '') AS TEXT) AS authors
 FROM editions e
 LEFT JOIN edition_authors ea ON ea.edition_id = e.id
-WHERE e.wanted_on = ''
+WHERE e.wanted_on IS NULL
 ORDER BY e.title COLLATE NOCASE, e.id
 `
 
@@ -552,7 +568,7 @@ type ListBooksRow struct {
 	Cover        string
 	Subjects     string
 	CreatedAt    string
-	WantedOn     string
+	WantedOn     civil.Date
 	WorkID       int64
 	ReadStatus   string
 	SeriesNumber string
@@ -654,7 +670,10 @@ func (q *Queries) ListEditionContributors(ctx context.Context, editionID int64) 
 }
 
 const listEditionCopies = `-- name: ListEditionCopies :many
-SELECT c.id, c.edition_id, c.section_id, c.acquired_as, c.acquired_on, c.acquired_from, c.price_cents, c.condition, c.dust_jacket, c.signed, c.location, c.notes, c.created_at, c.updated_at, c.gone_as, c.gone_on, c.gone_note, c.seen_on, COALESCE(s.name, '') AS section_name
+SELECT
+    c.id, c.edition_id, c.section_id, c.acquired_as, c.acquired_on, c.acquired_from, c.price_cents,
+    c.condition, c.dust_jacket, c.signed, c.location, c.notes, c.created_at, c.updated_at,
+    c.gone_as, c.gone_on, c.gone_note, c.seen_on, COALESCE(s.name, '') AS section_name
 FROM copies c LEFT JOIN sections s ON s.id = c.section_id
 WHERE c.edition_id = ?
 ORDER BY c.id
@@ -665,7 +684,7 @@ type ListEditionCopiesRow struct {
 	EditionID    int64
 	SectionID    sql.NullInt64
 	AcquiredAs   string
-	AcquiredOn   string
+	AcquiredOn   civil.Date
 	AcquiredFrom string
 	PriceCents   sql.NullInt64
 	Condition    string
@@ -676,9 +695,9 @@ type ListEditionCopiesRow struct {
 	CreatedAt    string
 	UpdatedAt    string
 	GoneAs       string
-	GoneOn       string
+	GoneOn       civil.Date
 	GoneNote     string
-	SeenOn       string
+	SeenOn       civil.Date
 	SectionName  string
 }
 
@@ -817,7 +836,7 @@ func (q *Queries) ListSections(ctx context.Context) ([]string, error) {
 }
 
 const listSeriesNames = `-- name: ListSeriesNames :many
-SELECT name FROM series WHERE dismissed_on = '' ORDER BY name
+SELECT name FROM series WHERE dismissed_on IS NULL ORDER BY name
 `
 
 // The names the form offers: not one put aside as no series.
@@ -895,13 +914,13 @@ func (q *Queries) SeriesDDC(ctx context.Context, name string) (*SeriesDDCRow, er
 
 const setCopyGone = `-- name: SetCopyGone :execrows
 UPDATE copies SET gone_as = ?, gone_on = ?, gone_note = ?,
-    updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+    updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE id = ?
 `
 
 type SetCopyGoneParams struct {
 	GoneAs   string
-	GoneOn   string
+	GoneOn   civil.Date
 	GoneNote string
 	ID       int64
 }
@@ -924,7 +943,7 @@ UPDATE copies SET seen_on = ? WHERE id = ?
 `
 
 type SetCopySeenParams struct {
-	SeenOn string
+	SeenOn civil.Date
 	ID     int64
 }
 
@@ -938,7 +957,7 @@ func (q *Queries) SetCopySeen(ctx context.Context, arg SetCopySeenParams) (int64
 
 const setEditionCover = `-- name: SetEditionCover :exec
 UPDATE editions
-SET cover = ?, sources = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+SET cover = ?, sources = ?, updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE id = ?
 `
 
@@ -958,7 +977,7 @@ UPDATE editions SET wanted_on = ? WHERE id = ?
 `
 
 type SetEditionWantedParams struct {
-	WantedOn string
+	WantedOn civil.Date
 	ID       int64
 }
 
@@ -972,14 +991,14 @@ const updateCopy = `-- name: UpdateCopy :exec
 UPDATE copies
 SET section_id = ?, acquired_as = ?, acquired_on = ?, acquired_from = ?, price_cents = ?,
     condition = ?, dust_jacket = ?, signed = ?, location = ?, notes = ?,
-    updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+    updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE id = ?
 `
 
 type UpdateCopyParams struct {
 	SectionID    sql.NullInt64
 	AcquiredAs   string
-	AcquiredOn   string
+	AcquiredOn   civil.Date
 	AcquiredFrom string
 	PriceCents   sql.NullInt64
 	Condition    string
@@ -1012,7 +1031,7 @@ UPDATE editions
 SET isbn13 = ?, isbn10 = ?, lccn = ?, title = ?, subtitle = ?, publisher = ?, publish_place = ?,
     published = ?, edition_statement = ?, format = ?, pages = ?, height_mm = ?, width_mm = ?,
     thickness_mm = ?, language = ?, ddc = ?, lcc = ?, subjects = ?, description = ?, sources = ?,
-    updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+    updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE id = ?
 `
 
@@ -1071,7 +1090,7 @@ const updateWork = `-- name: UpdateWork :exec
 UPDATE works
 SET title = ?, series_id = ?, series_number = ?, read_status = ?, current_page = ?,
     started_on = ?, finished_on = ?, rating = ?, notes = ?, category = ?,
-    updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+    updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second'))
 WHERE id = ?
 `
 
@@ -1081,8 +1100,8 @@ type UpdateWorkParams struct {
 	SeriesNumber string
 	ReadStatus   string
 	CurrentPage  sql.NullInt64
-	StartedOn    string
-	FinishedOn   string
+	StartedOn    civil.Date
+	FinishedOn   civil.Date
 	Rating       sql.NullInt64
 	Notes        string
 	Category     string

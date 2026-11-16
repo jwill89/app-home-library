@@ -15,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alexedwards/scs/sqlite3store"
 	"github.com/alexedwards/scs/v2"
 	"github.com/danielgtaylor/huma/v2"
 
@@ -40,20 +39,17 @@ const (
 	unfinished = 10 * time.Minute
 )
 
-// NewSessionManager keeps sessions in the database. A sign-in lasts half a year: the
-// devices are the owner's own, and signing in again is a fingerprint. Tokens are kept hashed,
-// so a copy of the database (a backup) signs no one in. A session is read on the read pool:
-// every request reads it, and only a change waits for the one write connection.
+// NewSessionManager keeps sessions in the database (sessionStore; RunSessionPruner lets the
+// ended ones go). A sign-in lasts half a year: the devices are the owner's own, and signing in
+// again is a fingerprint. Tokens are kept hashed, so a copy of the database (a backup) signs
+// no one in.
 func NewSessionManager(write, read *sql.DB, secure bool) *scs.SessionManager {
 	sm := scs.New()
-	sm.Store = splitStore{
-		read:  sqlite3store.NewWithConfig(read, sqlite3store.Config{TableName: "sessions"}),
-		write: sqlite3store.NewWithConfig(write, sqlite3store.Config{CleanUpInterval: time.Hour, TableName: "sessions"}),
-	}
+	sm.Store = sessionStore{read: read, write: write}
 	sm.HashTokenInStore = true
 	sm.Lifetime = 180 * 24 * time.Hour
 	// Over HTTPS the cookie takes the __Host- name, which a browser keeps from any other
-	// site's setting it, as another app under jamescwill.com could otherwise.
+	// site's setting it, as another app on the same parent domain could otherwise.
 	sm.Cookie.Name = "hl_session"
 	if secure {
 		sm.Cookie.Name = "__Host-hl_session"
@@ -100,6 +96,7 @@ func Resolve(sm *scs.SessionManager, read *sql.DB, local bool, next http.Handler
 			case errors.Is(err, errSignedOut):
 				sm.Remove(ctx, sessionUser)
 				sm.Remove(ctx, sessionPasskey)
+				w.Header().Set("Clear-Site-Data", ClearCache)
 			}
 			// Any other error is a read that failed (the request given up by the browser, the
 			// database busy): it proves nothing, so the session stays as it is, and only this
@@ -112,6 +109,7 @@ func Resolve(sm *scs.SessionManager, read *sql.DB, local bool, next http.Handler
 			share, err := q.ShareByToken(ctx, db.ShareByTokenParams{TokenHash: h, Now: stamp(time.Now())})
 			if errors.Is(err, sql.ErrNoRows) {
 				sm.Remove(ctx, sessionShare)
+				w.Header().Set("Clear-Site-Data", ClearCache)
 			} else if err == nil {
 				if scope, err := scopeOf(ctx, q, share); err == nil {
 					name := ""
@@ -125,6 +123,10 @@ func Resolve(sm *scs.SessionManager, read *sql.DB, local bool, next http.Handler
 		next.ServeHTTP(w, r)
 	})
 }
+
+// ClearCache is the Clear-Site-Data a browser is sent when its sign-in ends (signed out, its
+// passkey removed, its share link ended or gone): the lists it kept go with it.
+const ClearCache = `"cache"`
 
 // RequireOwner is operation middleware for everything a visitor may not do, which is all but
 // reading the catalog.
@@ -197,8 +199,6 @@ func SignIn(ctx context.Context, sm *scs.SessionManager, userID int64, credentia
 	return nil
 }
 
-// splitStore keeps sessions in one table and reads them on the read pool: every request
-// reads its session, so reads must not queue behind a write.
 // errSignedOut is a session's sign-in that no longer holds: its user, or the passkey they
 // signed in with, is gone.
 var errSignedOut = errors.New("signed out")
@@ -226,18 +226,6 @@ func signedIn(ctx context.Context, q *db.Queries, id int64, cred string, local b
 	}
 	return u, err
 }
-
-type splitStore struct {
-	read, write scs.Store
-}
-
-func (s splitStore) Find(token string) ([]byte, bool, error) { return s.read.Find(token) }
-
-func (s splitStore) Commit(token string, b []byte, expiry time.Time) error {
-	return s.write.Commit(token, b, expiry)
-}
-
-func (s splitStore) Delete(token string) error { return s.write.Delete(token) }
 
 // NewSessionToken signs the user in without a browser and returns the cookie's value. The
 // command that uses it refuses to run anywhere but a development machine.

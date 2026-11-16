@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
 
 const addShareBook = `-- name: AddShareBook :exec
@@ -141,13 +142,13 @@ func (q *Queries) CreateCalendarLink(ctx context.Context, tokenHash string) (*Ca
 
 const createShare = `-- name: CreateShare :one
 INSERT INTO shares (name, token_hash, expires_at, books, wishlist, papers) VALUES (?, ?, ?, ?, ?, ?)
-RETURNING id, name, token_hash, expires_at, created_at, last_used_at, books, wishlist, papers
+RETURNING id, name, token_hash, expires_at, created_at, last_used_at, books, wishlist, papers, updated_at
 `
 
 type CreateShareParams struct {
 	Name      string
 	TokenHash string
-	ExpiresAt string
+	ExpiresAt sql.NullString
 	Books     string
 	Wishlist  int64
 	Papers    string
@@ -173,6 +174,7 @@ func (q *Queries) CreateShare(ctx context.Context, arg CreateShareParams) (*Shar
 		&i.Books,
 		&i.Wishlist,
 		&i.Papers,
+		&i.UpdatedAt,
 	)
 	return &i, err
 }
@@ -256,7 +258,9 @@ func (q *Queries) ListShareScope(ctx context.Context, shareID int64) ([]*ListSha
 }
 
 const listShares = `-- name: ListShares :many
-SELECT id, name, token_hash, expires_at, created_at, last_used_at, books, wishlist, papers FROM shares ORDER BY id DESC
+SELECT
+    id, name, token_hash, expires_at, created_at, last_used_at, books, wishlist, papers, updated_at
+FROM shares ORDER BY id DESC
 `
 
 func (q *Queries) ListShares(ctx context.Context) ([]*Share, error) {
@@ -278,6 +282,7 @@ func (q *Queries) ListShares(ctx context.Context) ([]*Share, error) {
 			&i.Books,
 			&i.Wishlist,
 			&i.Papers,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -293,8 +298,10 @@ func (q *Queries) ListShares(ctx context.Context) ([]*Share, error) {
 }
 
 const shareByToken = `-- name: ShareByToken :one
-SELECT id, name, token_hash, expires_at, created_at, last_used_at, books, wishlist, papers FROM shares
-WHERE token_hash = ?1 AND (expires_at = '' OR expires_at > ?2)
+SELECT
+    id, name, token_hash, expires_at, created_at, last_used_at, books, wishlist, papers, updated_at
+FROM shares
+WHERE token_hash = ?1 AND (expires_at IS NULL OR expires_at > CAST(?2 AS TEXT))
 `
 
 type ShareByTokenParams struct {
@@ -316,8 +323,21 @@ func (q *Queries) ShareByToken(ctx context.Context, arg ShareByTokenParams) (*Sh
 		&i.Books,
 		&i.Wishlist,
 		&i.Papers,
+		&i.UpdatedAt,
 	)
 	return &i, err
+}
+
+const shareStamp = `-- name: ShareStamp :one
+SELECT updated_at FROM shares WHERE id = ?
+`
+
+// When a link last changed, which a save of its form must have read.
+func (q *Queries) ShareStamp(ctx context.Context, id int64) (string, error) {
+	row := q.db.QueryRowContext(ctx, shareStamp, id)
+	var updated_at string
+	err := row.Scan(&updated_at)
+	return updated_at, err
 }
 
 const touchCalendarLink = `-- name: TouchCalendarLink :exec
@@ -339,13 +359,14 @@ func (q *Queries) TouchShare(ctx context.Context, id int64) error {
 }
 
 const updateShare = `-- name: UpdateShare :one
-UPDATE shares SET name = ?, expires_at = ?, books = ?, wishlist = ?, papers = ? WHERE id = ?
-RETURNING id, name, token_hash, expires_at, created_at, last_used_at, books, wishlist, papers
+UPDATE shares SET name = ?, expires_at = ?, books = ?, wishlist = ?, papers = ?,
+    updated_at = max(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', updated_at, '+1 second')) WHERE id = ?
+RETURNING id, name, token_hash, expires_at, created_at, last_used_at, books, wishlist, papers, updated_at
 `
 
 type UpdateShareParams struct {
 	Name      string
-	ExpiresAt string
+	ExpiresAt sql.NullString
 	Books     string
 	Wishlist  int64
 	Papers    string
@@ -372,6 +393,7 @@ func (q *Queries) UpdateShare(ctx context.Context, arg UpdateShareParams) (*Shar
 		&i.Books,
 		&i.Wishlist,
 		&i.Papers,
+		&i.UpdatedAt,
 	)
 	return &i, err
 }

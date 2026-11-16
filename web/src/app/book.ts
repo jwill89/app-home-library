@@ -1,5 +1,5 @@
-import type { Book, BookInput, CopyInput, Proposal, Suggestions } from '@/api/client'
-import type { CiteWork } from './cite'
+import type { Book, BookInput, CopyInput, Proposal, Suggestions } from '@/types'
+import type { CiteWork } from '@/app/cite'
 import type { Crumb } from './navigation'
 
 // The form's shapes: a blank book, a book from a lookup, a saved book back into the form,
@@ -127,6 +127,7 @@ export function bookToInput(b: Book): BookInput {
     subjects: [...(b.subjects ?? [])],
     description: b.description,
     sources: { ...b.sources },
+    updatedAt: b.updatedAt,
   }
 }
 
