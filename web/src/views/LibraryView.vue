@@ -23,6 +23,7 @@ import { count, day, formatLabel, seriesLine } from '@/app/format'
 import { useFeed } from '@/composables/useFeed'
 import { ALL, useLibrary } from '@/stores/library'
 import { useQueue } from '@/composables/useQueue'
+import { usePagedTable } from '@/composables/usePagedTable'
 import { useSession } from '@/stores/session'
 import BookCover from '@/components/BookCover.vue'
 import LibraryTabs from '@/components/LibraryTabs.vue'
@@ -31,6 +32,7 @@ import PagePanel from '@/components/PagePanel.vue'
 import QueueProgress from '@/components/QueueProgress.vue'
 import ReadStatusChoice from '@/components/ReadStatusChoice.vue'
 
+const paged = usePagedTable()
 const library = useLibrary()
 const {
   filtered,
@@ -204,18 +206,22 @@ function open(row: BookRow) {
     </div>
 
     <DataTable
+      :ref="paged.table"
       v-model:first="first"
       v-model:rows="pageRows"
       v-model:sort-field="sortField"
       v-model:sort-order="sortOrder"
+      :pt="paged.pt"
       :value="filtered"
       data-key="id"
       paginator
+      paginator-position="both"
       :rows-per-page-options="[25, 50, 100, 250]"
       removable-sort
       row-hover
       class="library"
       :loading="!loaded"
+      @page="paged.turned"
       @row-click="open($event.data as BookRow)"
     >
       <template #empty>

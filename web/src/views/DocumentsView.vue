@@ -17,11 +17,13 @@ import type { DocumentRow, DocumentSuggestions } from '@/types'
 import { useFeed } from '@/composables/useFeed'
 import { count, documentKindLabel } from '@/app/format'
 import { useNotice } from '@/composables/useNotice'
+import { usePagedTable } from '@/composables/usePagedTable'
 import { useSession } from '@/stores/session'
 import LibraryTabs from '@/components/LibraryTabs.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import SuggestedChanges from '@/components/SuggestedChanges.vue'
 
+const paged = usePagedTable()
 const router = useRouter()
 const notice = useNotice()
 const session = useSession()
@@ -198,16 +200,20 @@ function open(r: DocumentRow) {
     </IconField>
 
     <DataTable
+      :ref="paged.table"
       v-model:sort-field="sortField"
       v-model:sort-order="sortOrder"
+      :pt="paged.pt"
       :value="shown"
       data-key="id"
       :loading="!loaded"
       :paginator="shown.length > 50"
+      paginator-position="both"
       :rows="50"
       removable-sort
       row-hover
       class="documents"
+      @page="paged.turned"
       @row-click="open($event.data as DocumentRow)"
     >
       <template #empty>

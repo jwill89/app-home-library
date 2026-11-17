@@ -27,7 +27,7 @@ type BookInput struct {
 	Contributors []lookup.Contributor `json:"contributors" maxItems:"40"`
 	Series       string               `json:"series" maxLength:"300"`
 	SeriesNumber string               `json:"seriesNumber" maxLength:"20"`
-	Category     string               `json:"category" enum:",fiction,nonfiction,manga,light_novel,graphic_novel,uncategorized" doc:"Empty to have it worked out from the book's details"`
+	Category     string               `json:"category" enum:",fiction,nonfiction,textbook,manga,light_novel,graphic_novel,uncategorized" doc:"Empty to have it worked out from the book's details"`
 	ReadStatus   string               `json:"readStatus" enum:"unread,reading,read"`
 	CurrentPage  int64                `json:"currentPage" minimum:"0" doc:"Page reached, while reading; 0 for none"`
 	StartedOn    string               `json:"startedOn" doc:"YYYY-MM-DD, or empty"`
@@ -80,7 +80,7 @@ type Book struct {
 	Series           string               `json:"series"`
 	SeriesID         int64                `json:"seriesId" doc:"0 for a book in no series"`
 	SeriesNumber     string               `json:"seriesNumber"`
-	Category         string               `json:"category" enum:"fiction,nonfiction,manga,light_novel,graphic_novel,uncategorized" doc:"As set, or worked out from its details, which its sources then name as inferred"`
+	Category         string               `json:"category" enum:"fiction,nonfiction,textbook,manga,light_novel,graphic_novel,uncategorized" doc:"As set, or worked out from its details, which its sources then name as inferred"`
 	ReadStatus       string               `json:"readStatus"`
 	CurrentPage      int64                `json:"currentPage"`
 	StartedOn        string               `json:"startedOn"`

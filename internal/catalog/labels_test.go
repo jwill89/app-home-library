@@ -62,6 +62,22 @@ func TestShelfOrder(t *testing.T) {
 	if !slices.Equal(got, want) {
 		t.Fatalf("shelf order %q, want %q", got, want)
 	}
+
+	// An omnibus stands by its first volume, after a lone volume of that number; an unnumbered
+	// volume first, as before, and a number that is a word after the numbers.
+	in = []db.CopyShelving{
+		fic("Four to Six", "The First Law", "4-6"), fic("Two", "The First Law", "2"),
+		fic("Extra", "The First Law", "Extra"), fic("One to Three", "The First Law", "1–3"),
+		fic("One", "The First Law", "1"), fic("Unnumbered", "The First Law", ""),
+	}
+	sortShelved(in, func(c *db.CopyShelving) *db.CopyShelving { return c })
+	got = got[:0]
+	for _, c := range in {
+		got = append(got, c.Title)
+	}
+	if want := []string{"Unnumbered", "One", "One to Three", "Two", "Four to Six", "Extra"}; !slices.Equal(got, want) {
+		t.Errorf("omnibus shelf order %q, want %q", got, want)
+	}
 }
 
 func TestLabelQueue(t *testing.T) {

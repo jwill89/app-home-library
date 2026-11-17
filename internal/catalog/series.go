@@ -1,10 +1,13 @@
 package catalog
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -69,37 +72,15 @@ func (s *Service) SeriesList(ctx context.Context, sc *Scope) ([]Series, error) {
 	return out, nil
 }
 
-// gaps orders a series' numbers and works out the missing whole numbers and the next one.
+// gaps orders a series' numbers and works out the missing whole numbers and the next one. An
+// omnibus's "1-3" has volumes 1, 2 and 3.
 func gaps(se *Series) {
-	num := func(v string) float64 {
-		f, err := strconv.ParseFloat(v, 64)
-		if err != nil {
-			return -1
-		}
-		return f
-	}
-	byNumber := func(a, b string) int {
-		if c := num(a) - num(b); c != 0 {
-			if c < 0 {
-				return -1
-			}
-			return 1
-		}
-		return strings.Compare(a, b)
-	}
-	se.Had = slices.Compact(slices.SortedFunc(slices.Values(se.Had), byNumber))
-	se.Wanted = slices.Compact(slices.SortedFunc(slices.Values(se.Wanted), byNumber))
+	se.Had = slices.Compact(slices.SortedFunc(slices.Values(se.Had), compareVolumes))
+	se.Wanted = slices.Compact(slices.SortedFunc(slices.Values(se.Wanted), compareVolumes))
 	high := 0
-	known := map[int]bool{}
-	for _, v := range slices.Concat(se.Had, se.Wanted) {
-		f := num(v)
-		if f >= 1 && f == float64(int(f)) {
-			known[int(f)] = true
-		}
-	}
 	for _, v := range se.Had {
-		if f := num(v); f >= 1 {
-			high = max(high, int(f))
+		if _, last, ok := volumes(v); ok && last >= 1 {
+			high = max(high, int(last))
 		}
 	}
 	if high == 0 {
@@ -109,11 +90,80 @@ func gaps(se *Series) {
 	if high > gapLimit {
 		return
 	}
+	known := map[int]bool{}
+	for _, v := range slices.Concat(se.Had, se.Wanted) {
+		spans, _ := volumeSpans(v)
+		for _, sp := range spans {
+			for n := max(1, int(math.Ceil(sp[0]))); n <= min(high, int(sp[1])); n++ {
+				known[n] = true
+			}
+		}
+	}
 	for n := 1; n < high; n++ {
 		if !known[n] {
 			se.Gaps = append(se.Gaps, strconv.Itoa(n))
 		}
 	}
+}
+
+// A series number is one number ("3", "2.5", "v.3"), or the volumes an omnibus holds: a range
+// ("1-3", "1–3", "1 to 3"), a list ("1, 2 & 3", "4+5", "6 and 7"), or both ("1-3, 5").
+var (
+	volumeList  = regexp.MustCompile(`\s*(?:,|&|\+|\band\b)\s*`)
+	volumeRange = regexp.MustCompile(`^(\d+(?:\.\d+)?)(?:\s*(?:-|–|—|\bto\b)\s*(\d+(?:\.\d+)?))?$`)
+)
+
+// volumeSpans reads a series number as the spans of volumes it holds, each its first and last
+// number; ok is false for one that is no number ("Prequel", "3a", "3-1").
+func volumeSpans(s string) (spans [][2]float64, ok bool) {
+	s = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(s), "v."))
+	if s == "" {
+		return nil, false
+	}
+	for _, part := range volumeList.Split(s, -1) {
+		m := volumeRange.FindStringSubmatch(part)
+		if m == nil {
+			return nil, false
+		}
+		first, _ := strconv.ParseFloat(m[1], 64) // the pattern took digits alone
+		last := first
+		if m[2] != "" {
+			last, _ = strconv.ParseFloat(m[2], 64)
+		}
+		if last < first {
+			return nil, false
+		}
+		spans = append(spans, [2]float64{first, last})
+	}
+	return spans, true
+}
+
+// volumes is a series number's lowest and highest volume, which it sorts by: "1-3" comes after
+// "1" and before "2". ok is false for one that is no number.
+func volumes(s string) (first, last float64, ok bool) {
+	spans, ok := volumeSpans(s)
+	if !ok {
+		return 0, 0, false
+	}
+	first, last = spans[0][0], spans[0][1]
+	for _, sp := range spans[1:] {
+		first, last = min(first, sp[0]), max(last, sp[1])
+	}
+	return first, last, true
+}
+
+// compareVolumes orders two series numbers: by their volumes, numbers before words, and words
+// as written.
+func compareVolumes(a, b string) int {
+	af, al, aok := volumes(a)
+	bf, bl, bok := volumes(b)
+	switch {
+	case aok && bok:
+		return cmp.Or(cmp.Compare(af, bf), cmp.Compare(al, bl), strings.Compare(a, b))
+	case aok != bok:
+		return cmp.Compare(boolInt(bok), boolInt(aok))
+	}
+	return strings.Compare(a, b)
 }
 
 // SeriesInput is a series' new name.

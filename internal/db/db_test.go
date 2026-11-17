@@ -461,3 +461,97 @@ func TestMigration40(t *testing.T) {
 		t.Fatalf("up again: %v", err)
 	}
 }
+
+func TestMigration41(t *testing.T) {
+	d := empty(t)
+	ctx := context.Background()
+	p, err := provider(d.Write)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.UpTo(ctx, 40); err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range []string{
+		`INSERT INTO works (title, category) VALUES ('Dune', 'fiction'), ('Ethics', '')`,
+		`INSERT INTO editions (work_id, title) VALUES (1, 'Dune'), (2, 'Ethics'), (2, 'Ethics, 6th ed')`,
+		`INSERT INTO copies (edition_id) VALUES (2)`,
+		`INSERT INTO areas (name, position) VALUES ('Fiction', 1)`,
+		`INSERT INTO area_categories (area_id, category) VALUES (1, 'fiction')`,
+		`INSERT INTO shares (name, token_hash) VALUES ('Mom', 't1')`,
+		`INSERT INTO share_categories (share_id, category) VALUES (1, 'nonfiction')`,
+		`INSERT INTO courses (school, title) VALUES ('IU', 'Ethics')`,
+	} {
+		if _, err := d.Write.ExecContext(ctx, s); err != nil {
+			t.Fatalf("%s: %v", s, err)
+		}
+	}
+	if _, err := d.Write.ExecContext(ctx, `UPDATE works SET category = 'textbook' WHERE id = 2`); err == nil {
+		t.Fatal("before: a textbook was taken")
+	}
+	if _, err := p.UpTo(ctx, 41); err != nil {
+		t.Fatal(err)
+	}
+	count := func(q string) int64 {
+		t.Helper()
+		var n int64
+		if err := d.Read.QueryRowContext(ctx, q).Scan(&n); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+		return n
+	}
+	for q, want := range map[string]int64{
+		"SELECT count(*) FROM works WHERE category = 'fiction'":                        1,
+		"SELECT count(*) FROM area_categories WHERE category = 'fiction'":              1,
+		"SELECT count(*) FROM share_categories WHERE category = 'nonfiction'":          1,
+		"SELECT count(*) FROM pragma_foreign_key_check":                                0,
+		"SELECT count(*) FROM sqlite_master WHERE name = 'works_series_idx'":           1,
+		"SELECT count(*) FROM sqlite_master WHERE name = 'works_changed'":              1,
+		"SELECT count(*) FROM sqlite_master WHERE name LIKE 'course_copies_changed_%'": 2,
+		"PRAGMA user_version": 41,
+	} {
+		if got := count(q); got != want {
+			t.Errorf("after: %s = %d, want %d", q, got, want)
+		}
+	}
+	for _, s := range []string{
+		`UPDATE works SET category = 'textbook' WHERE id = 1`,
+		`INSERT INTO area_categories (area_id, category) VALUES (1, 'textbook')`,
+		`INSERT INTO share_categories (share_id, category) VALUES (1, 'textbook')`,
+	} {
+		if _, err := d.Write.ExecContext(ctx, s); err != nil {
+			t.Fatalf("%s: %v", s, err)
+		}
+	}
+	// A copy put on a course tells the feed of every edition of its work.
+	before := count("SELECT count(*) FROM changes")
+	if _, err := d.Write.ExecContext(ctx, `INSERT INTO course_copies (course_id, copy_id) VALUES (1, 1)`); err != nil {
+		t.Fatal(err)
+	}
+	if got := count("SELECT count(*) FROM changes WHERE type = 'book' AND ref IN (2, 3)"); got < 2 || count("SELECT count(*) FROM changes") != before+2 {
+		t.Errorf("on a course: %d changes for its editions", got)
+	}
+	if _, err := d.Write.ExecContext(ctx, `DELETE FROM course_copies`); err != nil {
+		t.Fatal(err)
+	}
+	if got := count("SELECT count(*) FROM changes"); got != before+4 {
+		t.Errorf("off a course: %d changes, want %d", got, before+4)
+	}
+
+	if _, err := p.DownTo(ctx, 40); err != nil {
+		t.Fatal(err)
+	}
+	for q, want := range map[string]int64{
+		"SELECT count(*) FROM works WHERE category = ''":                               2, // Dune's textbook, and Ethics' worked out
+		"SELECT count(*) FROM area_categories":                                         1,
+		"SELECT count(*) FROM share_categories":                                        1,
+		"SELECT count(*) FROM sqlite_master WHERE name LIKE 'course_copies_changed_%'": 0,
+	} {
+		if got := count(q); got != want {
+			t.Errorf("down: %s = %d, want %d", q, got, want)
+		}
+	}
+	if _, err := p.Up(ctx); err != nil {
+		t.Fatalf("up again: %v", err)
+	}
+}

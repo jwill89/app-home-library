@@ -126,12 +126,46 @@ const stop = (s: string) => (ended(s) ? s.trim() : `${s.trim()}.`)
 const year = (w: CiteWork) => w.published?.slice(0, 4) ?? ''
 const range = (p?: string) => (p ? p.replace(/\s*[-–]+\s*/g, '–') : '')
 const link = (w: CiteWork) => (w.doi ? `https://doi.org/${w.doi}` : (w.url ?? ''))
+
+const ordinalWords = [
+  'first',
+  'second',
+  'third',
+  'fourth',
+  'fifth',
+  'sixth',
+  'seventh',
+  'eighth',
+  'ninth',
+  'tenth',
+]
+const spelledOut = new RegExp(`^(?:${ordinalWords.join('|')})\\b`, 'i')
+const ordinal = (n: number) => {
+  const teen = n % 100 >= 11 && n % 100 <= 13
+  return `${n}${teen ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th')}`
+}
+
+/**
+ * An edition as every style cites it, "2nd ed.", from however a source or the owner wrote it:
+ * "2nd ed", "2nd edition", "Second edition", the Library of Congress's "2d ed", or "2". A first
+ * edition is not cited, and a statement that says more than which edition it is ("Revised ed.,
+ * incorporating new material", "Reissued with revisions") is cited as written.
+ */
 const edition = (e?: string) => {
   const t = (e ?? '').trim()
-  if (!t || /^(1st|first)\b/i.test(t)) {
+  const bare = t.replace(/[\s,;]*\b(?:edition|edn\.?|ed\.?)$/i, '')
+  // A year ("2010 edition") is no ordinal, so only a number of three digits or fewer is one.
+  const which = bare
+    .replace(/^(\d{1,3})(?:st|nd|rd|th|d)?(?=[\s.,]|$)/i, (_, n: string) => ordinal(Number(n)))
+    .replace(spelledOut, (w) => ordinal(ordinalWords.indexOf(w.toLowerCase()) + 1))
+  if (!which || /^1st\b/i.test(which)) {
     return ''
   }
-  return /\bed\.$/i.test(t) ? t : `${t.replace(/\s*edition$/i, '')} ed.`
+  const named = bare !== t
+  if (!named && (/\b(?:ed|edn|edition)\b/i.test(t) || t.split(/\s+/).length > 2)) {
+    return t
+  }
+  return `${which} ed.`
 }
 
 type Part = string | Piece | false | undefined | null | 0
@@ -246,7 +280,13 @@ function chicago(w: CiteWork, names: Name[], eds: Name[]): Piece[] {
     )
   }
   const ed = edition(w.edition)
-  return pieces(who, titled(w.title, true), ed && ` ${ed}`, imprint && ` ${stop(imprint)}`, end)
+  return pieces(
+    who,
+    titled(w.title, true),
+    ed && ` ${stop(ed)}`,
+    imprint && ` ${stop(imprint)}`,
+    end,
+  )
 }
 
 /** The citation of a work in a style. */

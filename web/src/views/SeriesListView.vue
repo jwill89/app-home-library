@@ -6,12 +6,14 @@ import { api } from '@/api/client'
 import type { Series } from '@/types'
 import { numberRanges } from '@/app/format'
 import { useNotice } from '@/composables/useNotice'
+import { usePagedTable } from '@/composables/usePagedTable'
 import LibraryTabs from '@/components/LibraryTabs.vue'
 import PageHeader from '@/components/PageHeader.vue'
 
 // Every series the library has a volume of: what is had, what is wanted, the numbers missing
 // between, and the next. Each opens its own page, where its books are looked after.
 const notice = useNotice()
+const paged = usePagedTable()
 
 const series = ref<Series[]>([])
 const loaded = ref(false)
@@ -42,11 +44,15 @@ const row = (d: unknown) => d as Series
     <PageHeader title="Series" :subtitle="summary" />
 
     <DataTable
+      :ref="paged.table"
+      :pt="paged.pt"
       :value="series"
       data-key="id"
       :loading="!loaded"
       :paginator="series.length > 50"
+      paginator-position="both"
       :rows="50"
+      @page="paged.turned"
     >
       <template #empty>
         <p class="py-6 text-center text-ink-muted">No series yet.</p>

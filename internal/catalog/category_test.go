@@ -109,3 +109,75 @@ func TestImportTakesTheShelf(t *testing.T) {
 		t.Errorf("source %q", b.Sources["category"])
 	}
 }
+
+// A book with a copy on a course is a textbook, unless its category was set; off every course,
+// it is worked out from its details again.
+func TestTextbookOnACourse(t *testing.T) {
+	ctx := context.Background()
+	s := newService(t)
+	id, err := s.Create(ctx, BookInput{Title: "The Elements of Moral Philosophy", DDC: "170", ReadStatus: "unread"},
+		&CopyInput{PriceCents: -1}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := s.Get(ctx, id)
+	if b.Category != "nonfiction" {
+		t.Fatalf("before the course: %q", b.Category)
+	}
+	course, err := s.CreateCourse(ctx, CourseInput{Department: "PHIL", Number: "105", Title: "Ethics", Level: "undergraduate", Term: "fall", Year: 2008})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.UseInCourse(ctx, course.ID, b.Copies[0].ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ = s.Get(ctx, id); b.Category != "textbook" || b.Sources["category"] != sourceCourse {
+		t.Errorf("on a course: %q from %q", b.Category, b.Sources["category"])
+	}
+	if rows, _ := s.List(ctx); rows[0].Category != "textbook" {
+		t.Errorf("listed as %q", rows[0].Category)
+	}
+	if copies, err := s.read().ListShelfCopies(ctx); err != nil || shelfBooks(copies, nil)[0].facts.category != "textbook" {
+		t.Errorf("on the shelves: err %v", err)
+	}
+	// Saved from its form as it was, it is still worked out, not set.
+	if err := s.Update(ctx, id, b.Input()); err != nil {
+		t.Fatal(err)
+	}
+	if w, _ := s.read().GetWork(ctx, b.WorkID); w.Category != "" {
+		t.Errorf("kept as %q", w.Category)
+	}
+	// The owner's choice outweighs the course.
+	b, _ = s.Get(ctx, id)
+	in := b.Input()
+	in.Category, in.Sources["category"] = "nonfiction", SourceOwner
+	if err := s.Update(ctx, id, in); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ = s.Get(ctx, id); b.Category != "nonfiction" {
+		t.Errorf("set by the owner: %q", b.Category)
+	}
+	in = b.Input()
+	in.Category = ""
+	if err := s.Update(ctx, id, in); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.LeaveCourse(ctx, course.ID, b.Copies[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ = s.Get(ctx, id); b.Category != "nonfiction" || b.Sources["category"] != sourceInferred {
+		t.Errorf("off the course: %q from %q", b.Category, b.Sources["category"])
+	}
+	// The owner may set one by hand, and an import's shelf of textbooks is one.
+	in = b.Input()
+	in.Category, in.Sources["category"] = "textbook", SourceOwner
+	if err := s.Update(ctx, id, in); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ = s.Get(ctx, id); b.Category != "textbook" || b.Sources["category"] != SourceOwner {
+		t.Errorf("set as a textbook: %q from %q", b.Category, b.Sources["category"])
+	}
+	if got := shelfCategory("Textbooks", &BookInput{Title: "Calculus"}); got != "textbook" {
+		t.Errorf("a shelf of textbooks: %q", got)
+	}
+}

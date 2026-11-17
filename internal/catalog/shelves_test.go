@@ -205,6 +205,50 @@ func TestAreaOrder(t *testing.T) {
 			t.Errorf("by %v: %v, want %v", c.keys, got, c.want)
 		}
 	}
+
+	// An omnibus by its first volume, then its last: 1, 1-3, 2, 4 & 5, 10.
+	books = append(books,
+		mk(6, bookFacts{title: "omnibus", series: "middle-earth", volume: "1-3"}),
+		mk(7, bookFacts{title: "fellowship", series: "middle-earth", volume: "1"}),
+		mk(8, bookFacts{title: "two more", series: "middle-earth", volume: "4 & 5"}))
+	if got, want := order("series"), []int64{7, 6, 5, 8, 1, 3, 4, 2}; !slices.Equal(got, want) {
+		t.Errorf("omnibus by series: %v, want %v", got, want)
+	}
+}
+
+func TestVolumes(t *testing.T) {
+	for _, c := range []struct {
+		in          string
+		first, last float64
+		ok          bool
+	}{
+		{"3", 3, 3, true}, {"2.5", 2.5, 2.5, true}, {"v.12", 12, 12, true},
+		{"1-3", 1, 3, true}, {"1 – 3", 1, 3, true}, {"4 to 6", 4, 6, true},
+		{"1, 2 & 3", 1, 3, true}, {"7+8", 7, 8, true}, {"9 and 10", 9, 10, true}, {"1-3, 5", 1, 5, true},
+		{"", 0, 0, false}, {"Prequel", 0, 0, false}, {"3a", 0, 0, false}, {"3-1", 0, 0, false}, {"1-", 0, 0, false},
+	} {
+		first, last, ok := volumes(c.in)
+		if first != c.first || last != c.last || ok != c.ok {
+			t.Errorf("volumes(%q) = %v, %v, %v; want %v, %v, %v", c.in, first, last, ok, c.first, c.last, c.ok)
+		}
+	}
+}
+
+func TestOmnibusGaps(t *testing.T) {
+	se := Series{Had: []string{"5", "1-3", "Prequel", "9-10"}, Wanted: []string{"7 & 8"}}
+	gaps(&se)
+	if want := []string{"1-3", "5", "9-10", "Prequel"}; !slices.Equal(se.Had, want) {
+		t.Errorf("had %q, want %q", se.Had, want)
+	}
+	// 1 to 3 are had in the omnibus and 7 and 8 wanted together: only 4 and 6 are missing.
+	if want := []string{"4", "6"}; !slices.Equal(se.Gaps, want) || se.Next != "11" {
+		t.Errorf("gaps %q next %q, want %q next 11", se.Gaps, se.Next, want)
+	}
+	huge := Series{Had: []string{"1-99999999"}}
+	gaps(&huge)
+	if len(huge.Gaps) != 0 || huge.Next != "100000000" {
+		t.Errorf("a huge range: gaps %q next %q", huge.Gaps, huge.Next)
+	}
 }
 
 // An area's rules are checked as they are saved, and its shelves leave any other area.

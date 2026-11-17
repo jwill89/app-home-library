@@ -34,6 +34,7 @@ import {
 } from '@/app/format'
 import { useNotice } from '@/composables/useNotice'
 import { useStaleSave } from '@/composables/useStaleSave'
+import { usePagedTable } from '@/composables/usePagedTable'
 import { useUnits } from '@/stores/units'
 import AreaDialog from '@/components/AreaDialog.vue'
 import BookPicker from '@/components/BookPicker.vue'
@@ -44,6 +45,7 @@ import PagePanel from '@/components/PagePanel.vue'
 import ShelfFields from '@/components/ShelfFields.vue'
 import UnitChoice from '@/components/UnitChoice.vue'
 
+const paged = usePagedTable()
 const ask = useConfirmAction()
 const notice = useNotice()
 const stale = useStaleSave()
@@ -962,10 +964,14 @@ const whereItGoes = computed(() => (place.value ? placeLine(place.value, true) :
     >
       <DataTable
         v-if="listing"
+        :ref="paged.table"
+        :pt="paged.pt"
         :value="listing.books"
         data-key="copyId"
         :paginator="listing.books.length > 20"
+        paginator-position="both"
         :rows="20"
+        @page="paged.turned"
       >
         <Column header="Book">
           <template #body="{ data }">

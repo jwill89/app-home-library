@@ -38,6 +38,9 @@
   /* The smallest a control may be, with a pointer or a finger (WCAG 2.5.5). */
   --spacing-target: 2.75rem;
 
+  /* The app's bar, which stays at the top of the page as it scrolls. */
+  --spacing-bar: 3.5rem;
+
   /* Small text keeps lines 1.5 apart, as prose must (WCAG 1.4.8); Tailwind's own are closer. */
   /* stylelint-disable custom-property-pattern -- Tailwind's own names for a size's line height */
   --text-xs--line-height: 1.5;
@@ -56,6 +59,9 @@
     background: var(--color-surface-page);
     text-size-adjust: 100%;
     color-scheme: light;
+
+    /* What is scrolled to, or focused, stops below the app's bar, never under it (WCAG 2.4.11). */
+    scroll-padding-top: calc(var(--spacing-bar) + 0.5rem);
   }
 
   /* The browser's own parts (scrollbars, date pickers) take the scheme the page has. */

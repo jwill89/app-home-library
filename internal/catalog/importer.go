@@ -377,7 +377,7 @@ func fillFromRow(in *BookInput, b *importedBook, source string) bool {
 		in.Genres = b.In.Genres
 	}
 	// A category worked out is a guess: one the app sorted it under is the owner's own.
-	if in.Sources["category"] == sourceInferred && b.In.Category != "" {
+	if workedOut(in.Sources["category"]) && b.In.Category != "" {
 		in.Category, in.Sources["category"] = b.In.Category, source
 	}
 	p := proposalOf(b.In, source)

@@ -27,7 +27,7 @@ var defaultOrder = []string{"subject", "author", "series", "title"}
 
 // AreaRules are which books an area takes. Every rule set must hold, and any one entry of a list.
 type AreaRules struct {
-	Categories  []string `json:"categories" maxItems:"6" enum:"fiction,nonfiction,manga,light_novel,graphic_novel,uncategorized" doc:"Any of these categories; none for every one"`
+	Categories  []string `json:"categories" maxItems:"7" enum:"fiction,nonfiction,textbook,manga,light_novel,graphic_novel,uncategorized" doc:"Any of these categories; none for every one"`
 	DeweyFrom   string   `json:"deweyFrom" maxLength:"20" doc:"The lowest Dewey number it takes, the book's own or estimated from its LC class; empty for no limit"`
 	DeweyTo     string   `json:"deweyTo" maxLength:"20" doc:"The highest Dewey number it takes; empty for no limit"`
 	Subject     string   `json:"subject" maxLength:"100" doc:"Words one of a book's subject headings has; empty for any"`

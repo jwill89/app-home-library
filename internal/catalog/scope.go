@@ -11,7 +11,7 @@ import (
 // owner's own requests have no scope, a nil one, and see everything.
 type Scope struct {
 	Books      string   `json:"books" enum:"all,some,none" doc:"Every book, those of the categories and the books chosen, or none"`
-	Categories []string `json:"categories" maxItems:"6" enum:"fiction,nonfiction,manga,light_novel,graphic_novel,uncategorized"`
+	Categories []string `json:"categories" maxItems:"7" enum:"fiction,nonfiction,textbook,manga,light_novel,graphic_novel,uncategorized"`
 	BookIDs    []int64  `json:"bookIds" maxItems:"5000" doc:"Books shown whatever their category"`
 	Wishlist   bool     `json:"wishlist" doc:"The wanted books among those shown"`
 	Papers     string   `json:"papers" enum:"all,some,none" doc:"Every paper, those of the courses and the papers chosen, or none"`

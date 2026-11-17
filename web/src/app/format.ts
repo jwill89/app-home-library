@@ -42,8 +42,51 @@ export function goneLine(c: { goneAs: string; goneOn: string; goneNote: string }
 }
 
 /**
- * Volume numbers as they are read: runs of whole numbers joined (1–5, 7, 9–12), and any other
- * number (2.5) on its own, in order.
+ * A series number's volumes, each span its first and last: one number ("3", "2.5", "v.3"), or
+ * what an omnibus holds, a range ("1-3", "1 to 3"), a list ("1, 2 & 3", "4+5"), or both ("1-3,
+ * 5"). Null for a number that is none of these ("Prequel"). The server reads them alike.
+ */
+export function volumeSpans(n: string): [number, number][] | null {
+  const s = n.trim().replace(/^v\./, '').trim()
+  if (!s) {
+    return null
+  }
+  const spans: [number, number][] = []
+  for (const part of s.split(/\s*(?:,|&|\+|\band\b)\s*/)) {
+    const m = /^(\d+(?:\.\d+)?)(?:\s*(?:-|–|—|\bto\b)\s*(\d+(?:\.\d+)?))?$/.exec(part)
+    if (!m) {
+      return null
+    }
+    const first = Number(m[1])
+    const last = m[2] ? Number(m[2]) : first
+    if (last < first) {
+      return null
+    }
+    spans.push([first, last])
+  }
+  return spans
+}
+
+/**
+ * Two series numbers in the series' order: by their first volume, then their last, so an
+ * omnibus's 1-3 comes after 1 and before 2; a number that is none of them after the rest.
+ */
+export function byVolume(a: string, b: string): number {
+  const ends = (n: string): [number, number] | null => {
+    const spans = volumeSpans(n)
+    return spans && [Math.min(...spans.map((s) => s[0])), Math.max(...spans.map((s) => s[1]))]
+  }
+  const x = ends(a)
+  const y = ends(b)
+  if (x && y) {
+    return x[0] - y[0] || x[1] - y[1]
+  }
+  return Number(!x) - Number(!y)
+}
+
+/**
+ * Volume numbers as they are read: runs of whole numbers joined, an omnibus's among them (1–5,
+ * 7, 9–12), and any other number (2.5) on its own, in order.
  */
 export function numberRanges(numbers: string[] | null | undefined): string {
   const out: string[] = []
@@ -56,15 +99,24 @@ export function numberRanges(numbers: string[] | null | undefined): string {
     start = 0
   }
   for (const v of numbers ?? []) {
-    const n = Number(v)
-    if (!Number.isInteger(n) || n < 1) {
+    const spans = volumeSpans(v)
+    if (
+      !spans?.every(
+        ([first, last]) => Number.isInteger(first) && Number.isInteger(last) && first >= 1,
+      )
+    ) {
       close()
       out.push(v)
-    } else if (start && n === end + 1) {
-      end = n
-    } else {
-      close()
-      start = end = n
+      continue
+    }
+    for (const [first, last] of spans) {
+      if (start && first <= end + 1) {
+        end = Math.max(end, last)
+      } else {
+        close()
+        start = first
+        end = last
+      }
     }
   }
   close()
@@ -261,6 +313,7 @@ const sourceNames: Record<string, string> = {
   hardcover: 'Hardcover',
   hathitrust: 'HathiTrust',
   inferred: 'its class number, subjects, and publisher',
+  course: 'a course a copy is on',
   series: 'the rest of the series',
   bookshelf: 'the Bookshelf import',
   endnote: 'EndNote',

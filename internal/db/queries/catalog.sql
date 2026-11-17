@@ -44,7 +44,12 @@ WHERE id = ?;
 SELECT
     w.id, w.title, w.series_id, w.series_number, w.read_status, w.current_page, w.started_on,
     w.finished_on, w.rating, w.notes, w.created_at, w.updated_at, w.category,
-    COALESCE(s.name, '') AS series_name
+    COALESCE(s.name, '') AS series_name,
+    -- A copy of it on a course makes a book a textbook, unless its category was set.
+    CAST(EXISTS (
+        SELECT 1 FROM course_copies cc JOIN copies c ON c.id = cc.copy_id JOIN editions ce ON ce.id = c.edition_id
+        WHERE ce.work_id = w.id
+    ) AS INTEGER) AS on_course
 FROM works w LEFT JOIN series s ON s.id = w.series_id
 WHERE w.id = ?;
 
@@ -185,7 +190,11 @@ SELECT
         WHERE c.edition_id = e.id
     ), '') AS TEXT) AS sections,
     (SELECT count(*) FROM copies c WHERE c.edition_id = e.id AND c.gone_as = '') AS copy_count,
-    CAST(COALESCE((SELECT min(c.id) FROM copies c WHERE c.edition_id = e.id AND c.gone_as = ''), 0) AS INTEGER) AS first_copy_id
+    CAST(COALESCE((SELECT min(c.id) FROM copies c WHERE c.edition_id = e.id AND c.gone_as = ''), 0) AS INTEGER) AS first_copy_id,
+    CAST(EXISTS (
+        SELECT 1 FROM course_copies cc JOIN copies c ON c.id = cc.copy_id JOIN editions ce ON ce.id = c.edition_id
+        WHERE ce.work_id = w.id
+    ) AS INTEGER) AS on_course
 FROM editions e
 JOIN works w ON w.id = e.work_id
 LEFT JOIN series s ON s.id = w.series_id

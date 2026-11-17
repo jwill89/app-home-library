@@ -8,6 +8,7 @@ import { api, apiURL } from '@/api/client'
 import type { LabelSheet, QueuedLabel } from '@/types'
 import { callNumberText, count, labelKindLabel } from '@/app/format'
 import { useNotice } from '@/composables/useNotice'
+import { usePagedTable } from '@/composables/usePagedTable'
 import PagePanel from './PagePanel.vue'
 
 // One kind of label sheet: what waits for it, printing it a sheet at a time, and taking what
@@ -16,6 +17,7 @@ import PagePanel from './PagePanel.vue'
 const props = defineProps<{ sheet: LabelSheet; labels: QueuedLabel[] }>()
 const emit = defineEmits<{ changed: [] }>()
 const notice = useNotice()
+const paged = usePagedTable()
 
 const title = computed(() => labelKindLabel(props.sheet.kind))
 const per = computed(() => props.sheet.perSheet)
@@ -145,10 +147,14 @@ async function done() {
 
     <DataTable
       v-if="labels.length"
+      :ref="paged.table"
+      :pt="paged.pt"
       :value="shown"
       data-key="copyId"
       :paginator="shown.length > 10"
+      paginator-position="both"
       :rows="10"
+      @page="paged.turned"
     >
       <Column header="Label">
         <template #body="{ data }">

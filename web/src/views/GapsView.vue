@@ -12,6 +12,7 @@ import { useFeed } from '@/composables/useFeed'
 import { count, detailChoices, detailLabel } from '@/app/format'
 import { useNotice } from '@/composables/useNotice'
 import { useQueue } from '@/composables/useQueue'
+import { usePagedTable } from '@/composables/usePagedTable'
 import { maxRefresh, refreshRows } from '@/app/rows'
 import BookCover from '@/components/BookCover.vue'
 import FormField from '@/components/FormField.vue'
@@ -24,6 +25,7 @@ import SuggestedChanges from '@/components/SuggestedChanges.vue'
 // by hand on its Edit page, or looked up again, one now or all in the background; what the
 // background finds otherwise waits on the page of suggested changes.
 const notice = useNotice()
+const paged = usePagedTable()
 const id = useId()
 
 const books = ref<BookGaps[]>([])
@@ -174,13 +176,17 @@ function lookUpEvery() {
     </FormField>
 
     <DataTable
+      :ref="paged.table"
+      :pt="paged.pt"
       :value="shown"
       data-key="bookId"
       sort-field="title"
       :sort-order="1"
       :loading="!loaded"
       :paginator="shown.length > 50"
+      paginator-position="both"
       :rows="50"
+      @page="paged.turned"
     >
       <template #empty>
         <p class="py-6 text-center text-ink-muted">Every book has every detail.</p>

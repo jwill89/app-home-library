@@ -127,9 +127,10 @@ func volume(n string) string {
 // every comparison would repeat that work.
 type shelfOrder struct {
 	section       string
-	class, number line
+	class         line
 	cutter        string
 	series, title string
+	number        string // the series number, ordered by compareVolumes
 	copyID        int64
 }
 
@@ -137,7 +138,7 @@ func orderOf(s *db.CopyShelving) shelfOrder {
 	class, cutter := callParts(s)
 	return shelfOrder{
 		section: s.Section, class: lineOf(class), cutter: cutter,
-		series: strings.ToLower(withoutArticle(s.Series)), number: lineOf(s.SeriesNumber),
+		series: strings.ToLower(withoutArticle(s.Series)), number: s.SeriesNumber,
 		title: strings.ToLower(withoutArticle(s.Title)), copyID: s.CopyID,
 	}
 }
@@ -148,7 +149,8 @@ func (a shelfOrder) compare(b shelfOrder) int {
 		a.class.compare(b.class),
 		cmp.Compare(a.cutter, b.cutter),
 		cmp.Compare(a.series, b.series),
-		a.number.compare(b.number),
+		cmp.Compare(boolInt(a.number != ""), boolInt(b.number != "")), // an unnumbered volume first
+		compareVolumes(a.number, b.number),
 		cmp.Compare(a.title, b.title),
 		cmp.Compare(a.copyID, b.copyID),
 	)
@@ -170,8 +172,8 @@ func sortShelved[T any](items []T, shelving func(*T) *db.CopyShelving) {
 	}
 }
 
-// line is a call number's line as it sorts: numbers as numbers, 153.42 before 823.92 and v.2
-// before v.10.
+// line is a call number's class as it sorts: numbers as numbers, 153.42 before 823.92, and
+// before a prefix.
 type line struct {
 	text  string
 	num   float64
@@ -179,7 +181,7 @@ type line struct {
 }
 
 func lineOf(text string) line {
-	n, err := strconv.ParseFloat(strings.TrimPrefix(text, "v."), 64)
+	n, err := strconv.ParseFloat(text, 64)
 	return line{text: text, num: n, isNum: err == nil}
 }
 

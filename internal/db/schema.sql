@@ -6,10 +6,10 @@ CREATE TABLE area_authors (
     PRIMARY KEY (area_id, person_id)
 ) WITHOUT ROWID;
 
-CREATE TABLE area_categories (
+CREATE TABLE "area_categories" (
     area_id INTEGER NOT NULL REFERENCES areas (id) ON DELETE CASCADE,
     category TEXT NOT NULL
-        CHECK (category IN ('fiction', 'nonfiction', 'manga', 'light_novel', 'graphic_novel', 'uncategorized')),
+        CHECK (category IN ('fiction', 'nonfiction', 'textbook', 'manga', 'light_novel', 'graphic_novel', 'uncategorized')),
     PRIMARY KEY (area_id, category)
 ) WITHOUT ROWID;
 
@@ -380,10 +380,10 @@ CREATE TABLE share_books (
     PRIMARY KEY (share_id, edition_id)
 ) WITHOUT ROWID;
 
-CREATE TABLE share_categories (
+CREATE TABLE "share_categories" (
     share_id INTEGER NOT NULL REFERENCES shares (id) ON DELETE CASCADE,
     category TEXT NOT NULL
-        CHECK (category IN ('fiction', 'nonfiction', 'manga', 'light_novel', 'graphic_novel', 'uncategorized')),
+        CHECK (category IN ('fiction', 'nonfiction', 'textbook', 'manga', 'light_novel', 'graphic_novel', 'uncategorized')),
     PRIMARY KEY (share_id, category)
 ) WITHOUT ROWID;
 
@@ -459,7 +459,8 @@ CREATE TABLE "works" (
         CHECK (created_at IS strftime('%Y-%m-%dT%H:%M:%SZ', created_at)),
     updated_at DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
         CHECK (updated_at IS strftime('%Y-%m-%dT%H:%M:%SZ', updated_at)),
-    category TEXT NOT NULL DEFAULT '' CHECK (category IN ('', 'fiction', 'nonfiction', 'manga', 'light_novel', 'graphic_novel', 'uncategorized'))
+    category TEXT NOT NULL DEFAULT ''
+        CHECK (category IN ('', 'fiction', 'nonfiction', 'textbook', 'manga', 'light_novel', 'graphic_novel', 'uncategorized'))
 );
 
 CREATE VIEW copy_shelving AS
@@ -587,6 +588,18 @@ END;
 
 CREATE TRIGGER copies_changed_update AFTER UPDATE ON copies BEGIN
     INSERT INTO changes (type, ref) VALUES ('book', NEW.edition_id);
+END;
+
+CREATE TRIGGER course_copies_changed_delete AFTER DELETE ON course_copies BEGIN
+    INSERT INTO changes (type, ref)
+    SELECT 'book', e.id FROM editions e
+    WHERE e.work_id = (SELECT ce.work_id FROM copies c JOIN editions ce ON ce.id = c.edition_id WHERE c.id = OLD.copy_id);
+END;
+
+CREATE TRIGGER course_copies_changed_insert AFTER INSERT ON course_copies BEGIN
+    INSERT INTO changes (type, ref)
+    SELECT 'book', e.id FROM editions e
+    WHERE e.work_id = (SELECT ce.work_id FROM copies c JOIN editions ce ON ce.id = c.edition_id WHERE c.id = NEW.copy_id);
 END;
 
 CREATE TRIGGER declined_suggestions_changed_insert AFTER INSERT ON declined_suggestions BEGIN

@@ -121,7 +121,7 @@ watch(
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  height: 3.5rem;
+  height: var(--spacing-bar);
   padding: 0 1rem;
   background: var(--color-surface-panel);
   border-bottom: 1px solid var(--color-hairline);

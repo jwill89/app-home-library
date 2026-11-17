@@ -74,6 +74,7 @@
               "enum": [
                 "fiction",
                 "nonfiction",
+                "textbook",
                 "manga",
                 "light_novel",
                 "graphic_novel",
@@ -81,7 +82,7 @@
               ],
               "type": "string"
             },
-            "maxItems": 6,
+            "maxItems": 7,
             "type": ["array", "null"]
           },
           "deweyFrom": {
@@ -194,6 +195,7 @@
               "enum": [
                 "fiction",
                 "nonfiction",
+                "textbook",
                 "manga",
                 "light_novel",
                 "graphic_novel",
@@ -201,7 +203,7 @@
               ],
               "type": "string"
             },
-            "maxItems": 6,
+            "maxItems": 7,
             "type": ["array", "null"]
           },
           "deweyFrom": {
@@ -313,6 +315,7 @@
             "enum": [
               "fiction",
               "nonfiction",
+              "textbook",
               "manga",
               "light_novel",
               "graphic_novel",
@@ -599,6 +602,7 @@
               "",
               "fiction",
               "nonfiction",
+              "textbook",
               "manga",
               "light_novel",
               "graphic_novel",
@@ -3741,6 +3745,7 @@
               "enum": [
                 "fiction",
                 "nonfiction",
+                "textbook",
                 "manga",
                 "light_novel",
                 "graphic_novel",
@@ -3748,7 +3753,7 @@
               ],
               "type": "string"
             },
-            "maxItems": 6,
+            "maxItems": 7,
             "type": ["array", "null"]
           },
           "courseIds": {

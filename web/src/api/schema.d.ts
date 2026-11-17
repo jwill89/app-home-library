@@ -1855,7 +1855,15 @@ export interface components {
       authors: string[] | null
       /** @description Any of these categories; none for every one */
       categories:
-        | ('fiction' | 'nonfiction' | 'manga' | 'light_novel' | 'graphic_novel' | 'uncategorized')[]
+        | (
+            | 'fiction'
+            | 'nonfiction'
+            | 'textbook'
+            | 'manga'
+            | 'light_novel'
+            | 'graphic_novel'
+            | 'uncategorized'
+          )[]
         | null
       /** @description The lowest Dewey number it takes, the book's own or estimated from its LC class; empty for no limit */
       deweyFrom: string
@@ -1895,7 +1903,15 @@ export interface components {
       authors: string[] | null
       /** @description Any of these categories; none for every one */
       categories:
-        | ('fiction' | 'nonfiction' | 'manga' | 'light_novel' | 'graphic_novel' | 'uncategorized')[]
+        | (
+            | 'fiction'
+            | 'nonfiction'
+            | 'textbook'
+            | 'manga'
+            | 'light_novel'
+            | 'graphic_novel'
+            | 'uncategorized'
+          )[]
         | null
       /** @description The lowest Dewey number it takes, the book's own or estimated from its LC class; empty for no limit */
       deweyFrom: string
@@ -1937,7 +1953,13 @@ export interface components {
        * @enum {string}
        */
       category:
-        'fiction' | 'nonfiction' | 'manga' | 'light_novel' | 'graphic_novel' | 'uncategorized'
+        | 'fiction'
+        | 'nonfiction'
+        | 'textbook'
+        | 'manga'
+        | 'light_novel'
+        | 'graphic_novel'
+        | 'uncategorized'
       contributors: components['schemas']['Contributor'][] | null
       copies: components['schemas']['Copy'][] | null
       /** @description The courses its copies were used for; the owner's alone */
@@ -2040,7 +2062,14 @@ export interface components {
        * @enum {string}
        */
       category:
-        '' | 'fiction' | 'nonfiction' | 'manga' | 'light_novel' | 'graphic_novel' | 'uncategorized'
+        | ''
+        | 'fiction'
+        | 'nonfiction'
+        | 'textbook'
+        | 'manga'
+        | 'light_novel'
+        | 'graphic_novel'
+        | 'uncategorized'
       contributors: components['schemas']['Contributor'][] | null
       /**
        * Format: int64
@@ -3202,7 +3231,15 @@ export interface components {
        */
       books: 'all' | 'some' | 'none'
       categories:
-        | ('fiction' | 'nonfiction' | 'manga' | 'light_novel' | 'graphic_novel' | 'uncategorized')[]
+        | (
+            | 'fiction'
+            | 'nonfiction'
+            | 'textbook'
+            | 'manga'
+            | 'light_novel'
+            | 'graphic_novel'
+            | 'uncategorized'
+          )[]
         | null
       /** @description Courses whose papers are shown; never named to a visitor */
       courseIds: number[] | null

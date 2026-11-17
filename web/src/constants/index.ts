@@ -19,10 +19,14 @@ import type {
 // shown for it. Each list's values are typed by the field it is for, so a value the server
 // does not take is a type error. The words for one value come from app/format.ts.
 
-/** The kinds of book the library sorts by: one each, set or worked out from its details. */
+/**
+ * The kinds of book the library sorts by: one each, set, or worked out from its details (a
+ * textbook, from a copy of it on a course).
+ */
 export const categories = [
   { value: 'fiction', label: 'Fiction', plural: 'Fiction' },
   { value: 'nonfiction', label: 'Nonfiction', plural: 'Nonfiction' },
+  { value: 'textbook', label: 'Textbook', plural: 'Textbooks' },
   { value: 'manga', label: 'Manga', plural: 'Manga' },
   { value: 'light_novel', label: 'Light novel', plural: 'Light novels' },
   { value: 'graphic_novel', label: 'Graphic novel', plural: 'Graphic novels' },

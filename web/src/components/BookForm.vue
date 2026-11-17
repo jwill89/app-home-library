@@ -104,13 +104,17 @@ function removePerson(i: number) {
           </datalist>
         </FormField>
         <FormField label="Number" :for="f('number')">
-          <InputText :id="f('number')" v-model="book.seriesNumber" inputmode="decimal" />
+          <!-- Any keyboard: an omnibus's number is a range, 1-3, which a number pad can't type. -->
+          <InputText :id="f('number')" v-model="book.seriesNumber" />
         </FormField>
       </div>
       <FormField
         label="Category"
         :for="f('category')"
-        :hint="from('category') || 'Left blank, it is worked out from the details.'"
+        :hint="
+          from('category') ||
+          'Left blank, it is worked out: a textbook while a copy is on a course, else from the details.'
+        "
         class="mt-4"
       >
         <Select

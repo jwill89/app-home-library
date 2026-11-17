@@ -11,7 +11,7 @@ import InputText from 'primevue/inputtext'
 import { api } from '@/api/client'
 import type { Book, BookRow, Series, Suggestions } from '@/types'
 import { useConfirmAction } from '@/composables/useConfirmAction'
-import { count, numberRanges } from '@/app/format'
+import { byVolume, count, numberRanges } from '@/app/format'
 import { useLibrary } from '@/stores/library'
 import { goBack, type Crumb } from '@/app/navigation'
 import { useNotice } from '@/composables/useNotice'
@@ -56,14 +56,12 @@ const trail: Crumb[] = [
   { label: 'Series', to: '/series' },
 ]
 
-// In the series' order; a volume without a number after the numbered ones, by title.
-const number = (v: string) => (v.trim() === '' || Number.isNaN(Number(v)) ? Infinity : Number(v))
+// In the series' order, an omnibus's 1-3 after 1 and before 2; a volume without a number after
+// the numbered ones, by title.
 const books = computed(() =>
   rows.value
     .filter((r) => r.seriesId === props.id)
-    .sort(
-      (a, b) => number(a.seriesNumber) - number(b.seriesNumber) || a.title.localeCompare(b.title),
-    ),
+    .sort((a, b) => byVolume(a.seriesNumber, b.seriesNumber) || a.title.localeCompare(b.title)),
 )
 const row = (d: unknown) => d as BookRow
 

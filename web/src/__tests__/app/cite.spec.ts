@@ -93,6 +93,33 @@ describe('cite', () => {
     expect(shown(second, 'chicago')).toBe('McDonald, Ed. *Crowfall*. 2nd ed. New York: Ace, 2019.')
   })
 
+  it('says "ed." once, however the edition was written', () => {
+    const as = (edition: string) => shown({ ...book, edition }, 'mla')
+    for (const written of ['2nd ed', '2nd ed.', '2nd Edition', 'Second edition', '2d ed', '2']) {
+      expect(as(written)).toBe('McDonald, Ed. *Crowfall*. 2nd ed., Ace, 2019.')
+    }
+    expect(as('3rd edn.')).toContain('3rd ed., Ace')
+    expect(as('11th ed')).toContain('11th ed., Ace')
+    expect(as('Rev. ed')).toContain('Rev. ed., Ace')
+    expect(as('Rev.')).toContain('Rev. ed., Ace')
+    expect(as('Touchstone trade pbk. ed')).toContain('Touchstone trade pbk. ed., Ace')
+    expect(as('2010 edition')).toContain('2010 ed., Ace')
+    for (const first of ['1st ed', 'First Yen Press edition', '1', 'ed.']) {
+      expect(as(first)).toBe('McDonald, Ed. *Crowfall*. Ace, 2019.')
+    }
+  })
+
+  it('cites an edition that says more than which it is as written', () => {
+    const revised = { ...book, edition: 'Revised ed., incorporating new material' }
+    expect(shown(revised, 'apa')).toBe(
+      'McDonald, E. (2019). *Crowfall* (Revised ed., incorporating new material). Ace.',
+    )
+    const reissued = { ...book, edition: 'Reissued with revisions' }
+    expect(shown(reissued, 'chicago')).toBe(
+      'McDonald, Ed. *Crowfall*. Reissued with revisions. New York: Ace, 2019.',
+    )
+  })
+
   it('leads with the title when there is no author, and says n.d. with no date', () => {
     const handout: CiteWork = { kind: 'document', authors: [], title: 'Calculus III syllabus' }
     expect(shown(handout, 'apa')).toBe('*Calculus III syllabus*. (n.d.).')

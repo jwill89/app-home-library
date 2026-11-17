@@ -114,12 +114,17 @@ test('going back to the library lands on the page it was on', async ({ page, req
   }
   await page.goto('/')
   await page.getByPlaceholder(/^Title, author/).fill('Paged')
-  await page.getByRole('button', { name: 'Page 2' }).click()
+  // The pages are turned from above the list and from below it; from below, the list goes back
+  // to its top, the focus with it.
+  const above = page.getByRole('button', { name: 'Page 2' }).first()
+  await page.getByRole('button', { name: 'Page 2' }).last().click()
+  await expect(above).toBeFocused()
+  await expect(above).toBeInViewport()
   await page.getByRole('link', { name: 'Paged 051' }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Paged 051' })).toBeVisible()
   await page.goBack()
   await expect(page.getByRole('link', { name: 'Paged 051' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Page 2' })).toHaveAttribute('aria-current', 'page')
+  await expect(above).toHaveAttribute('aria-current', 'page')
 })
 
 test('a book edited from a series: Back goes to the list and the series, not the edit', async ({

@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"encoding/json"
 	"slices"
-	"strconv"
 	"strings"
 
 	"homelibrary/internal/db"
@@ -133,7 +132,7 @@ func shelfBooks(rows []*db.ListShelfCopiesRow, authors map[int64][]int64) []Shel
 			LabelPrefix: r.LabelPrefix, Ddc: r.Ddc, Title: r.Title, Series: r.Series, SeriesNumber: r.SeriesNumber, AuthorSort: r.AuthorSort}
 		var subjects []string
 		_ = json.Unmarshal([]byte(r.Subjects), &subjects) // written by this package as a JSON list
-		category, _ := categoryOf(r.Category, r.Ddc, r.Series, r.Title, r.Publisher, subjects)
+		category, _ := categoryOf(r.Category, r.OnCourse != 0, r.Ddc, r.Series, r.Title, r.Publisher, subjects)
 		f := bookFacts{
 			category: category, subjects: lowered(subjects), authorIDs: authors[r.EditionID], seriesID: r.SeriesID,
 			author: strings.ToLower(r.AuthorSort), authorName: r.AuthorSort, series: strings.ToLower(withoutArticle(r.Series)),
@@ -212,6 +211,7 @@ type keyPart struct {
 	Missing bool    `json:"m,omitempty"`
 	IsNum   bool    `json:"n,omitempty"`
 	Num     float64 `json:"v,omitempty"`
+	Last    float64 `json:"l,omitempty"` // an omnibus's last volume, "1-3"'s 3; none for one number
 	Text    string  `json:"t,omitempty"`
 }
 
@@ -226,20 +226,28 @@ func textPart(s string) keyPart {
 	return keyPart{Text: s}
 }
 
-// volumePart is a series number as it sorts: 2 before 10, and a number before a word.
+// volumePart is a series number as it sorts: 2 before 10, an omnibus's 1-3 after 1 and before
+// 2, and a number before a word.
 func volumePart(s string) keyPart {
-	if n, err := strconv.ParseFloat(strings.TrimPrefix(s, "v."), 64); err == nil {
-		return numPart(n)
+	if first, last, ok := volumes(s); ok {
+		p := numPart(first)
+		if last > first {
+			p.Last = last
+		}
+		return p
 	}
 	return textPart(s)
 }
+
+// end is the last number a part covers: its own, or an omnibus's last volume.
+func (a keyPart) end() float64 { return max(a.Num, a.Last) }
 
 func (a keyPart) compare(b keyPart) int {
 	switch {
 	case a.Missing || b.Missing:
 		return cmp.Compare(boolInt(a.Missing), boolInt(b.Missing))
 	case a.IsNum && b.IsNum:
-		return cmp.Compare(a.Num, b.Num)
+		return cmp.Or(cmp.Compare(a.Num, b.Num), cmp.Compare(a.end(), b.end()))
 	case a.IsNum != b.IsNum:
 		return cmp.Compare(boolInt(b.IsNum), boolInt(a.IsNum))
 	}

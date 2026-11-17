@@ -17,6 +17,7 @@ import { loanLine, overdueBy } from '@/app/loans'
 import { useReturnLoan } from '@/composables/useReturnLoan'
 import { useNotice } from '@/composables/useNotice'
 import { useStaleSave } from '@/composables/useStaleSave'
+import { usePagedTable } from '@/composables/usePagedTable'
 import BookCover from '@/components/BookCover.vue'
 import FormField from '@/components/FormField.vue'
 import LateNote from '@/components/LateNote.vue'
@@ -25,6 +26,7 @@ import PageHeader from '@/components/PageHeader.vue'
 import PagePanel from '@/components/PagePanel.vue'
 import LoansCalendar from '@/components/LoansCalendar.vue'
 
+const paged = usePagedTable()
 const ask = useConfirmAction()
 const notice = useNotice()
 const stale = useStaleSave()
@@ -336,11 +338,15 @@ function removeBorrower(b: Borrower) {
         />
       </template>
       <DataTable
+        :ref="paged.table"
+        :pt="paged.pt"
         :value="history"
         data-key="id"
         :loading="!loaded"
         :paginator="history.length > 25"
+        paginator-position="both"
         :rows="25"
+        @page="paged.turned"
       >
         <template #empty>
           <p class="text-ink-muted">No loans have come back yet.</p>

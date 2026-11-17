@@ -328,10 +328,10 @@ func (s *Service) get(ctx context.Context, q *db.Queries, id int64) (*Book, erro
 	if b.Sources == nil {
 		b.Sources = map[string]string{}
 	}
-	var inferred bool
-	b.Category, inferred = categoryOf(w.Category, b.DDC, b.Series, b.Title, b.Publisher, b.Subjects)
-	if inferred {
-		b.Sources["category"] = sourceInferred
+	var source string
+	b.Category, source = categoryOf(w.Category, w.OnCourse != 0, b.DDC, b.Series, b.Title, b.Publisher, b.Subjects)
+	if source != "" {
+		b.Sources["category"] = source
 	}
 	if b.Genres, err = q.ListWorkGenres(ctx, w.ID); err != nil {
 		return nil, err
@@ -405,7 +405,7 @@ func (s *Service) List(ctx context.Context) ([]BookRow, error) {
 			Subjects: []string{}, Genres: r.Genres, Credits: r.Credits, LCC: r.Lcc,
 		}
 		_ = json.Unmarshal([]byte(r.Subjects), &row.Subjects) // written by this package as a JSON list
-		row.Category, _ = categoryOf(r.Category, row.DDC, row.Series, row.Title, row.Publisher, row.Subjects)
+		row.Category, _ = categoryOf(r.Category, r.OnCourse != 0, row.DDC, row.Series, row.Title, row.Publisher, row.Subjects)
 		if r.FirstCopyID > 0 {
 			row.Barcode = Barcode(r.FirstCopyID)
 		}

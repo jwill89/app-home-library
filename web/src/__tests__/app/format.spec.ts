@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   addDays,
+  byVolume,
   calendarDate,
   courseName,
   coverURL,
@@ -20,6 +21,7 @@ import {
   sourceLabel,
   termLabel,
   today,
+  volumeSpans,
 } from '@/app/format'
 
 describe('format', () => {
@@ -98,6 +100,42 @@ describe('volume numbers', () => {
     expect(numberRanges(['1', '2', '3', '5', '7', '8', '2.5'])).toBe('1–3, 5, 7–8, 2.5')
     expect(numberRanges(['4'])).toBe('4')
     expect(numberRanges([])).toBe('')
+  })
+
+  it('counts the volumes an omnibus holds in its run', () => {
+    expect(numberRanges(['1', '1-3', '4', '5', '7 & 8', '10', 'Prequel'])).toBe(
+      '1–5, 7–8, 10, Prequel',
+    )
+    expect(numberRanges(['1-3, 5'])).toBe('1–3, 5')
+  })
+
+  it('reads a series number as the volumes it holds', () => {
+    expect(volumeSpans('3')).toEqual([[3, 3]])
+    expect(volumeSpans('v.2.5')).toEqual([[2.5, 2.5]])
+    expect(volumeSpans('1-3')).toEqual([[1, 3]])
+    expect(volumeSpans('1 – 3')).toEqual([[1, 3]])
+    expect(volumeSpans('4 to 6')).toEqual([[4, 6]])
+    expect(volumeSpans('1, 2 & 3')).toEqual([
+      [1, 1],
+      [2, 2],
+      [3, 3],
+    ])
+    expect(volumeSpans('7+8')).toEqual([
+      [7, 7],
+      [8, 8],
+    ])
+    expect(volumeSpans('1-3, 5')).toEqual([
+      [1, 3],
+      [5, 5],
+    ])
+    for (const none of ['', 'Prequel', '3a', '3-1', '1-']) {
+      expect(volumeSpans(none)).toBeNull()
+    }
+  })
+
+  it('orders an omnibus by its first volume, then its last', () => {
+    const order = ['10', 'Prequel', '2', '1-3', '1', '4 & 5', '']
+    expect([...order].sort(byVolume).slice(0, 5)).toEqual(['1', '1-3', '2', '4 & 5', '10'])
   })
 })
 

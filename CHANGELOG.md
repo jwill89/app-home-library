@@ -4,6 +4,21 @@ What changes in Home Library, release by release. The format is [Keep a Changelo
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-17
+
+### Added
+
+- A Textbook category, with its own tab on the Library and a place in an area's rules and a share link's. A book is a textbook when you set it on its Edit page, or while a copy of it is on a course and its category isn't set. A Bookshelf shelf named Textbooks imports as textbooks.
+
+### Changed
+
+- An omnibus's series number, such as 1-3, 1–3 or 1, 2 & 3, counts as the volumes it holds: it comes after volume 1 and before volume 2 on the series' page, on the shelves and in an area's order, and its volumes are no longer listed as missing. The Number field gives a phone's full keyboard, so a range can be typed.
+- Every list with pages has its page controls above the rows as well as below, and turning the page from below goes back to the top of the list.
+
+### Fixed
+
+- An edition written "2nd ed" was cited as "2nd ed ed.". Every style now says "2nd ed." however the edition is written ("2nd edition", "Second edition", "2d ed", "2"), and cites one that says more, such as "Revised ed., incorporating new material", as written.
+
 ## [1.4.0] - 2026-11-15
 
 ### Added
@@ -106,7 +121,8 @@ What changes in Home Library, release by release. The format is [Keep a Changelo
 
 - The first release: the catalog, covers, loans, courses, labels, documents, share links, imports and exports, and the nightly backup.
 
-[Unreleased]: https://github.com/jwill89/app-home-library/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/jwill89/app-home-library/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/jwill89/app-home-library/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/jwill89/app-home-library/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/jwill89/app-home-library/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/jwill89/app-home-library/compare/v1.2.0...v1.2.1

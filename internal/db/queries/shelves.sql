@@ -77,7 +77,11 @@ SELECT
     CAST(COALESCE(e.pages, 0) AS INTEGER) AS pages,
     CAST(COALESCE(e.height_mm, 0) AS INTEGER) AS height_mm,
     CAST(COALESCE(e.thickness_mm, 0) AS INTEGER) AS thickness_mm,
-    CAST(EXISTS (SELECT 1 FROM loans l WHERE l.copy_id = cs.copy_id AND l.returned_on IS NULL) AS INTEGER) AS on_loan
+    CAST(EXISTS (SELECT 1 FROM loans l WHERE l.copy_id = cs.copy_id AND l.returned_on IS NULL) AS INTEGER) AS on_loan,
+    CAST(EXISTS (
+        SELECT 1 FROM course_copies cc JOIN copies c ON c.id = cc.copy_id JOIN editions ce ON ce.id = c.edition_id
+        WHERE ce.work_id = w.id
+    ) AS INTEGER) AS on_course
 FROM copy_shelving cs
 JOIN editions e ON e.id = cs.edition_id
 JOIN works w ON w.id = e.work_id;

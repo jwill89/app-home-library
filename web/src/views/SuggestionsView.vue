@@ -10,6 +10,7 @@ import { useFeed } from '@/composables/useFeed'
 import { count, detailChoices, detailLabel, listed } from '@/app/format'
 import { useNotice } from '@/composables/useNotice'
 import { useQueue } from '@/composables/useQueue'
+import { usePagedTable } from '@/composables/usePagedTable'
 import { maxRefresh, refreshRows } from '@/app/rows'
 import BookCover from '@/components/BookCover.vue'
 import FormField from '@/components/FormField.vue'
@@ -21,6 +22,7 @@ import SuggestedChanges from '@/components/SuggestedChanges.vue'
 // Every book whose lookup, asked for by the owner, found details the sources give otherwise:
 // each waits here until it is taken or kept as it is, a book or many at a time.
 const notice = useNotice()
+const paged = usePagedTable()
 const id = useId()
 
 const books = ref<SuggestedBook[]>([])
@@ -159,13 +161,17 @@ watch(suggesting, (open) => {
     </FormField>
 
     <DataTable
+      :ref="paged.table"
+      :pt="paged.pt"
       :value="shown"
       data-key="bookId"
       sort-field="title"
       :sort-order="1"
       :loading="!loaded"
       :paginator="shown.length > 50"
+      paginator-position="both"
       :rows="50"
+      @page="paged.turned"
     >
       <template #empty>
         <p v-if="loaded" class="prose-text mx-auto py-6 text-center text-ink-muted">
