@@ -17,3 +17,14 @@ reason = "Dev tooling only (ESLint through lint/web); the fix, minimatch 11.0.1,
 id = "GHSA-gcqx-w48m-w2h4"
 ignoreUntil = 2027-02-15
 reason = "Build tooling only (workbox-build through @rollup/plugin-node-resolve), merging our own options; no fixed release yet."
+
+# picomatch through 4.0.7: denial of service from a crafted extglob pattern, and no release
+# fixes it yet. It comes with Vite, Vitest, Stylelint, vue-tsc, Workbox's build
+# (@rollup/pluginutils) and ESLint's fast-glob (lint/web), and with vue-router 5's file-routing
+# build plugin (unplugin), whose packages npm counts as shipping though the router's browser
+# code imports none of them and the app routes by hand: the built app holds none of
+# picomatch's code (2026-11-17). Our own configs write every pattern.
+[[IgnoredVulns]]
+id = "GHSA-fc5q-39xc-vjpf"
+ignoreUntil = 2027-02-17
+reason = "Build, lint and test tooling only (Vite, Vitest, Stylelint, vue-tsc, workbox-build, ESLint, and vue-router's unused build plugin); no picomatch release fixes it yet."

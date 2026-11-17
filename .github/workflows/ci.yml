@@ -17,7 +17,7 @@ jobs:
   # docs always, and every job when CI's own files, shared/ or the Taskfile change
   # (changes.yml). `task shared:ci:changes` shows what a push would run.
   changes:
-    uses: jwill89/shared-tooling/.github/workflows/changes.yml@v2.17.0
+    uses: jwill89/shared-tooling/.github/workflows/changes.yml@v2.18.0
     permissions:
       contents: read
       actions: read
@@ -26,17 +26,17 @@ jobs:
       areas: |
         app: ** !**/*.md !**/*.ps1 !**/*.psm1 !**/*.psd1 !.vscode/** !.claude/** !.idea/**
 
-  # Lint, type-check, format, tests with their coverage floor (vite.config.ts), the audits
-  # (any advisory in what ships, a high one in the tooling), and the build, which the Go
-  # binary embeds.
+  # Lint, type-check, format, tests with their coverage floor (vite.config.ts), the audit of
+  # what ships (web.yml's, passing over what web/osv-scanner.toml does; the osv job holds
+  # every package at any severity), and the build, which the Go binary embeds.
   web:
     needs: changes
     if: fromJSON(needs.changes.outputs.areas).app
-    uses: jwill89/shared-tooling/.github/workflows/web.yml@v2.17.0
+    uses: jwill89/shared-tooling/.github/workflows/web.yml@v2.18.0
     with:
       dir: web
       fontawesome: true
-      scripts: lint typecheck format:check test:coverage audit:all build
+      scripts: lint typecheck format:check test:coverage build
       artifact-path: web/dist
     secrets:
       FONTAWESOME_TOKEN: ${{ secrets.FONTAWESOME_NPM_TOKEN }}
@@ -46,7 +46,7 @@ jobs:
   go:
     needs: [changes, web]
     if: fromJSON(needs.changes.outputs.areas).app
-    uses: jwill89/shared-tooling/.github/workflows/go.yml@v2.17.0
+    uses: jwill89/shared-tooling/.github/workflows/go.yml@v2.18.0
     with:
       download-artifact: web-dist
       download-path: web/dist
@@ -66,7 +66,7 @@ jobs:
   e2e:
     needs: [changes, web, go]
     if: fromJSON(needs.changes.outputs.areas).app
-    uses: jwill89/shared-tooling/.github/workflows/e2e.yml@v2.17.0
+    uses: jwill89/shared-tooling/.github/workflows/e2e.yml@v2.18.0
     with:
       dir: web
       go-version-file: go.mod
@@ -78,17 +78,17 @@ jobs:
   scripts:
     needs: changes
     if: fromJSON(needs.changes.outputs.areas).scripts
-    uses: jwill89/shared-tooling/.github/workflows/pwsh.yml@v2.17.0
+    uses: jwill89/shared-tooling/.github/workflows/pwsh.yml@v2.18.0
 
   docs:
-    uses: jwill89/shared-tooling/.github/workflows/docs.yml@v2.17.0
+    uses: jwill89/shared-tooling/.github/workflows/docs.yml@v2.18.0
 
   # OSV-Scanner over every lockfile. An osv-scanner.toml beside a lockfile passes over the
   # advisories that reach only lint, test or build tooling.
   osv:
     needs: changes
     if: fromJSON(needs.changes.outputs.areas).lockfiles
-    uses: jwill89/shared-tooling/.github/workflows/osv.yml@v2.17.0
+    uses: jwill89/shared-tooling/.github/workflows/osv.yml@v2.18.0
 
   # The generated code (sqlc's, the OpenAPI document and the TypeScript client) is what the
   # generators make from the current schema and handlers.
@@ -186,7 +186,7 @@ jobs:
   report:
     needs: [changes, web, go, e2e, scripts, docs, osv, generated, release]
     if: failure()
-    uses: jwill89/shared-tooling/.github/workflows/report.yml@v2.17.0
+    uses: jwill89/shared-tooling/.github/workflows/report.yml@v2.18.0
     permissions:
       contents: read
       actions: read

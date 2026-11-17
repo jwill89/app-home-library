@@ -107,14 +107,13 @@ tasks:
       - task: lint:scripts
       - task: lint:vulns
 
-  # Known vulnerabilities: Go's in the code the app calls; npm's in what ships, at any
-  # severity, and in the build and lint tooling from high up (a moderate one there is a
-  # tool reading our own files).
+  # Known vulnerabilities: Go's in the code the app calls; npm's in what ships, from high up,
+  # passing over what web/osv-scanner.toml does, as CI's audit does. OSV-Scanner
+  # (shared:vuln) holds every package, the tooling's included, at any severity.
   lint:vulns:
     cmds:
       - go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
-      - cd web && npm audit --omit=dev --audit-level=low
-      - cd web && npm audit --audit-level=high
+      - task: shared:web:audit
 
   lint:web:
     dir: web

@@ -15,8 +15,7 @@
     "format:check": "prettier --check src e2e/*.ts playwright.config.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test",
-    "audit:all": "npm audit --omit=dev --audit-level=low && npm audit --audit-level=high"
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@awesome.me/kit-4f2bd9b614": "^1.0.2",
