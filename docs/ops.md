@@ -112,13 +112,14 @@ Right after each deploy, in a fresh browser tab with the console open, on the ph
 
 ## Upgrading to 1.4.0
 
-Every table with a date or a time is rebuilt at start (migrations 38 to 40): each takes its declared type and a CHECK on its one form, and a date or time not set becomes `NULL`. The sessions move to the app's own store with their expiry converted, so nobody is signed out, and goose's own record of the migrations takes the same form. Borrowers, loans, share links, areas, bookcases and shelves gain when each last changed, so a form's save can be refused when another device changed the record first. Every row is kept, and each migration stops before it commits if a count or a reference comes out wrong. The binary also becomes `<service user>`'s, and the backups folder closes to all but it. In order:
+Every table with a date or a time is rebuilt at start (migrations 38 to 40): each takes its declared type and a CHECK on its one form, and a date or time not set becomes `NULL`. The sessions move to the app's own store with their expiry converted, so nobody is signed out, and goose's own record of the migrations takes the same form. Borrowers, loans, share links, areas, bookcases and shelves gain when each last changed, so a form's save can be refused when another device changed the record first. Every row is kept, and each migration stops before it commits if a count or a reference comes out wrong. The binary also becomes `<service user>`'s, and the backups folder closes to all but it. Nothing new goes in the env file or the deploy config. In order:
 
-1. Raise the version, commit and push, and let CI tag `v1.4.0`.
-2. `task deploy`. The services stop, the snapshot is taken, and the new binary migrates the database as it starts; a migration that fails leaves the database as it was, and the deploy puts 1.3.0 back. The deploy's layout step gives `<opt dir>` and the binary to `<service user>` and sets `backups/` to 0700.
-3. Run the [production-only checks](#production-only-checks), then check the rebuild on the droplet: `runuser -u '<service user>' -- sqlite3 '<opt dir>/data/homelibrary.sqlite' 'PRAGMA user_version; PRAGMA integrity_check; PRAGMA foreign_key_check;'` prints `40`, then `ok`, and nothing else.
-4. To go back to 1.3.0 after this, put the pre-deploy snapshot back with the binary ([Rolling back](#rolling-back)): 1.3.0 can't read the rebuilt tables.
-5. A week later, measure both services' memory and set their caps ([Memory](#memory)).
+1. Done on the droplet 2026-11-16, ahead of the deploy, since 1.3.0 runs the same with it: `<opt dir>` and its binary went from root's to `<service user>`'s (both 755), and `backups/` from 0750 to 0700 (every file in it was 0600 already). Both services stayed active and `/healthz` answered `ok` after.
+2. Raise the version, commit and push, and let CI tag `v1.4.0`.
+3. `task deploy`. The services stop, the snapshot is taken, and the new binary migrates the database as it starts; a migration that fails leaves the database as it was, and the deploy puts 1.3.0 back. The deploy's layout step sets the same owners and modes as step 1, so it finds nothing to change.
+4. Run the [production-only checks](#production-only-checks), then check the rebuild on the droplet: `runuser -u '<service user>' -- sqlite3 '<opt dir>/data/homelibrary.sqlite' 'PRAGMA user_version; PRAGMA integrity_check; PRAGMA foreign_key_check;'` prints `40`, then `ok`, and nothing else.
+5. To go back to 1.3.0 after this, put the pre-deploy snapshot back with the binary ([Rolling back](#rolling-back)): 1.3.0 can't read the rebuilt tables.
+6. A week later, measure both services' memory and set their caps ([Memory](#memory)).
 
 ## Upgrading to 1.2.1
 
