@@ -16,9 +16,10 @@ const session = useSession()
 // Six places, in the bar across the top on a wide screen and along the bottom, under the
 // thumb, on a phone or a tablet. A visitor has the library alone, and it fits in the bar on
 // any screen.
-// Each place is current for the pages under it: the Library for its books and papers.
+// Each place is current for the pages under it: the Library for its books, its papers and the
+// Stacks.
 const places = [
-  { to: '/', label: 'Library', icon: faBooks, under: ['/books', '/papers'] },
+  { to: '/', label: 'Library', icon: faBooks, under: ['/books', '/papers', '/stacks'] },
   { to: '/scan', label: 'Scan', icon: faBarcodeRead, under: [] },
   { to: '/add', label: 'Add', icon: faPlus, under: [] },
   { to: '/loans', label: 'Loans', icon: faBookArrowRight, under: [] },

@@ -194,11 +194,20 @@ SELECT
     CAST(EXISTS (
         SELECT 1 FROM course_copies cc JOIN copies c ON c.id = cc.copy_id JOIN editions ce ON ce.id = c.edition_id
         WHERE ce.work_id = w.id
-    ) AS INTEGER) AS on_course
+    ) AS INTEGER) AS on_course,
+    -- Its size and its first copy's shelving, for the spine the Stacks draw.
+    CAST(COALESCE(e.pages, 0) AS INTEGER) AS pages,
+    CAST(COALESCE(e.height_mm, 0) AS INTEGER) AS height_mm,
+    CAST(COALESCE(e.thickness_mm, 0) AS INTEGER) AS thickness_mm,
+    CAST(COALESCE(cs.section, '') AS TEXT) AS first_section,
+    CAST(COALESCE(cs.shelving, 'dewey') AS TEXT) AS first_shelving,
+    CAST(COALESCE(cs.label_prefix, '') AS TEXT) AS first_label_prefix,
+    CAST(COALESCE(cs.author_sort, '') AS TEXT) AS author_sort
 FROM editions e
 JOIN works w ON w.id = e.work_id
 LEFT JOIN series s ON s.id = w.series_id
 LEFT JOIN edition_authors ea ON ea.edition_id = e.id
+LEFT JOIN copy_shelving cs ON cs.copy_id = (SELECT min(c.id) FROM copies c WHERE c.edition_id = e.id AND c.gone_as = '')
 ORDER BY e.id;
 
 -- name: GetImportRef :one

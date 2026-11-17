@@ -647,6 +647,20 @@ func TestAreasAPI(t *testing.T) {
 		t.Errorf("the field not named: %s", w.Body.String())
 	}
 	me.expect(http.MethodPost, "/api/v1/areas", body(catalog.AreaInput{Name: "Kinds", AreaRules: catalog.AreaRules{Categories: []string{"poetry"}}}), http.StatusUnprocessableEntity)
+
+	// Asked for, each area comes with its books in its order; unasked, without.
+	blink, err := a.catalog.Create(context.Background(), catalog.BookInput{Title: "Blink", DDC: "153.4", Category: "nonfiction"}, &catalog.CopyInput{}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	with := decode[areas](t, me.expect(http.MethodGet, "/api/v1/areas?include=books", "", http.StatusOK))
+	if len(with.Areas) != 1 || len(with.Areas[0].BookIDs) != 1 || with.Areas[0].BookIDs[0] != blink {
+		t.Errorf("an area's books %+v", with.Areas)
+	}
+	if raw := me.expect(http.MethodGet, "/api/v1/areas", "", http.StatusOK).Body.String(); strings.Contains(raw, "bookIds") {
+		t.Errorf("books not asked for: %s", raw)
+	}
+	me.expect(http.MethodGet, "/api/v1/areas?include=shelves", "", http.StatusUnprocessableEntity)
 	me.expect(http.MethodDelete, path, "", http.StatusNoContent)
 	me.expect(http.MethodDelete, path, "", http.StatusNotFound)
 	if got := decode[areas](t, me.expect(http.MethodGet, "/api/v1/areas", "", http.StatusOK)); len(got.Areas) != 0 {

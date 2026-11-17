@@ -26,10 +26,10 @@ import {
 
 describe('format', () => {
   it('picks the smallest cover rendition wide enough, else the master', () => {
-    expect(coverURL({ id: 'abc', widths: [200, 400] }, 150)).toBe('/media/abc/w200.jpg')
-    expect(coverURL({ id: 'abc', widths: [200, 400] }, 300)).toBe('/media/abc/w400.jpg')
-    expect(coverURL({ id: 'abc', widths: [200] }, 600)).toBe('/media/abc/master.jpg')
-    expect(coverURL({ id: 'abc', widths: null }, 100)).toBe('/media/abc/master.jpg')
+    expect(coverURL({ id: 'abc', widths: [200, 400], color: '' }, 150)).toBe('/media/abc/w200.jpg')
+    expect(coverURL({ id: 'abc', widths: [200, 400], color: '' }, 300)).toBe('/media/abc/w400.jpg')
+    expect(coverURL({ id: 'abc', widths: [200], color: '' }, 600)).toBe('/media/abc/master.jpg')
+    expect(coverURL({ id: 'abc', widths: null, color: '' }, 100)).toBe('/media/abc/master.jpg')
   })
 
   it('writes a measurement in the chosen unit, and nothing when it is not known', () => {

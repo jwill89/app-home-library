@@ -79,6 +79,12 @@ export interface Scheme {
   dangerHover: string
   dangerContrast: string
   success: string
+  /** Behind the books in a bookcase the Stacks draw. */
+  shelfBack: string
+  /** A bookcase's sides and shelves. */
+  wood: string
+  /** Words on a shelf's edge. */
+  woodInk: string
 }
 
 export const schemes: { light: Scheme; dark: Scheme } = {
@@ -100,6 +106,11 @@ export const schemes: { light: Scheme; dark: Scheme } = {
     dangerHover: '#701616',
     dangerContrast: '#ffffff',
     success: '#1d5c33',
+    // A pale back and a walnut case: light enough that a dark spine and the focus ring stand
+    // out, dark enough that a white one does.
+    shelfBack: '#e9e1d4',
+    wood: '#6b4a2f',
+    woodInk: '#ffffff',
   },
   dark: {
     page: slate[950],
@@ -119,6 +130,9 @@ export const schemes: { light: Scheme; dark: Scheme } = {
     dangerHover: '#fecaca',
     dangerContrast: cloth[950],
     success: '#9ae6b4',
+    shelfBack: slate[800],
+    wood: '#4a3426',
+    woodInk: slate[50],
   },
 }
 
@@ -167,6 +181,7 @@ function semantic(s: Scheme, surface: Record<number, string>) {
     },
     // The app's own tokens, which PrimeVue turns into --p-page-background and --p-status-*.
     page: { background: s.page },
+    stacks: { back: s.shelfBack, wood: s.wood, woodInk: s.woodInk },
     status: { danger: s.danger, success: s.success },
   }
 }

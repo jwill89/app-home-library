@@ -386,7 +386,7 @@ func (s *Service) cover(name string) Cover {
 	if name == "" {
 		return Cover{Widths: []int{}}
 	}
-	return Cover{ID: name, Widths: s.Covers.Sizes(name)}
+	return Cover{ID: name, Widths: s.Covers.Sizes(name), Color: s.Covers.Color(name)}
 }
 
 // List returns every edition in the library.
@@ -406,8 +406,13 @@ func (s *Service) List(ctx context.Context) ([]BookRow, error) {
 		}
 		_ = json.Unmarshal([]byte(r.Subjects), &row.Subjects) // written by this package as a JSON list
 		row.Category, _ = categoryOf(r.Category, r.OnCourse != 0, row.DDC, row.Series, row.Title, row.Publisher, row.Subjects)
+		row.HeightMM, row.ThicknessMM, row.SizeEstimated = bookSize(r.Format, r.Pages, r.HeightMm, r.ThicknessMm)
+		row.CallNumber = []string{}
 		if r.FirstCopyID > 0 {
 			row.Barcode = Barcode(r.FirstCopyID)
+			shelving := &db.CopyShelving{CopyID: r.FirstCopyID, EditionID: r.ID, Section: r.FirstSection, Shelving: r.FirstShelving,
+				LabelPrefix: r.FirstLabelPrefix, Ddc: r.Ddc, Title: r.Title, Series: r.SeriesName, SeriesNumber: r.SeriesNumber, AuthorSort: r.AuthorSort}
+			row.CallNumber, row.ShelfKey, row.AuthorSort = CallNumber(shelving), shelfKey(shelving), r.AuthorSort
 		}
 		out = append(out, row)
 	}

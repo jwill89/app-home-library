@@ -162,6 +162,20 @@ export const areaKeys = [
   { value: 'height', label: 'Height' },
 ] as const satisfies readonly { value: AreaKey; label: string }[]
 
+/**
+ * How the Stacks stand the books: a bookcase for each category, or for each of the owner's
+ * areas, or the whole library in one run; and the owner's own bookcases, as a layout fills
+ * them. The owner's alone where `owner` is set: where a book stands in the house is theirs.
+ */
+export const stackArrangements = [
+  { value: 'category', label: 'Category', owner: false },
+  { value: 'call-number', label: 'Call number', owner: false },
+  { value: 'area', label: 'Area', owner: true },
+  { value: 'title', label: 'Title', owner: false },
+  { value: 'author', label: 'Author', owner: false },
+  { value: 'bookcases', label: 'My bookcases', owner: true },
+] as const
+
 export const citeStyles: { value: CiteStyle; label: string }[] = [
   { value: 'apa', label: 'APA' },
   { value: 'mla', label: 'MLA' },

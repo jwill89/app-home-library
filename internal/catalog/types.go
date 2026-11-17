@@ -128,6 +128,7 @@ type Link struct {
 type Cover struct {
 	ID     string `json:"id"`
 	Widths []int  `json:"widths"`
+	Color  string `json:"color" doc:"The colour most of it is, as #rrggbb, for the book's spine; empty for no cover"`
 }
 
 // Copy is one physical copy, and the loan it is out on, if any.
@@ -196,6 +197,13 @@ type BookRow struct {
 	HadAs        int64  `json:"hadAs" doc:"For a wanted book, an edition of the same work the house has; 0 when it has none"`
 	Barcode      string `json:"barcode" doc:"The first copy's"`
 	AddedAt      string `json:"addedAt"`
+	// What the Stacks draw its spine with, and order it by.
+	CallNumber    []string `json:"callNumber" doc:"The first copy's spine label: the class, the Cutter, the volume; empty for a book with no copy"`
+	ShelfKey      string   `json:"shelfKey" doc:"Where its first copy stands among the others, as text: books compared by it, character by character, stand in shelf order; empty for a book with no copy"`
+	AuthorSort    string   `json:"authorSort" doc:"The first author's name as filed, surname first; empty for a book with no author or no copy"`
+	HeightMM      int64    `json:"heightMm" doc:"How tall it stands: measured where a source gave it, otherwise worked out from its format and pages"`
+	ThicknessMM   int64    `json:"thicknessMm" doc:"How much of a shelf it takes, measured or worked out as its height is"`
+	SizeEstimated bool     `json:"sizeEstimated" doc:"Its height or thickness is worked out from its format and pages"`
 	// What else the search looks in.
 	Subjects []string `json:"subjects"`
 	Genres   string   `json:"genres"`

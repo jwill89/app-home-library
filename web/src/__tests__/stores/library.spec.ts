@@ -21,7 +21,7 @@ const row = (over: Partial<BookRow>): BookRow => ({
   publisher: '',
   readStatus: 'unread',
   sections: '',
-  cover: { id: '', widths: [] },
+  cover: { id: '', widths: [], color: '' },
   wantedOn: '',
   copies: 1,
   barcode: '',
@@ -29,6 +29,12 @@ const row = (over: Partial<BookRow>): BookRow => ({
   subjects: [],
   genres: '',
   credits: '',
+  callNumber: [],
+  shelfKey: '',
+  authorSort: '',
+  heightMm: 0,
+  thicknessMm: 0,
+  sizeEstimated: false,
   ...over,
 })
 

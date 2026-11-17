@@ -80,6 +80,40 @@ func TestShelfOrder(t *testing.T) {
 	}
 }
 
+// A shelf key sorts as text the way copies stand: a class that is no number after the numbers,
+// and those as numbers; a call number with no class first; a field that ends before another's
+// first.
+func TestShelfKey(t *testing.T) {
+	copyOf := func(id int64, section, ddc, prefix, title string) *db.CopyShelving {
+		shelving := "dewey"
+		if prefix != "" {
+			shelving = "author"
+		}
+		return &db.CopyShelving{CopyID: id, Section: section, Shelving: shelving, LabelPrefix: prefix, Ddc: ddc, Title: title}
+	}
+	want := []*db.CopyShelving{
+		copyOf(9, "", "", "", "Anonymous"),
+		copyOf(8, "", "9", "", "Nine"),
+		copyOf(7, "", "153.4", "", "Blink"),
+		copyOf(6, "", "823.92", "", "Atonement"),
+		copyOf(5, "", "", "FIC", "Abc"),
+		copyOf(4, "", "", "FIC", "Abcd"),
+		copyOf(3, "", "", "MANGA", "One Piece"),
+		copyOf(2, "Annex", "100", "", "First in the annex"),
+	}
+	got := slices.Clone(want)
+	slices.Reverse(got)
+	slices.SortFunc(got, func(a, b *db.CopyShelving) int { return strings.Compare(shelfKey(a), shelfKey(b)) })
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("place %d is %q, want %q", i, got[i].Title, want[i].Title)
+		}
+	}
+	if k := shelfKey(copyOf(1, "", "-5", "", "Odd")); !strings.Contains(k, "2-5") {
+		t.Errorf("a class that is no shelf number sorts as words: %q", k)
+	}
+}
+
 func TestLabelQueue(t *testing.T) {
 	ctx := context.Background()
 	s := newService(t)

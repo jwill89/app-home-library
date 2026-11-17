@@ -1,21 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import { contrast } from '@/app/theme/contrast'
 import { schemes, type Scheme } from '@/app/theme/preset'
 
 // WCAG 2.2 AAA, computed from the scheme colors the preset is built from. A pair the pages
 // put together is listed here; a new pair is added in the same change that uses it.
-
-function luminance(hex: string): number {
-  const [r, g, b] = (hex.replace('#', '').match(/../g) ?? []).map((x) => {
-    const v = parseInt(x, 16) / 255
-    return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
-  })
-  return 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0)
-}
-
-export function contrast(a: string, b: string): number {
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x)
-  return ((hi ?? 0) + 0.05) / ((lo ?? 0) + 0.05)
-}
 
 type Key = keyof Scheme
 const TEXT = 7 // 1.4.6, body text
@@ -30,13 +18,14 @@ const text: [Key, Key[]][] = [
   ['success', ['page', 'panel', 'raised']],
   ['highlightInk', ['highlight']],
   ['accentContrast', ['accent', 'accentHover']],
+  ['woodInk', ['wood']],
   ['dangerContrast', ['danger', 'dangerHover']],
 ]
 
 // Edges and states and what they sit against.
 const edges: [Key, Key[]][] = [
   ['outline', ['page', 'panel', 'sunken']],
-  ['accent', ['page', 'panel', 'raised']], // the focus ring; a chosen segment beside the others
+  ['accent', ['page', 'panel', 'raised', 'shelfBack']], // the focus ring; a chosen segment beside the others
   // A switch says on or off by where its handle sits, so the handle is what must stand out
   // from the track, off and on; the two track colors need not differ from each other by 3:1.
   ['panel', ['outline', 'accent']],

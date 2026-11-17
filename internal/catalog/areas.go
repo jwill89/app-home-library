@@ -51,8 +51,34 @@ type AreaInput struct {
 type Area struct {
 	ID int64 `json:"id"`
 	AreaInput
+	BookIDs   []int64 `json:"bookIds,omitempty" doc:"Asked for with include=books: the books its rules take, in its order, each once"`
 	authorIDs []int64
 	seriesIDs []int64
+}
+
+// AreaBooks gives each area the books its rules take, in its order, each book once where it
+// has several copies: what a layout would lay along its shelves, without the shelves.
+func (s *Service) AreaBooks(ctx context.Context, areas []Area) error {
+	q := s.read()
+	copies, err := q.ListShelfCopies(ctx)
+	if err != nil {
+		return err
+	}
+	authors, err := editionAuthors(ctx, q)
+	if err != nil {
+		return err
+	}
+	byArea, _ := sorted(areas, shelfBooks(copies, authors))
+	for i := range areas {
+		ids := []int64{}
+		for _, b := range byArea[areas[i].ID] {
+			if !slices.Contains(ids, b.BookID) {
+				ids = append(ids, b.BookID)
+			}
+		}
+		areas[i].BookIDs = ids
+	}
+	return nil
 }
 
 // Areas lists the areas in the order books try them.

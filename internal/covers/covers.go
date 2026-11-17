@@ -99,6 +99,8 @@ func (s *Store) Process(ctx context.Context, r io.ReadSeeker) (*Result, error) {
 		}
 		files[FileName(dw)] = b
 	}
+	// The spine's colour, from a picture small enough to read in a moment.
+	files[colorFile] = []byte(MainColor(scale(master, 100, max(1, 100*h/w))))
 	return &Result{Width: w, Height: h, Files: files}, nil
 }
 
@@ -155,4 +157,35 @@ func scale(src image.Image, w, h int) *image.NRGBA {
 	dst := image.NewNRGBA(image.Rect(0, 0, w, h))
 	draw.CatmullRom.Scale(dst, dst.Bounds(), src, src.Bounds(), draw.Over, nil)
 	return dst
+}
+
+// MainColor is the colour most of a picture is, as #rrggbb: its pixels are put into bins of
+// 32 shades a channel, near enough that the eye takes them for one colour, and the fullest
+// bin's average is the answer. An average of the whole picture would be the muddy brown of
+// every colour mixed; a cover's main colour is the one its spine most likely shares.
+func MainColor(img image.Image) string {
+	type bin struct{ n, r, g, b int }
+	var bins [512]bin
+	bounds := img.Bounds()
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			r, g, b, _ := img.At(x, y).RGBA()
+			r, g, b = r>>8, g>>8, b>>8
+			i := (r>>5)<<6 | (g>>5)<<3 | b>>5
+			bins[i].n++
+			bins[i].r += int(r)
+			bins[i].g += int(g)
+			bins[i].b += int(b)
+		}
+	}
+	most := bins[0]
+	for _, b := range bins[1:] {
+		if b.n > most.n {
+			most = b
+		}
+	}
+	if most.n == 0 {
+		return ""
+	}
+	return fmt.Sprintf("#%02x%02x%02x", most.r/most.n, most.g/most.n, most.b/most.n)
 }

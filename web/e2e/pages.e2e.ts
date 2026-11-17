@@ -8,6 +8,7 @@ const pages = [
   '/series',
   '/reading',
   '/papers',
+  '/stacks',
   '/scan',
   '/add',
   '/loans',

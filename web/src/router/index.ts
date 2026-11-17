@@ -33,6 +33,11 @@ export const router = createRouter({
           meta: { title: 'Reading', reader: true, shows: 'books' },
         },
         {
+          path: 'stacks',
+          component: () => import('@/views/StacksView.vue'),
+          meta: { title: 'Stacks', reader: true, shows: 'books' },
+        },
+        {
           path: 'series',
           component: () => import('@/views/SeriesListView.vue'),
           meta: { title: 'Series', reader: true, shows: 'books' },

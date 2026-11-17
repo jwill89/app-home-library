@@ -20,10 +20,17 @@
   --color-ink-muted: var(--p-text-muted-color);
   --color-status-danger: var(--p-status-danger);
   --color-status-success: var(--p-status-success);
+  --color-shelf-back: var(--p-stacks-back);
+  --color-wood: var(--p-stacks-wood);
+  --color-wood-ink: var(--p-stacks-wood-ink);
   --color-shade: color-mix(in srgb, var(--p-surface-950), transparent 40%);
 
   /* A mark drawn over the shade or a camera's picture: white in both schemes. */
   --color-on-shade: var(--p-surface-0);
+
+  /* A book's rounded spine: light along one edge, shadow along the other, on any cloth. */
+  --color-spine-lit: rgb(255 255 255 / 20%);
+  --color-spine-shade: rgb(0 0 0 / 30%);
 
   --font-*: initial;
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;

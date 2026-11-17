@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import {
   faBookOpenReader,
   faBooks,
+  faBookSpine,
   faFileLines,
   faGift,
   faLayerGroup,
@@ -10,8 +11,9 @@ import {
 import type { Sees } from '@/types'
 import { useSession } from '@/stores/session'
 
-// The library's books, the ones wanted, its series, its reading, and the papers, under the
-// one Library place in the navigation: those a visitor's link has anything for.
+// The library's books, the ones wanted, its series, its reading, the papers, and the books on
+// the Stacks' shelves, under the one Library place in the navigation: those a visitor's link
+// has anything for.
 const session = useSession()
 const all: {
   to: string
@@ -25,6 +27,7 @@ const all: {
   { to: '/series', label: 'Series', icon: faLayerGroup, exact: false, needs: 'books' },
   { to: '/reading', label: 'Reading', icon: faBookOpenReader, exact: false, needs: 'books' },
   { to: '/papers', label: 'Papers', icon: faFileLines, exact: false, needs: 'papers' },
+  { to: '/stacks', label: 'Stacks', icon: faBookSpine, exact: false, needs: 'books' },
 ]
 const tabs = computed(() => all.filter((t) => session.sees[t.needs]))
 </script>

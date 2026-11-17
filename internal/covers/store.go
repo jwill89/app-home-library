@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"image"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -19,6 +21,8 @@ type Store struct {
 	// The widths each cover has, by name: a name's files never change, so they are looked
 	// for once, not three times for every book each time the library is listed.
 	sizes sync.Map
+	// The main colour of each, by name, worked out once for the same reason.
+	colors sync.Map
 	// gate lets one image be decoded and encoded at a time: a decoded photo is its whole
 	// bitmap, and the droplet has little memory to spare.
 	gate chan struct{}
@@ -41,7 +45,12 @@ func NewName() string {
 var (
 	itemName = regexp.MustCompile(`^[a-z0-9]{1,32}$`)
 	fileName = regexp.MustCompile(`^(master|w[0-9]{2,4})\.jpg$`)
+	// colorText is a kept colour as Color writes it.
+	colorText = regexp.MustCompile(`^#[0-9a-f]{6}$`)
 )
+
+// colorFile keeps a cover's main colour beside its pictures; never served.
+const colorFile = "color.txt"
 
 func (s *Store) path(name string) (string, error) {
 	if !itemName.MatchString(name) {
@@ -78,6 +87,7 @@ func (s *Store) Remove(name string) error {
 		return err
 	}
 	s.sizes.Delete(name)
+	s.colors.Delete(name)
 	return os.RemoveAll(dir)
 }
 
@@ -102,6 +112,52 @@ func (s *Store) Sizes(name string) []int {
 		s.sizes.Store(name, out)
 	}
 	return out
+}
+
+// Color is the colour most of a stored cover is, as #rrggbb; empty when it has no picture to
+// read. A cover stored since colours were kept has it in a file beside its pictures; an older
+// one has it read from its smallest picture the first time it is asked for, and written there,
+// so a restart reads a few bytes a cover rather than decoding every picture again.
+func (s *Store) Color(name string) string {
+	if name == "" {
+		return ""
+	}
+	if known, ok := s.colors.Load(name); ok {
+		return known.(string)
+	}
+	dir, err := s.path(name)
+	if err != nil {
+		return ""
+	}
+	kept := filepath.Join(dir, colorFile)
+	var c string
+	if b, err := os.ReadFile(kept); err == nil && colorText.Match(b) { //nolint:gosec // the name is checked by path
+		c = string(b)
+	} else if c = s.readColor(name, dir); c == "" {
+		return "" // no picture there (yet, or put back from a backup by hand): looked for again next time
+	} else if err := os.WriteFile(kept, []byte(c), 0o600); err != nil {
+		slog.Warn("cover colour not kept", "cover", name, "err", err) // worked out again next run
+	}
+	s.colors.Store(name, c)
+	return c
+}
+
+// readColor works out a cover's main colour from its smallest picture.
+func (s *Store) readColor(name, dir string) string {
+	file := "master.jpg"
+	if sizes := s.Sizes(name); len(sizes) > 0 {
+		file = FileName(sizes[0])
+	}
+	f, err := os.Open(filepath.Join(dir, file)) //nolint:gosec // the name is checked by path, the file is one of ours
+	if err != nil {
+		return ""
+	}
+	defer func() { _ = f.Close() }() // opened to read: closing it has nothing to report
+	img, _, err := image.Decode(f)
+	if err != nil {
+		return ""
+	}
+	return MainColor(img)
 }
 
 // Handler serves "GET /media/{item}/{file}". The files never change under a name, so they

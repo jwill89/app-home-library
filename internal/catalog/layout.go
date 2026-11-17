@@ -96,31 +96,31 @@ type bookFacts struct {
 // bookSize is a copy's height and thickness on the shelf: measured where the sources gave it,
 // worked out otherwise from its format and pages, as the owner's own measured books bear out
 // (about 0.065 mm a page for a paperback, less for a hardcover's paper but with its boards).
-func bookSize(r *db.ListShelfCopiesRow) (height, thickness int64, estimated bool) {
-	height, thickness = r.HeightMm, r.ThicknessMm
-	if height == 0 {
+func bookSize(format string, pages, height, thickness int64) (h, t int64, estimated bool) {
+	h, t = height, thickness
+	if h == 0 {
 		estimated = true
-		height = map[string]int64{"mass_market": 175, "paperback": 212, "trade_paperback": 223, "hardcover": 246, "library_binding": 246, "leather": 240}[r.Format]
-		if height == 0 {
-			height = 220
+		h = map[string]int64{"mass_market": 175, "paperback": 212, "trade_paperback": 223, "hardcover": 246, "library_binding": 246, "leather": 240}[format]
+		if h == 0 {
+			h = 220
 		}
 	}
-	if thickness == 0 {
+	if t == 0 {
 		estimated = true
 		perPage, boards := 0.065, 3.0
-		switch r.Format {
+		switch format {
 		case "hardcover", "library_binding", "leather":
 			perPage, boards = 0.05, 6
 		case "mass_market":
 			perPage, boards = 0.05, 2
 		}
-		pages := float64(r.Pages)
-		if pages == 0 {
-			pages = 300
+		n := float64(pages)
+		if n == 0 {
+			n = 300
 		}
-		thickness = int64(pages*perPage + boards + 0.5)
+		t = int64(n*perPage + boards + 0.5)
 	}
-	return height, thickness, estimated
+	return h, t, estimated
 }
 
 // shelfBooks is every copy in the house as the planner sees it, by title until an area orders
@@ -147,7 +147,7 @@ func shelfBooks(rows []*db.ListShelfCopiesRow, authors map[int64][]int64) []Shel
 		if dewey != "" {
 			f.dewey, f.hasDewey = deweyValue(dewey), true
 		}
-		h, t, est := bookSize(r)
+		h, t, est := bookSize(r.Format, r.Pages, r.HeightMm, r.ThicknessMm)
 		out = append(out, ShelfBook{
 			CopyID: r.CopyID, BookID: r.EditionID, Barcode: Barcode(r.CopyID), Title: r.Title, CallNumber: CallNumber(shelving),
 			Dewey: dewey, DeweyEstimated: estimated, HeightMM: h, ThicknessMM: t, Estimated: est, OnLoan: r.OnLoan == 1, facts: f,

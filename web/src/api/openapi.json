@@ -68,6 +68,14 @@
             "maxItems": 50,
             "type": ["array", "null"]
           },
+          "bookIds": {
+            "description": "Asked for with include=books: the books its rules take, in its order, each once",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": ["array", "null"]
+          },
           "categories": {
             "description": "Any of these categories; none for every one",
             "items": {
@@ -811,12 +819,23 @@
           "addedAt": {
             "type": "string"
           },
+          "authorSort": {
+            "description": "The first author's name as filed, surname first; empty for a book with no author or no copy",
+            "type": "string"
+          },
           "authors": {
             "type": "string"
           },
           "barcode": {
             "description": "The first copy's",
             "type": "string"
+          },
+          "callNumber": {
+            "description": "The first copy's spine label: the class, the Cutter, the volume; empty for a book with no copy",
+            "items": {
+              "type": "string"
+            },
+            "type": ["array", "null"]
           },
           "category": {
             "description": "As set, or worked out from its details",
@@ -844,6 +863,11 @@
           },
           "hadAs": {
             "description": "For a wanted book, an edition of the same work the house has; 0 when it has none",
+            "format": "int64",
+            "type": "integer"
+          },
+          "heightMm": {
+            "description": "How tall it stands: measured where a source gave it, otherwise worked out from its format and pages",
             "format": "int64",
             "type": "integer"
           },
@@ -880,6 +904,14 @@
           "seriesNumber": {
             "type": "string"
           },
+          "shelfKey": {
+            "description": "Where its first copy stands among the others, as text: books compared by it, character by character, stand in shelf order; empty for a book with no copy",
+            "type": "string"
+          },
+          "sizeEstimated": {
+            "description": "Its height or thickness is worked out from its format and pages",
+            "type": "boolean"
+          },
           "subjects": {
             "items": {
               "type": "string"
@@ -888,6 +920,11 @@
           },
           "subtitle": {
             "type": "string"
+          },
+          "thicknessMm": {
+            "description": "How much of a shelf it takes, measured or worked out as its height is",
+            "format": "int64",
+            "type": "integer"
           },
           "title": {
             "type": "string"
@@ -924,6 +961,12 @@
           "hadAs",
           "barcode",
           "addedAt",
+          "callNumber",
+          "shelfKey",
+          "authorSort",
+          "heightMm",
+          "thicknessMm",
+          "sizeEstimated",
           "subjects",
           "genres",
           "credits",
@@ -1723,6 +1766,10 @@
       "Cover": {
         "additionalProperties": false,
         "properties": {
+          "color": {
+            "description": "The colour most of it is, as #rrggbb, for the book's spine; empty for no cover",
+            "type": "string"
+          },
           "id": {
             "type": "string"
           },
@@ -1734,7 +1781,7 @@
             "type": ["array", "null"]
           }
         },
-        "required": ["id", "widths"],
+        "required": ["id", "widths", "color"],
         "type": "object"
       },
       "CoverChoice": {
@@ -4557,6 +4604,19 @@
       "get": {
         "description": "Guard: admin.",
         "operationId": "list-areas",
+        "parameters": [
+          {
+            "description": "books: each area's books as well, in its order",
+            "explode": false,
+            "in": "query",
+            "name": "include",
+            "schema": {
+              "description": "books: each area's books as well, in its order",
+              "enum": ["books"],
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {

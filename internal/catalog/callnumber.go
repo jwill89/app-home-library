@@ -1,7 +1,7 @@
 package catalog
 
 import (
-	"cmp"
+	"fmt"
 	"slices"
 	"strconv"
 	"strings"
@@ -121,80 +121,69 @@ func volume(n string) string {
 	return "v." + n
 }
 
-// shelfOrder is where a copy stands among the others: by section, class, and Cutter, then an
-// author's series kept together in volume order, then by title. It is worked out once a copy,
-// since a sort or a layout compares each copy many times, and parsing both call numbers on
-// every comparison would repeat that work.
-type shelfOrder struct {
-	section       string
-	class         line
-	cutter        string
-	series, title string
-	number        string // the series number, ordered by compareVolumes
-	copyID        int64
-}
-
-func orderOf(s *db.CopyShelving) shelfOrder {
+// shelfKey is where a copy stands among the others, as text that sorts as the copies stand:
+// by section, class, and Cutter, then an author's series kept together in volume order, then by
+// title. Text, so the library list can carry it and a page order books the way the shelves do
+// with a plain comparison; and worked out once a copy, since a sort or a layout compares each
+// copy many times. A field never holds the separator, so a shorter one sorts first.
+func shelfKey(s *db.CopyShelving) string {
 	class, cutter := callParts(s)
-	return shelfOrder{
-		section: s.Section, class: lineOf(class), cutter: cutter,
-		series: strings.ToLower(withoutArticle(s.Series)), number: s.SeriesNumber,
-		title: strings.ToLower(withoutArticle(s.Title)), copyID: s.CopyID,
-	}
+	return strings.Join([]string{
+		s.Section,
+		classKey(class),
+		cutter,
+		strings.ToLower(withoutArticle(s.Series)),
+		volumeKey(s.SeriesNumber),
+		strings.ToLower(withoutArticle(s.Title)),
+		fmt.Sprintf("%020d", s.CopyID),
+	}, keySep)
 }
 
-func (a shelfOrder) compare(b shelfOrder) int {
-	return cmp.Or(
-		cmp.Compare(a.section, b.section),
-		a.class.compare(b.class),
-		cmp.Compare(a.cutter, b.cutter),
-		cmp.Compare(a.series, b.series),
-		cmp.Compare(boolInt(a.number != ""), boolInt(b.number != "")), // an unnumbered volume first
-		compareVolumes(a.number, b.number),
-		cmp.Compare(a.title, b.title),
-		cmp.Compare(a.copyID, b.copyID),
-	)
+// keySep comes before every letter, digit, and space, so it ends a field before any longer one.
+const keySep = "\x1f"
+
+// classKey is a call number's class as it sorts: none first, then numbers as numbers (153.42
+// before 823.92), then a prefix as written.
+func classKey(text string) string {
+	if text == "" {
+		return ""
+	}
+	if n, err := strconv.ParseFloat(text, 64); err == nil && n >= 0 && n < 1e15 {
+		return "1" + numberKey(n)
+	}
+	return "2" + text
+}
+
+// volumeKey is a series number as it sorts: none first, then the volumes it holds as
+// compareVolumes orders them, then words as written.
+func volumeKey(n string) string {
+	if n == "" {
+		return "0"
+	}
+	if first, last, ok := volumes(n); ok {
+		return "1" + numberKey(first) + numberKey(last) + n
+	}
+	return "2" + n
+}
+
+// numberKey writes a number to a fixed width, so numbers sort as text the way they sort as
+// numbers.
+func numberKey(n float64) string {
+	return fmt.Sprintf("%026.10f", n)
 }
 
 // sortShelved puts things in the order their copies stand on the shelf.
 func sortShelved[T any](items []T, shelving func(*T) *db.CopyShelving) {
 	type placed struct {
-		item  T
-		order shelfOrder
+		item T
+		key  string
 	}
 	all := make([]placed, len(items))
 	for i := range items {
-		all[i] = placed{items[i], orderOf(shelving(&items[i]))}
+		all[i] = placed{items[i], shelfKey(shelving(&items[i]))}
 	}
-	slices.SortStableFunc(all, func(a, b placed) int { return a.order.compare(b.order) })
+	slices.SortStableFunc(all, func(a, b placed) int { return strings.Compare(a.key, b.key) })
 	for i := range all {
 		items[i] = all[i].item
 	}
-}
-
-// line is a call number's class as it sorts: numbers as numbers, 153.42 before 823.92, and
-// before a prefix.
-type line struct {
-	text  string
-	num   float64
-	isNum bool
-}
-
-func lineOf(text string) line {
-	n, err := strconv.ParseFloat(text, 64)
-	return line{text: text, num: n, isNum: err == nil}
-}
-
-func (a line) compare(b line) int {
-	switch {
-	case a.isNum && b.isNum:
-		return cmp.Compare(a.num, b.num)
-	case a.text == "" || b.text == "":
-		return cmp.Compare(a.text, b.text) // nothing before something
-	case a.isNum:
-		return -1 // a class number before a prefix
-	case b.isNum:
-		return 1
-	}
-	return cmp.Compare(a.text, b.text)
 }

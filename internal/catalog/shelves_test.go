@@ -8,16 +8,15 @@ import (
 	"strings"
 	"testing"
 
-	"homelibrary/internal/db"
 	"homelibrary/internal/lookup"
 )
 
 func TestBookSize(t *testing.T) {
-	h, th, est := bookSize(&db.ListShelfCopiesRow{Format: "mass_market", Pages: 400})
+	h, th, est := bookSize("mass_market", 400, 0, 0)
 	if h != 175 || th != 22 || !est {
 		t.Fatalf("an unmeasured mass market of 400 pages: %d mm tall, %d mm thick, estimated %v", h, th, est)
 	}
-	if h, th, est := bookSize(&db.ListShelfCopiesRow{Format: "paperback", Pages: 300, HeightMm: 210, ThicknessMm: 25}); h != 210 || th != 25 || est {
+	if h, th, est := bookSize("paperback", 300, 210, 25); h != 210 || th != 25 || est {
 		t.Fatalf("a measured book kept its measurements: %d %d %v", h, th, est)
 	}
 }
@@ -488,5 +487,72 @@ func TestBookcaseShelvesApart(t *testing.T) {
 	}
 	if cases, _ = s.Bookcases(ctx); len(cases) != 1 {
 		t.Errorf("a bookcase with a shelf measured wrong was added: %d bookcases", len(cases))
+	}
+}
+
+// The library list carries what the Stacks draw a spine with and order it by: its size,
+// measured or worked out; its first copy's call number and place in shelf order; and its first
+// author as filed. An area gives the books its rules take, in its order, each once.
+func TestSpinesAndAreaBooks(t *testing.T) {
+	ctx := context.Background()
+	s := newService(t)
+	add := func(in BookInput, copies int) int64 {
+		t.Helper()
+		id, err := s.Create(ctx, in, &CopyInput{}, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		for range copies - 1 {
+			if _, err := s.AddCopy(ctx, id, CopyInput{}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return id
+	}
+	austen := []lookup.Contributor{{Name: "Jane Austen", Role: "author"}}
+	emma := add(BookInput{Title: "Emma", DDC: "823.7", Category: "fiction", HeightMM: 198, ThicknessMM: 31, Contributors: austen}, 2)
+	blink := add(BookInput{Title: "Blink", DDC: "153.4", Category: "nonfiction", Format: "paperback", Pages: 300,
+		Contributors: []lookup.Contributor{{Name: "Malcolm Gladwell", Role: "author"}}}, 1)
+	persuasion := add(BookInput{Title: "Persuasion", DDC: "823.7", Category: "fiction", Contributors: austen}, 1)
+
+	rows, err := s.List(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	byID := map[int64]BookRow{}
+	for _, r := range rows {
+		byID[r.ID] = r
+	}
+	if r := byID[emma]; r.HeightMM != 198 || r.ThicknessMM != 31 || r.SizeEstimated ||
+		strings.Join(r.CallNumber, " ") != "823.7 AUS" || r.AuthorSort != "Austen, Jane" {
+		t.Errorf("Emma's spine %+v", r)
+	}
+	if r := byID[blink]; r.HeightMM != 212 || r.ThicknessMM != 23 || !r.SizeEstimated {
+		t.Errorf("Blink's spine, worked out from a paperback of 300 pages: %+v", r)
+	}
+	keys := []string{byID[persuasion].ShelfKey, byID[emma].ShelfKey, byID[blink].ShelfKey}
+	slices.Sort(keys)
+	if keys[0] != byID[blink].ShelfKey || keys[1] != byID[emma].ShelfKey || keys[2] != byID[persuasion].ShelfKey {
+		t.Errorf("shelf order Blink, Emma, Persuasion: %q", keys)
+	}
+
+	if _, err := s.CreateArea(ctx, AreaInput{Name: "Austen", Order: []string{"title"}, AreaRules: AreaRules{Authors: []string{"Jane Austen"}}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.CreateArea(ctx, AreaInput{Name: "Poetry", AreaRules: AreaRules{Subject: "poetry"}}); err != nil {
+		t.Fatal(err)
+	}
+	areas, err := s.Areas(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.AreaBooks(ctx, areas); err != nil {
+		t.Fatal(err)
+	}
+	if got := areas[0].BookIDs; !slices.Equal(got, []int64{emma, persuasion}) {
+		t.Errorf("Austen's books %v, want Emma then Persuasion, each once", got)
+	}
+	if got := areas[1].BookIDs; got == nil || len(got) != 0 {
+		t.Errorf("an area that takes no book has an empty list: %v", got)
 	}
 }

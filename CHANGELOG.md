@@ -4,6 +4,14 @@ What changes in Home Library, release by release. The format is [Keep a Changelo
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-17
+
+### Added
+
+- A Stacks tab under Library, where every book stands as a spine on bookcases drawn on the screen: as tall and as thick as the book (a thin one drawn as wide as a finger needs), in its cover's main colour, with its title, author and volume number on it. Arrange the shelves by category, call number, area, title, or author; the device keeps the choice. Find on the shelves marks every book that matches and goes to each in turn. Pull a book off its shelf, with a tap or the keyboard, to see its cover, author, series, call number, category, reading, publisher, format and size, and open its page from there. A visitor by a share link has the Stacks too, without the areas.
+- On the Stacks, My bookcases draws your measured bookcases to scale, with their corner braces, as the layout in use fills them or as a fresh suggestion would, each shelf with its area, number of books, how full it is, and its range. Nothing is put to use from there.
+- `GET /api/v1/areas?include=books` gives each area the books its rules take, in its order; the library list gives each book its size, its first copy's call number and place in shelf order, its first author as filed, and its cover's main colour.
+
 ## [1.5.0] - 2026-11-17
 
 ### Added
@@ -121,7 +129,8 @@ What changes in Home Library, release by release. The format is [Keep a Changelo
 
 - The first release: the catalog, covers, loans, courses, labels, documents, share links, imports and exports, and the nightly backup.
 
-[Unreleased]: https://github.com/jwill89/app-home-library/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/jwill89/app-home-library/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/jwill89/app-home-library/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/jwill89/app-home-library/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/jwill89/app-home-library/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/jwill89/app-home-library/compare/v1.2.1...v1.3.0

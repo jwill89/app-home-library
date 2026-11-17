@@ -1853,6 +1853,8 @@ export interface components {
     Area: {
       /** @description Books by any of these people; none for every author */
       authors: string[] | null
+      /** @description Asked for with include=books: the books its rules take, in its order, each once */
+      bookIds?: number[] | null
       /** @description Any of these categories; none for every one */
       categories:
         | (
@@ -2138,9 +2140,13 @@ export interface components {
     }
     BookRow: {
       addedAt: string
+      /** @description The first author's name as filed, surname first; empty for a book with no author or no copy */
+      authorSort: string
       authors: string
       /** @description The first copy's */
       barcode: string
+      /** @description The first copy's spine label: the class, the Cutter, the volume; empty for a book with no copy */
+      callNumber: string[] | null
       /** @description As set, or worked out from its details */
       category: string
       /** Format: int64 */
@@ -2156,6 +2162,11 @@ export interface components {
        * @description For a wanted book, an edition of the same work the house has; 0 when it has none
        */
       hadAs: number
+      /**
+       * Format: int64
+       * @description How tall it stands: measured where a source gave it, otherwise worked out from its format and pages
+       */
+      heightMm: number
       /** Format: int64 */
       id: number
       isbn13: string
@@ -2171,8 +2182,17 @@ export interface components {
        */
       seriesId: number
       seriesNumber: string
+      /** @description Where its first copy stands among the others, as text: books compared by it, character by character, stand in shelf order; empty for a book with no copy */
+      shelfKey: string
+      /** @description Its height or thickness is worked out from its format and pages */
+      sizeEstimated: boolean
       subjects: string[] | null
       subtitle: string
+      /**
+       * Format: int64
+       * @description How much of a shelf it takes, measured or worked out as its height is
+       */
+      thicknessMm: number
       title: string
       /** @description The day it went on the wishlist; empty for a book not wanted */
       wantedOn: string
@@ -2441,6 +2461,8 @@ export interface components {
       required: boolean
     }
     Cover: {
+      /** @description The colour most of it is, as #rrggbb, for the book's spine; empty for no cover */
+      color: string
       id: string
       widths: number[] | null
     }
@@ -3603,7 +3625,10 @@ export type $defs = Record<string, never>
 export interface operations {
   'list-areas': {
     parameters: {
-      query?: never
+      query?: {
+        /** @description books: each area's books as well, in its order */
+        include?: 'books'
+      }
       header?: never
       path?: never
       cookie?: never

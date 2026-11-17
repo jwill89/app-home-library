@@ -132,7 +132,18 @@ func (h *handlers) registerShelves() {
 	}
 
 	huma.Register(h.api, h.op("list-areas", http.MethodGet, "/areas", "The areas of shelves, in the order a book tries them, with their rules and shelves"),
-		func(ctx context.Context, _ *struct{}) (*areasOutput, error) { return areas(ctx) })
+		func(ctx context.Context, in *struct {
+			Include string `query:"include" enum:"books" doc:"books: each area's books as well, in its order"`
+		}) (*areasOutput, error) {
+			out, err := areas(ctx)
+			if err != nil || in.Include == "" {
+				return out, err
+			}
+			if err := h.Catalog.AreaBooks(ctx, out.Body.Areas); err != nil {
+				return nil, h.fail(err)
+			}
+			return out, nil
+		})
 
 	createArea := h.op("create-area", http.MethodPost, "/areas", "Add an area of shelves, with the rules for which books it takes and their order")
 	createArea.DefaultStatus = http.StatusCreated
