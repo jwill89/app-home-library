@@ -285,7 +285,7 @@ try {
     Invoke-DeployBundle -Archive 'homelibrary-deploy.tgz' -Sha256 $archive.Sha256 -ExpectedFileCount $archive.FileCount -Step @(
         $layout
         Install-ServiceBinary -AsStep -ServiceName $services -Binary "$remoteDir/homelibrary" -Owner $serviceUser `
-            -Unit $units -Vhost 'apache-vhost.conf' -Umask '077' `
+            -Unit $units -Vhost 'apache-vhost.conf' `
             -Database $remoteDb -SnapshotPrefix $snapshotPrefix -SnapshotSuffix '.sqlite' -RestoreDatabaseOnRollback `
             -HealthUrl "http://127.0.0.1:$($settings.AppPort)/healthz" -HealthTimeoutSeconds 30
     )
