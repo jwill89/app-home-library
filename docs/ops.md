@@ -121,6 +121,8 @@ Every table with a date or a time is rebuilt at start (migrations 38 to 40): eac
 5. To go back to 1.3.0 after this, put the pre-deploy snapshot back with the binary ([Rolling back](#rolling-back)): 1.3.0 can't read the rebuilt tables.
 6. A week later, measure both services' memory and set their caps ([Memory](#memory)).
 
+Deployed 2026-11-16 (`-NoDbPull`). On the droplet after it: v1.4.0 answering, schema 40 (`user_version` and goose's agreeing), `PRAGMA integrity_check` ok, no foreign key left without its row, every session still running, no empty-text date and no timestamp out of form, and no error in either service's log; `/healthz` answers through Cloudflare with `no-cache` and an ETag. The checks in a browser are the owner's, and the memory step falls due about 2026-11-23.
+
 ## Upgrading to 1.2.1
 
 The first deploy on shared-tooling 2.8.0, which fills the units and the vhost from the deploy config. The droplet already runs `<service>.conf` with both ports, enabled, with a disabled `<service>.conf.old` beside it, and no other site serves the two names. In order:

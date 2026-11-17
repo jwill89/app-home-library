@@ -51,5 +51,10 @@
     "vite-plugin-pwa": "2.0.0",
     "vitest": "^5.0.3",
     "vue-tsc": "3.3.13"
+  },
+  "overrides": {
+    "workbox-build": {
+      "glob": "^14.0.2"
+    }
   }
 }
