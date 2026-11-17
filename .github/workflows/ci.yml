@@ -13,11 +13,26 @@ permissions:
 # The shared workflows, at the release the shared/ submodule holds (the docs job fails if
 # the two ever differ), and the one check only this repo has.
 jobs:
+  # Which areas this push or pull request changed: each job below runs when its area did,
+  # docs always, and every job when CI's own files, shared/ or the Taskfile change
+  # (changes.yml). `task shared:ci:changes` shows what a push would run.
+  changes:
+    uses: jwill89/shared-tooling/.github/workflows/changes.yml@v2.17.0
+    permissions:
+      contents: read
+      actions: read
+    with:
+      ignore: '**/*.md LICENSE LICENSE.* .gitignore .gitmodules .markdownlint-cli2.jsonc .vscode/** .claude/** .idea/** plans/** docs/**'
+      areas: |
+        app: ** !**/*.md !**/*.ps1 !**/*.psm1 !**/*.psd1 !.vscode/** !.claude/** !.idea/**
+
   # Lint, type-check, format, tests with their coverage floor (vite.config.ts), the audits
   # (any advisory in what ships, a high one in the tooling), and the build, which the Go
   # binary embeds.
   web:
-    uses: jwill89/shared-tooling/.github/workflows/web.yml@v2.16.1
+    needs: changes
+    if: fromJSON(needs.changes.outputs.areas).app
+    uses: jwill89/shared-tooling/.github/workflows/web.yml@v2.17.0
     with:
       dir: web
       fontawesome: true
@@ -29,8 +44,9 @@ jobs:
   # The Go packages embed web/dist, so they wait for the frontend's build. The tests run
   # under the race detector: the background lookup runs beside the requests.
   go:
-    needs: web
-    uses: jwill89/shared-tooling/.github/workflows/go.yml@v2.16.1
+    needs: [changes, web]
+    if: fromJSON(needs.changes.outputs.areas).app
+    uses: jwill89/shared-tooling/.github/workflows/go.yml@v2.17.0
     with:
       download-artifact: web-dist
       download-path: web/dist
@@ -48,8 +64,9 @@ jobs:
   # page through axe at WCAG 2.2 AA. The web job's install comes back from its cache, so the
   # Font Awesome kit is not fetched again; the front end is built here for the server to embed.
   e2e:
-    needs: [web, go]
-    uses: jwill89/shared-tooling/.github/workflows/e2e.yml@v2.16.1
+    needs: [changes, web, go]
+    if: fromJSON(needs.changes.outputs.areas).app
+    uses: jwill89/shared-tooling/.github/workflows/e2e.yml@v2.17.0
     with:
       dir: web
       go-version-file: go.mod
@@ -59,22 +76,30 @@ jobs:
       FONTAWESOME_TOKEN: ${{ secrets.FONTAWESOME_NPM_TOKEN }}
 
   scripts:
-    uses: jwill89/shared-tooling/.github/workflows/pwsh.yml@v2.16.1
+    needs: changes
+    if: fromJSON(needs.changes.outputs.areas).scripts
+    uses: jwill89/shared-tooling/.github/workflows/pwsh.yml@v2.17.0
 
   docs:
-    uses: jwill89/shared-tooling/.github/workflows/docs.yml@v2.16.1
+    uses: jwill89/shared-tooling/.github/workflows/docs.yml@v2.17.0
 
   # OSV-Scanner over every lockfile. An osv-scanner.toml beside a lockfile passes over the
   # advisories that reach only lint, test or build tooling.
   osv:
-    uses: jwill89/shared-tooling/.github/workflows/osv.yml@v2.16.1
+    needs: changes
+    if: fromJSON(needs.changes.outputs.areas).lockfiles
+    uses: jwill89/shared-tooling/.github/workflows/osv.yml@v2.17.0
 
   # The generated code (sqlc's, the OpenAPI document and the TypeScript client) is what the
   # generators make from the current schema and handlers.
   generated:
-    needs: web
+    needs: [changes, web]
+    if: fromJSON(needs.changes.outputs.areas).app
     # A pull request from a fork runs on GitHub's runners, never on a self-hosted one.
     runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-24.04' || vars.CI_RUNNER || 'ubuntu-24.04' }}
+    env:
+      # Each check runs through Invoke-CiCheck.ps1, which records it for the run's report.
+      CI_TOOLS: ${{ github.workspace }}/shared/ci
     steps:
       - uses: actions/checkout@v7
         with:
@@ -106,20 +131,41 @@ jobs:
           path: web/dist
 
       - name: Generated code is current
+        shell: pwsh
+        env:
+          CHECK: |
+            go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
+            sqlc generate
+            go run ./cmd/homelibrary openapi > web/src/api/openapi.json
+            cd web && npx -y openapi-typescript@7.13.0 src/api/openapi.json -o src/api/schema.d.ts && npx prettier --write src/api/schema.d.ts src/api/openapi.json && cd ..
+            git diff --exit-code -- internal/db web/src/api
         run: |
-          go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
-          sqlc generate
-          go run ./cmd/homelibrary openapi > web/src/api/openapi.json
-          cd web && npx -y openapi-typescript@7.13.0 src/api/openapi.json -o src/api/schema.d.ts && npx prettier --write src/api/schema.d.ts src/api/openapi.json && cd ..
-          git diff --exit-code -- internal/db web/src/api
+          & "$env:CI_TOOLS/Invoke-CiCheck.ps1" -Name 'Generated code is current' -Command 'bash -eo pipefail -c "$CHECK"'
+
+      # On a failure, the job's checks go up for report.yml to merge into the run's report.
+      - name: CI report
+        id: ci-report
+        if: failure()
+        continue-on-error: true
+        shell: pwsh
+        run: '& "$env:CI_TOOLS/Complete-CiReport.ps1"'
+
+      - name: Upload the CI report
+        if: failure() && steps.ci-report.outputs.name != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.ci-report.outputs.name }}
+          path: ${{ runner.temp }}/ci-report
+          retention-days: 7
+          if-no-files-found: ignore
 
   # The release: a green push to main whose web/package.json version has no release yet is
   # tagged v<version> at that commit, with its CHANGELOG.md section as the notes
   # (.github/scripts/release.sh). Every other push is a no-op. `task deploy` ships the tag.
   release:
     name: Tag + release (on version bump)
-    needs: [web, go, e2e, scripts, docs, generated, osv]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [changes, web, go, e2e, scripts, docs, generated, osv]
+    if: ${{ !failure() && !cancelled() && (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
     # A pull request from a fork runs on GitHub's runners, never on a self-hosted one.
     runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-24.04' || vars.CI_RUNNER || 'ubuntu-24.04' }}
     permissions:
@@ -134,3 +180,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash .github/scripts/release.sh
+
+  # When a job fails, one report of what failed and where: at the head of the run's page,
+  # and as the ci-report artifact `task shared:ci:report` prints (report.yml).
+  report:
+    needs: [changes, web, go, e2e, scripts, docs, osv, generated, release]
+    if: failure()
+    uses: jwill89/shared-tooling/.github/workflows/report.yml@v2.17.0
+    permissions:
+      contents: read
+      actions: read
