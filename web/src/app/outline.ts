@@ -10,6 +10,7 @@ export type CV = typeof cvModule
 /** The corners of the largest four-sided outline in the photo, or null when none is clear. */
 export function findOutline(cv: CV, image: ImageData): Point[] | null {
   const area = image.width * image.height
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-class-instance-assignment -- OpenCV's types declare an ImageData class of their own; matFromImageData reads only the DOM ImageData's width, height and data
   const src = cv.matFromImageData(image)
   const gray = new cv.Mat()
   const edges = new cv.Mat()

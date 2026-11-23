@@ -17,7 +17,7 @@ jobs:
   # docs always, and every job when CI's own files, shared/ or the Taskfile change
   # (changes.yml). `task shared:ci:changes` shows what a push would run.
   changes:
-    uses: jwill89/shared-tooling/.github/workflows/changes.yml@v2.18.0
+    uses: jwill89/shared-tooling/.github/workflows/changes.yml@v2.19.3
     permissions:
       contents: read
       actions: read
@@ -32,7 +32,7 @@ jobs:
   web:
     needs: changes
     if: fromJSON(needs.changes.outputs.areas).app
-    uses: jwill89/shared-tooling/.github/workflows/web.yml@v2.18.0
+    uses: jwill89/shared-tooling/.github/workflows/web.yml@v2.19.3
     with:
       dir: web
       fontawesome: true
@@ -46,7 +46,7 @@ jobs:
   go:
     needs: [changes, web]
     if: fromJSON(needs.changes.outputs.areas).app
-    uses: jwill89/shared-tooling/.github/workflows/go.yml@v2.18.0
+    uses: jwill89/shared-tooling/.github/workflows/go.yml@v2.19.3
     with:
       download-artifact: web-dist
       download-path: web/dist
@@ -66,7 +66,7 @@ jobs:
   e2e:
     needs: [changes, web, go]
     if: fromJSON(needs.changes.outputs.areas).app
-    uses: jwill89/shared-tooling/.github/workflows/e2e.yml@v2.18.0
+    uses: jwill89/shared-tooling/.github/workflows/e2e.yml@v2.19.3
     with:
       dir: web
       go-version-file: go.mod
@@ -78,17 +78,17 @@ jobs:
   scripts:
     needs: changes
     if: fromJSON(needs.changes.outputs.areas).scripts
-    uses: jwill89/shared-tooling/.github/workflows/pwsh.yml@v2.18.0
+    uses: jwill89/shared-tooling/.github/workflows/pwsh.yml@v2.19.3
 
   docs:
-    uses: jwill89/shared-tooling/.github/workflows/docs.yml@v2.18.0
+    uses: jwill89/shared-tooling/.github/workflows/docs.yml@v2.19.3
 
   # OSV-Scanner over every lockfile. An osv-scanner.toml beside a lockfile passes over the
   # advisories that reach only lint, test or build tooling.
   osv:
     needs: changes
     if: fromJSON(needs.changes.outputs.areas).lockfiles
-    uses: jwill89/shared-tooling/.github/workflows/osv.yml@v2.18.0
+    uses: jwill89/shared-tooling/.github/workflows/osv.yml@v2.19.3
 
   # The generated code (sqlc's, the OpenAPI document and the TypeScript client) is what the
   # generators make from the current schema and handlers.
@@ -186,7 +186,7 @@ jobs:
   report:
     needs: [changes, web, go, e2e, scripts, docs, osv, generated, release]
     if: failure()
-    uses: jwill89/shared-tooling/.github/workflows/report.yml@v2.18.0
+    uses: jwill89/shared-tooling/.github/workflows/report.yml@v2.19.3
     permissions:
       contents: read
       actions: read
